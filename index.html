@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Simpletory | Next-Gen Multi-Tenant WMS & Inventory</title>
+  <meta name="description" content="Modern, responsive, multi-tenant warehouse management and inventory platform with dual-mode tracking, multi-level UOM conversions, and tenant-defined custom fields." />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app-layout">
+    
+    <!-- Top Global Notification Banner (Dev / Tenant Context) -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <button id="sidebarToggleBtn" class="icon-btn mobile-only" aria-label="Toggle Navigation">
+          <i data-lucide="menu"></i>
+        </button>
+        <div class="brand">
+          <div class="brand-logo">
+            <i data-lucide="boxes" class="brand-icon"></i>
+          </div>
+          <div class="brand-info">
+            <span class="brand-name">Simpletory <span class="badge badge-subtle">WMS v3.0</span></span>
+            <span class="brand-subtitle" id="currentTenantSub">Multi-Tenant Platform</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Facility & Mode Quick Selector in Header -->
+      <div class="top-bar-center">
+        <div class="facility-context-chip">
+          <i data-lucide="building-2" class="chip-icon"></i>
+          <span class="chip-label">Active Facility:</span>
+          <select id="globalFacilitySelect" class="header-select">
+            <!-- Populated dynamically by app.js -->
+          </select>
+        </div>
+
+        <div class="quick-uom-mode-chip" id="headerModeChipContainer">
+          <i data-lucide="layers" class="chip-icon"></i>
+          <span class="chip-label">View:</span>
+          <div class="mode-pill-toggle" id="headerModePillToggle">
+            <button id="headerModeLpnBtn" class="mode-pill active" title="License Plate Number / Pallet Bin Tracking">
+              <i data-lucide="qr-code"></i> LPN Mode
+            </button>
+            <button id="headerModeSummaryBtn" class="mode-pill" title="Aggregated Summary by Location">
+              <i data-lucide="table"></i> Summary Mode
+            </button>
+          </div>
+          <div id="headerLockedSummaryBadge" class="facility-locked-badge hidden" title="This facility is configured in Admin as Summary Only">
+            <i data-lucide="lock"></i> Summary Only Facility
+          </div>
+        </div>
+      </div>
+
+      <!-- Tenant Switcher & Quick Actions -->
+      <div class="top-bar-right">
+        <!-- Quick Barcode Scan Button -->
+        <button id="quickScanBtn" class="btn btn-primary btn-sm btn-glow">
+          <i data-lucide="scan-line"></i>
+          <span class="desktop-tablet-text">Scan Barcode</span>
+        </button>
+
+        <!-- Multi-Tenant Organization Switcher -->
+        <div class="tenant-switcher-wrapper">
+          <label for="tenantSelect" class="sr-only">Select Tenant</label>
+          <div class="tenant-pill">
+            <i data-lucide="briefcase" class="tenant-icon"></i>
+            <select id="tenantSelect" class="tenant-dropdown">
+              <!-- Populated dynamically by app.js -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="icon-btn" title="Toggle Light/Dark Theme">
+          <i data-lucide="sun" id="themeIcon"></i>
+        </button>
+
+        <!-- User Profile Pill -->
+        <div class="user-pill" id="userProfileBtn" title="Current Role & User Settings">
+          <div class="avatar" id="userAvatar">DA</div>
+          <div class="user-info desktop-only">
+            <span class="user-name" id="userName">Derek L.</span>
+            <span class="user-role" id="userRoleBadge">Company Admin</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-container">
+      <!-- Left Sidebar Navigation -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-section">
+          <span class="sidebar-heading">Operations</span>
+          <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-view="dashboard">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
+            </a>
+            <a href="#inventory" class="nav-item" data-view="inventory">
+              <i data-lucide="package"></i>
+              <span>Inventory Stock</span>
+              <span class="nav-badge" id="totalLpnBadge">0</span>
+            </a>
+            <a href="#operations" class="nav-item" data-view="operations">
+              <i data-lucide="arrow-left-right"></i>
+              <span>Stock Movements</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="sidebar-heading">Master Data</span>
+          <nav class="sidebar-nav">
+            <a href="#items" class="nav-item" data-view="items">
+              <i data-lucide="tag"></i>
+              <span>Item Catalog</span>
+            </a>
+            <a href="#facilities" class="nav-item" data-view="facilities">
+              <i data-lucide="warehouse"></i>
+              <span>Facilities & Bins</span>
+            </a>
+            <a href="#manufacturers" class="nav-item" data-view="manufacturers">
+              <i data-lucide="truck"></i>
+              <span>Manufacturers</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="sidebar-section">
+          <span class="sidebar-heading">Tenant Admin</span>
+          <nav class="sidebar-nav">
+            <a href="#tenant-settings" class="nav-item" data-view="tenant-settings">
+              <i data-lucide="sliders"></i>
+              <span>Custom Fields & UOMs</span>
+            </a>
+            <a href="#users-roles" class="nav-item" data-view="users-roles">
+              <i data-lucide="users"></i>
+              <span>Staff & Roles</span>
+            </a>
+            <a href="#developer-portal" class="nav-item" data-view="developer-portal">
+              <i data-lucide="shield-alert"></i>
+              <span>Developer Onboarding</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="sidebar-footer">
+          <div class="tenant-status-card">
+            <div class="status-indicator-dot online"></div>
+            <div class="tenant-status-info">
+              <span class="tenant-status-name" id="sidebarTenantName">Apex Flooring</span>
+              <span class="tenant-status-tier">Free Tier Active (0$ / mo)</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Views Container -->
+      <main class="content-area" id="contentArea">
+        
+        <!-- ============================================================ -->
+        <!-- VIEW 1: DASHBOARD -->
+        <!-- ============================================================ -->
+        <section id="view-dashboard" class="app-view active">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Warehouse Overview</h1>
+              <p class="view-subtitle" id="dashboardSubtitle">Real-time telemetry and warehouse stock intelligence</p>
+            </div>
+            <div class="view-actions">
+              <!-- Dashboard Telemetry Mode Toggle -->
+              <div class="mode-pill-toggle" id="dashModeToggleWrapper">
+                <button id="dashModeLpnBtn" class="mode-pill active" title="LPN Pallet & Bin Telemetry">
+                  <i data-lucide="qr-code"></i> LPN Dashboard
+                </button>
+                <button id="dashModeSummaryBtn" class="mode-pill" title="Aggregated Summary Telemetry">
+                  <i data-lucide="table"></i> Summary Dashboard
+                </button>
+              </div>
+              <div id="dashLockedSummaryBadge" class="facility-locked-badge hidden">
+                <i data-lucide="lock"></i> Summary Only Facility
+              </div>
+              <button class="btn btn-secondary" id="btnQuickReceiveFromDash">
+                <i data-lucide="download"></i> Receive Inbound
+              </button>
+              <button class="btn btn-primary" id="btnQuickMoveFromDash">
+                <i data-lucide="move"></i> Relocate LPN
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Metric Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Active License Plates (LPNs)</span>
+                <div class="kpi-icon-wrapper blue">
+                  <i data-lucide="qr-code"></i>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpiTotalLpns">0</div>
+              <div class="kpi-meta positive">
+                <i data-lucide="trending-up"></i>
+                <span>Stored across <strong id="kpiTotalLocations">0</strong> warehouse bins</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Total Inventory Units</span>
+                <div class="kpi-icon-wrapper purple">
+                  <i data-lucide="package-search"></i>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpiTotalUnits">0 <small id="kpiPrimaryUom">Units</small></div>
+              <div class="kpi-meta neutral">
+                <i data-lucide="boxes"></i>
+                <span id="kpiPackagingRollup">Equivalent to 0 Pallets / 0 Cases</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Low Stock SKUs</span>
+                <div class="kpi-icon-wrapper amber">
+                  <i data-lucide="alert-triangle"></i>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpiLowStock">0</div>
+              <div class="kpi-meta warning">
+                <i data-lucide="clock"></i>
+                <span>Below configured reorder thresholds</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Connected Facilities</span>
+                <div class="kpi-icon-wrapper green">
+                  <i data-lucide="building"></i>
+                </div>
+              </div>
+              <div class="kpi-value" id="kpiTotalFacilities">0</div>
+              <div class="kpi-meta positive">
+                <i data-lucide="check-circle-2"></i>
+                <span>Warehouses, Showrooms & Mobile Vans</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Bar -->
+          <div class="quick-action-strip">
+            <span class="strip-label"><i data-lucide="zap"></i> Quick WMS Actions:</span>
+            <button class="strip-btn" id="stripReceiveBtn"><i data-lucide="plus-circle"></i> Inbound PO / Receive</button>
+            <button class="strip-btn" id="stripMoveBtn"><i data-lucide="arrow-right-left"></i> Transfer / Move LPN</button>
+            <button class="strip-btn" id="stripPickBtn"><i data-lucide="shopping-cart"></i> Pick & Job Dispatch</button>
+            <button class="strip-btn" id="stripItemCatalogBtn"><i data-lucide="layers"></i> Items & Packaging UOMs</button>
+            <button class="strip-btn" id="stripCustomFieldsBtn"><i data-lucide="sliders"></i> Customize Tenant Fields</button>
+          </div>
+
+          <!-- Split Dashboard Section: Live Activity + Facility Breakdown -->
+          <div class="dashboard-grid-split">
+            <!-- Left: Recent Stock Transactions -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="history" class="text-primary"></i>
+                  <h3 class="card-title">Recent Stock Movements & Audit Trail</h3>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btnViewAllMovements">View All</button>
+              </div>
+              <div class="card-body no-padding">
+                <div class="table-container">
+                  <table class="data-table" id="recentTransactionsTable">
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Item / LPN</th>
+                        <th>Movement</th>
+                        <th>Quantity</th>
+                        <th>User</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recentTransactionsBody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Facility Capacity & Mode Status -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="pie-chart" class="text-accent"></i>
+                  <h3 class="card-title">Facilities & Tracking Status</h3>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="btnAddFacilityQuick">+ New</button>
+              </div>
+              <div class="card-body">
+                <div class="facility-status-list" id="dashboardFacilityList">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 2: INVENTORY STOCK (DUAL MODE: LPN vs SUMMARY) -->
+        <!-- ============================================================ -->
+        <section id="view-inventory" class="app-view">
+          <div class="view-header">
+            <div>
+              <div class="flex-align-center gap-2">
+                <h1 class="view-title">Inventory Stock Explorer</h1>
+                <span class="badge badge-primary" id="inventoryModeBadge">LPN Tracking Active</span>
+              </div>
+              <p class="view-subtitle">Search, filter, relocate, and inspect physical stock across all facilities.</p>
+            </div>
+            <div class="view-actions">
+              <!-- View Mode Toggle in View Header -->
+              <div class="segmented-control">
+                <button id="viewToggleLpn" class="segmented-btn active"><i data-lucide="qr-code"></i> License Plates (LPN)</button>
+                <button id="viewToggleSummary" class="segmented-btn"><i data-lucide="table"></i> Summary by Location</button>
+              </div>
+              <button class="btn btn-primary" id="btnReceiveInbound">
+                <i data-lucide="plus-circle"></i> Receive Inbound Stock
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div class="filter-toolbar">
+            <div class="search-input-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="inventorySearchInput" class="search-input" placeholder="Search SKU, LPN tag, Item Name, Dye Lot, Barcode..." />
+            </div>
+
+            <div class="filter-group">
+              <select id="filterFacilitySelect" class="filter-select">
+                <option value="all">All Facilities</option>
+                <!-- Populated dynamically -->
+              </select>
+
+              <select id="filterCategorySelect" class="filter-select">
+                <option value="all">All Categories</option>
+                <!-- Populated dynamically -->
+              </select>
+
+              <select id="filterStatusSelect" class="filter-select">
+                <option value="all">All Stock Statuses</option>
+                <option value="available">Available</option>
+                <option value="reserved">Reserved for Job</option>
+                <option value="damaged">Damaged / Quarantine</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic UDF Columns Indicator Banner -->
+          <div class="custom-fields-notice-banner" id="udfNoticeBanner">
+            <i data-lucide="sparkles" class="banner-icon"></i>
+            <span id="udfBannerText">Displaying Tenant-Configured Attributes: <strong>Square Foot per Box</strong>, <strong>Color / Stain</strong>, <strong>Dye Lot / Run #</strong></span>
+            <button class="btn btn-xs btn-outline" id="btnEditCustomFieldsLink">Edit Tenant Fields</button>
+          </div>
+
+          <!-- LPN MODE CONTAINER -->
+          <div id="lpnModeContainer" class="inventory-mode-container active">
+            <div class="lpn-cards-grid" id="lpnCardsGrid">
+              <!-- LPN Cards rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- SUMMARY MODE CONTAINER -->
+          <div id="summaryModeContainer" class="inventory-mode-container">
+            <div class="card">
+              <div class="card-body no-padding">
+                <div class="table-container">
+                  <table class="data-table" id="summaryStockTable">
+                    <thead>
+                      <tr id="summaryTableHeaderRow">
+                        <th>SKU / Item</th>
+                        <th>Category</th>
+                        <th>Facility</th>
+                        <th>Location</th>
+                        <!-- Dynamic UDF Headers injected here -->
+                        <th>Total In Stock</th>
+                        <th>Packaging Breakdown</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="summaryStockTableBody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 3: ITEM DETAILS & ITEM-LEVEL UOM CONVERSIONS (SUBPAGE) -->
+        <!-- ============================================================ -->
+        <section id="view-item-detail" class="app-view">
+          <div class="view-header">
+            <div>
+              <div class="breadcrumb-trail">
+                <a href="#items" onclick="app.navigateTo('items'); return false;">Master Data</a>
+                <i data-lucide="chevron-right"></i>
+                <a href="#items" onclick="app.navigateTo('items'); return false;">Item Catalog</a>
+                <i data-lucide="chevron-right"></i>
+                <span id="itemDetailBreadcrumbSku" class="breadcrumb-current">SKU-OAK-01</span>
+              </div>
+              <h1 class="view-title" id="itemDetailTitle">Rustic White Oak 7.5in Wirebrushed Plank</h1>
+              <p class="view-subtitle" id="itemDetailSubtitle">SKU Master Definition, Packaging Tiers, and Item UOM Relational Conversions (<code>item_uoms</code>)</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-secondary" onclick="app.navigateTo('items')">
+                <i data-lucide="arrow-left"></i> Back to Catalog
+              </button>
+              <button class="btn btn-primary" id="btnItemDetailReceive">
+                <i data-lucide="download"></i> Receive Stock
+              </button>
+              <button class="btn btn-outline" id="btnItemDetailAdjust">
+                <i data-lucide="package-minus"></i> Pick / Adjust
+              </button>
+            </div>
+          </div>
+
+          <!-- Item Attributes & Metadata Grid -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <div class="card-header-left">
+                <i data-lucide="info" class="text-primary"></i>
+                <h3 class="card-title">Item Master Specifications & Properties</h3>
+              </div>
+              <span class="badge badge-primary" id="itemDetailCategoryBadge">Hardwood</span>
+            </div>
+            <div class="card-body">
+              <div class="item-metadata-grid" id="itemDetailMetaGrid">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Item UOM Packaging Hierarchy (item_uoms Table) -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <div class="card-header-left">
+                <i data-lucide="layers" class="text-primary"></i>
+                <div>
+                  <h3 class="card-title">Item UOM Packaging Hierarchy & Conversions</h3>
+                  <small class="text-muted">Stored in the relational database table <code>item_uoms</code> linked by <code>item_id</code>.</small>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-primary" id="btnShowAddTierForm">
+                <i data-lucide="plus"></i> Add Packaging Tier
+              </button>
+            </div>
+            <div class="card-body no-padding">
+              <!-- Inline Add Tier Form -->
+              <div class="add-tier-inline-box" id="addTierInlineBox" style="display:none; padding:1.25rem; background:rgba(255,255,255,0.02); border-bottom:1px solid var(--border-color);">
+                <h4 class="inline-box-title" style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; font-size:1rem; font-weight:600;">
+                  <i data-lucide="plus-circle" class="text-primary"></i> Add New Packaging Tier to <span id="addTierSkuLabel" class="font-mono text-primary">SKU</span>
+                </h4>
+                <form id="addItemUomForm">
+                  <input type="hidden" id="addTierItemId" value="" />
+                  <div class="grid-3-col">
+                    <div class="form-group">
+                      <label for="addTierUomSelect" class="form-label">Packaging Unit: *</label>
+                      <select id="addTierUomSelect" class="form-select" required>
+                        <!-- Populated with tenant UOMs -->
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="addTierMultiplier" class="form-label">Multiplier (in Base Units): *</label>
+                      <input type="number" id="addTierMultiplier" class="form-input font-mono" step="any" min="0.0001" placeholder="e.g. 24.5 or 1470" required />
+                      <small class="text-muted" id="addTierMultiplierHelper">How many base units per this packaging unit?</small>
+                    </div>
+                    <div class="form-group">
+                      <label for="addTierBarcode" class="form-label">Packaging Barcode / GTIN:</label>
+                      <input type="text" id="addTierBarcode" class="form-input font-mono" placeholder="e.g. 0712345001012" />
+                    </div>
+                  </div>
+                  <div class="grid-2-col mt-3">
+                    <div class="form-group">
+                      <label for="addTierDesc" class="form-label">Packaging Description:</label>
+                      <input type="text" id="addTierDesc" class="form-input" placeholder="e.g. 24.5 Sq Ft per Box (8 planks)" />
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:flex-end; gap:0.5rem;">
+                      <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Save Packaging Tier to <code>item_uoms</code></button>
+                      <button type="button" class="btn btn-ghost" id="btnCancelAddTier">Cancel</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <div class="table-container">
+                <table class="data-table" id="itemUomsRelationalTable">
+                  <thead>
+                    <tr>
+                      <th>Tier Level</th>
+                      <th>Packaging Unit</th>
+                      <th>UOM Code</th>
+                      <th>Multiplier to Base</th>
+                      <th>Conversion Formula</th>
+                      <th>GTIN / Barcode</th>
+                      <th>Description</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemUomsRelationalTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Split: Visual Packaging Chain Diagram + Interactive SKU Conversion Simulator -->
+          <div class="grid-2-col">
+            <!-- Left: Visual Packaging Chain -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="workflow" class="text-accent"></i>
+                  <h3 class="card-title">Visual Packaging Chain Breakdown</h3>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="visual-chain-flow" id="itemDetailVisualChain">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Interactive Roll-Up / Break-Down Tester for this SKU -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="calculator" class="text-secondary"></i>
+                  <h3 class="card-title">Live SKU Packaging Roll-Up Test</h3>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3" style="font-size:0.85rem;">
+                  Simulate entering quantities in any packaging tier for this item to test dynamic stock calculations:
+                </p>
+                <div class="grid-2-col mb-3">
+                  <div class="form-group">
+                    <label for="itemSimQtyInput" class="form-label">Input Quantity:</label>
+                    <input type="number" id="itemSimQtyInput" class="form-input font-mono text-lg" value="2" min="0" step="any" />
+                  </div>
+                  <div class="form-group">
+                    <label for="itemSimUomSelect" class="form-label">Input Packaging Unit:</label>
+                    <select id="itemSimUomSelect" class="form-select text-lg">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <div class="calc-results-card" id="itemSimResultsCard">
+                  <div class="results-grid">
+                    <div class="result-box">
+                      <span class="result-label">Base Units (Stored in DB)</span>
+                      <span class="result-number" id="itemSimBaseUnits">3,600</span>
+                      <span class="result-sub" id="itemSimBaseUnitName">Sq Ft</span>
+                    </div>
+                    <div class="result-box">
+                      <span class="result-label">Calculated Breakdown</span>
+                      <span class="result-number" id="itemSimFullTiers">2 Plt</span>
+                      <span class="result-sub" id="itemSimTierDetails">120 Boxes Total</span>
+                    </div>
+                  </div>
+                  <div class="plain-english-callout mt-3" id="itemSimCallout">
+                    <i data-lucide="sparkles"></i>
+                    <span id="itemSimCalloutText">Entering 2 Pallets equals 120 Boxes or 3,600 Sq Ft.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 4: MASTER DATA - ITEMS CATALOG -->
+        <!-- ============================================================ -->
+        <section id="view-items" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Item Master Catalog</h1>
+              <p class="view-subtitle">SKU definitions, UOM packaging hierarchies, and tenant custom properties.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="btnAddNewItem">
+                <i data-lucide="plus"></i> Add New Item
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="itemsMasterTable">
+                  <thead>
+                    <tr id="itemsTableHeaderRow">
+                      <th>SKU</th>
+                      <th>Item Name</th>
+                      <th>Category</th>
+                      <th>Manufacturer</th>
+                      <th>Base UOM</th>
+                      <th>Packaging Chain</th>
+                      <!-- Dynamic UDF headers -->
+                      <th>Unit Cost</th>
+                      <th>Reorder Pt</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemsMasterTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 5: MASTER DATA - FACILITIES & LOCATIONS -->
+        <!-- ============================================================ -->
+        <section id="view-facilities" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Facilities & Warehouse Locations</h1>
+              <p class="view-subtitle">Manage distribution buildings, showrooms, mobile service vans, and bin/rack layouts.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-secondary" id="btnAddLocationModalBtn">
+                <i data-lucide="plus"></i> Add Warehouse Bin / Location
+              </button>
+              <button class="btn btn-primary" id="btnAddFacilityModalBtn">
+                <i data-lucide="building"></i> Add Facility
+              </button>
+            </div>
+          </div>
+
+          <!-- Facilities Cards & Location Grid -->
+          <div class="facilities-hierarchy-container" id="facilitiesHierarchyContainer">
+            <!-- Rendered dynamically -->
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 6: MASTER DATA - MANUFACTURERS -->
+        <!-- ============================================================ -->
+        <section id="view-manufacturers" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Manufacturers & Suppliers</h1>
+              <p class="view-subtitle">Partner directories, rep contact details, lead times, and linked SKU lines.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="btnAddManufacturerModalBtn">
+                <i data-lucide="plus"></i> Add Manufacturer
+              </button>
+            </div>
+          </div>
+
+          <div class="manufacturers-grid" id="manufacturersGrid">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 7: STOCK MOVEMENTS & AUDIT LOG -->
+        <!-- ============================================================ -->
+        <section id="view-operations" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Stock Movements & Audit History</h1>
+              <p class="view-subtitle">Complete ledger of all inbound receipts, LPN relocations, job dispatches, and adjustments.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-secondary" id="btnExportAuditLog">
+                <i data-lucide="download"></i> Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="fullAuditLogTable">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Tx ID</th>
+                      <th>Type</th>
+                      <th>LPN / Tag</th>
+                      <th>Item SKU</th>
+                      <th>From</th>
+                      <th>To</th>
+                      <th>Quantity</th>
+                      <th>Job Ref / Note</th>
+                      <th>User</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fullAuditLogBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 8: TENANT SETTINGS & CUSTOM FIELD BUILDER -->
+        <!-- ============================================================ -->
+        <section id="view-tenant-settings" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Tenant Configuration & Custom Field Engine</h1>
+              <p class="view-subtitle">Customize Units of Measure (UOM) and configure User-Defined Dynamic Fields (UDFs) for your specific industry.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="btnSaveTenantConfig">
+                <i data-lucide="check"></i> Save Configurations
+              </button>
+            </div>
+          </div>
+
+          <div class="grid-2-col">
+            <!-- Left: User Defined Fields (UDF) Configuration -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="sliders" class="text-primary"></i>
+                  <h3 class="card-title">User-Defined Custom Fields (UDFs)</h3>
+                </div>
+                <button class="btn btn-sm btn-primary" id="btnAddNewCustomField">+ Add Field</button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-4">
+                  Define customized columns for items and license plates (e.g. <em>Square Foot per Box</em>, <em>Color Shade</em>, <em>Dye Lot #</em>, <em>Wear Layer</em>). These automatically inject into item setup forms, barcode tags, and tables.
+                </p>
+
+                <div class="custom-fields-editor-list" id="customFieldsEditorList">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Units of Measure (UOM) Configuration -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="layers" class="text-accent"></i>
+                  <h3 class="card-title">Tenant Units of Measure (UOM)</h3>
+                </div>
+                <button class="btn btn-sm btn-primary" id="btnAddNewUom">+ Add UOM</button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-4">
+                  Configure the units your organization uses for tracking and packaging.
+                </p>
+
+                <div class="uom-editor-list" id="uomEditorList">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Facility Tracking Mode Controls in Admin -->
+          <div class="card mt-4">
+            <div class="card-header">
+              <div class="card-header-left">
+                <i data-lucide="shield-check" class="text-primary"></i>
+                <h3 class="card-title">Facility Level Tracking Controls (LPN Mode vs. Summary Only)</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-4">
+                Configure whether each facility uses granular <strong>LPN Pallet/Bin Level Tracking</strong> or is locked to <strong>Summary Only</strong> (which completely removes and hides LPN options from users in that facility).
+              </p>
+              <div class="facility-tracking-matrix" id="facilityTrackingMatrix">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 9: STAFF & ROLES -->
+        <!-- ============================================================ -->
+        <section id="view-users-roles" class="app-view">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">Company Staff & Role-Based Access (RBAC)</h1>
+              <p class="view-subtitle">Invite warehouse managers, operators, and field installers with scoped permissions.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="btnInviteUserModal">
+                <i data-lucide="user-plus"></i> Invite Team Member
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="usersTable">
+                  <thead>
+                    <tr>
+                      <th>Staff Member</th>
+                      <th>Email</th>
+                      <th>Assigned Role</th>
+                      <th>Allowed Facilities</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 10: DEVELOPER SUPER-ADMIN PORTAL (CLIENT ONBOARDING) -->
+        <!-- ============================================================ -->
+        <section id="view-developer-portal" class="app-view">
+          <div class="view-header">
+            <div>
+              <div class="flex-align-center gap-2">
+                <h1 class="view-title">Developer Master Portal</h1>
+                <span class="badge badge-accent">Platform Super-Admin</span>
+              </div>
+              <p class="view-subtitle">Create new client companies, assign initial Company Admins, and generate zero-cost onboarding links.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="btnCreateNewTenantModal">
+                <i data-lucide="plus-circle"></i> Onboard New Company
+              </button>
+            </div>
+          </div>
+
+          <div class="developer-tenants-grid" id="developerTenantsGrid">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <a href="#dashboard" class="mobile-nav-item active" data-view="dashboard">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Home</span>
+      </a>
+      <a href="#inventory" class="mobile-nav-item" data-view="inventory">
+        <i data-lucide="package"></i>
+        <span>Stock</span>
+      </a>
+      <button class="mobile-scan-fab" id="mobileScanFab" title="Scan Barcode">
+        <i data-lucide="scan-line"></i>
+      </button>
+      <a href="#facilities" class="mobile-nav-item" data-view="facilities">
+        <i data-lucide="warehouse"></i>
+        <span>Bins</span>
+      </a>
+      <a href="#tenant-settings" class="mobile-nav-item" data-view="tenant-settings">
+        <i data-lucide="sliders"></i>
+        <span>Config</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALS -->
+  <!-- ============================================================ -->
+
+  <!-- MODAL 1: INTERACTIVE BARCODE SCANNER -->
+  <div class="modal-backdrop" id="scannerModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="scan-line" class="text-primary"></i>
+          <h3 class="modal-title">Live Barcode & LPN Scanner</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="scannerModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Live Camera Viewfinder Simulation -->
+        <div class="scanner-viewfinder">
+          <div class="scan-laser"></div>
+          <div class="viewfinder-corners"></div>
+          <div class="viewfinder-hint">
+            <i data-lucide="camera"></i>
+            <span>Point camera at LPN tag, Bin Barcode, or Item SKU</span>
+          </div>
+        </div>
+
+        <div class="scanner-manual-entry mt-4">
+          <label for="manualScanInput" class="form-label">Or Simulate Scan / Type Barcode:</label>
+          <div class="input-action-group">
+            <input type="text" id="manualScanInput" class="form-input font-mono" placeholder="e.g. LPN-49201, LOC-A02-R04-B, SKU-OAK-01" />
+            <button class="btn btn-primary" id="btnSubmitManualScan">Submit Scan</button>
+          </div>
+        </div>
+
+        <!-- Quick Sample Barcode Chips for instant demo testing -->
+        <div class="sample-barcodes-section mt-4">
+          <span class="sample-label">Quick Click Test Barcodes:</span>
+          <div class="sample-chip-list" id="sampleScanChips">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Scan Result Preview Area -->
+        <div class="scan-result-card hidden" id="scanResultCard">
+          <div class="scan-result-header">
+            <i data-lucide="check-circle-2" class="text-success"></i>
+            <h4 id="scanResultTitle">Match Found!</h4>
+          </div>
+          <div class="scan-result-content" id="scanResultContent">
+            <!-- Injected dynamically -->
+          </div>
+          <div class="scan-result-actions mt-3" id="scanResultActions">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: RECEIVE INBOUND STOCK -->
+  <div class="modal-backdrop" id="receiveStockModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="download" class="text-success"></i>
+          <h3 class="modal-title">Receive Inbound Stock</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="receiveStockModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="receiveStockForm">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="rcvItemSelect" class="form-label">Select Item / SKU: *</label>
+              <select id="rcvItemSelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="rcvFacilitySelect" class="form-label">Destination Facility: *</label>
+              <select id="rcvFacilitySelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="rcvLocationSelect" class="form-label">Warehouse Bin Location: *</label>
+              <select id="rcvLocationSelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="rcvTrackingMode" class="form-label">Tracking Type: *</label>
+              <select id="rcvTrackingMode" class="form-select">
+                <option value="lpn">Generate License Plate (LPN Pallet/Roll)</option>
+                <option value="summary">Summary Stock (Bulk Location Count)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Quantity and UOM row -->
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="rcvQuantityInput" class="form-label">Quantity: *</label>
+              <input type="number" id="rcvQuantityInput" class="form-input font-mono" min="0.1" step="any" value="1" required />
+            </div>
+
+            <div class="form-group">
+              <label for="rcvUomSelect" class="form-label">Unit of Measure: *</label>
+              <select id="rcvUomSelect" class="form-select">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Live Rollup Preview in Form -->
+          <div class="form-rollup-preview" id="rcvRollupPreview">
+            <i data-lucide="info"></i>
+            <span id="rcvRollupText">Calculates to: 60 Cases | 1,800 Eaches</span>
+          </div>
+
+          <!-- Dynamic Custom Field Inputs Container (UDFs) -->
+          <div class="dynamic-form-fields-section mt-4">
+            <h4 class="form-section-subtitle"><i data-lucide="sliders"></i> Tenant Custom Attributes:</h4>
+            <div class="grid-2-col mt-2" id="rcvCustomFieldsInputs">
+              <!-- Dynamically generated according to tenant UDFs -->
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="receiveStockModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow">
+              <i data-lucide="check"></i> Confirm Receipt & Generate LPN
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: RELOCATE / MOVE LPN -->
+  <div class="modal-backdrop" id="moveLpnModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="arrow-right-left" class="text-accent"></i>
+          <h3 class="modal-title">Relocate License Plate (LPN)</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="moveLpnModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="moveLpnForm">
+          <div class="form-group">
+            <label for="moveLpnSelect" class="form-label">Select License Plate (LPN): *</label>
+            <select id="moveLpnSelect" class="form-select" required>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="lpn-quick-preview-card mt-3" id="moveLpnPreviewCard">
+            <!-- Injected dynamically -->
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="moveDestFacilitySelect" class="form-label">Destination Facility: *</label>
+              <select id="moveDestFacilitySelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="moveDestLocationSelect" class="form-label">Destination Bin / Location: *</label>
+              <select id="moveDestLocationSelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="moveReasonInput" class="form-label">Transfer Reason / Note:</label>
+            <input type="text" id="moveReasonInput" class="form-input" placeholder="e.g. Staging for Job #892, Forklift Reorganization" />
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="moveLpnModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check"></i> Confirm Move
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADJUST STOCK OUT / JOB DISPATCH -->
+  <div class="modal-backdrop" id="adjustStockModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="package-minus" class="text-accent"></i>
+          <h3 class="modal-title">Adjust Stock Out / Job Dispatch</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="adjustStockModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="adjustStockForm">
+          <div class="grid-2-col">
+            <!-- Source selection (LPN vs Item) -->
+            <div class="form-group" id="adjLpnGroup">
+              <label for="adjLpnSelect" class="form-label">Source License Plate (LPN): *</label>
+              <select id="adjLpnSelect" class="form-select">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group" id="adjItemGroup" style="display:none;">
+              <label for="adjItemSelect" class="form-label">Select SKU / Item: *</label>
+              <select id="adjItemSelect" class="form-select">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adjReasonCodeSelect" class="form-label">Adjustment Reason Code: *</label>
+              <select id="adjReasonCodeSelect" class="form-select" required>
+                <option value="job_dispatch">📦 Job Order Pick / Installation Dispatch</option>
+                <option value="damage_scrap">⚠️ Damaged / Broken / Defective Scrap</option>
+                <option value="cycle_count_loss">🔍 Cycle Count Loss / Shrinkage</option>
+                <option value="sample_pull">🏷️ Showroom / Sales Sample Pull</option>
+                <option value="rtv">🔄 Return to Vendor (RTV)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- LPN / Item Available Balance Preview Card -->
+          <div class="lpn-quick-preview-card mt-3" id="adjStockPreviewCard">
+            <!-- Dynamic balance summary -->
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="adjReferenceInput" class="form-label">Job # / Work Order / Reference Note: *</label>
+              <input type="text" id="adjReferenceInput" class="form-input font-mono" placeholder="e.g. Job #4092 - Smith Master Bath Remodel" required />
+            </div>
+
+            <div class="form-group">
+              <label for="adjDestinationInput" class="form-label">Dispatch Destination / Installer:</label>
+              <input type="text" id="adjDestinationInput" class="form-input" placeholder="e.g. Service Van #3 / Carlos G." />
+            </div>
+          </div>
+
+          <!-- Quantity to Deduct -->
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label for="adjQuantityInput" class="form-label">Quantity to Deduct: *</label>
+                <label style="font-size:0.72rem; color:var(--accent-cyan); cursor:pointer;">
+                  <input type="checkbox" id="adjConsumeAllCheckbox" /> Consume Entire Balance
+                </label>
+              </div>
+              <input type="number" id="adjQuantityInput" class="form-input font-mono text-lg" min="0.1" step="any" value="1" required />
+            </div>
+
+            <div class="form-group">
+              <label for="adjUomSelect" class="form-label">Deduction Unit: *</label>
+              <select id="adjUomSelect" class="form-select text-lg">
+                <option value="case">Case / Carton (Inner Pack)</option>
+                <option value="pallet">Full Pallet (Outer Pack)</option>
+                <option value="base">Base Units (Sq Ft / Each)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Live Computation Banner: Deducted vs Remaining -->
+          <div class="form-rollup-preview mt-3" id="adjComputationBanner">
+            <i data-lucide="calculator"></i>
+            <span id="adjComputationText">Deducting: 1 Case (30 Sq Ft) &bull; Remaining Balance: 59 Cases (1,770 Sq Ft)</span>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="adjustStockModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitAdjustStock">
+              <i data-lucide="check"></i> Confirm Outbound Deduction
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: ADD ITEM -->
+  <div class="modal-backdrop" id="addItemModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="tag" class="text-primary"></i>
+          <h3 class="modal-title">Create New Master Item</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addItemModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addItemForm">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="newItemSku" class="form-label">SKU Code: *</label>
+              <input type="text" id="newItemSku" class="form-input font-mono" placeholder="e.g. SKU-OAK-02" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newItemName" class="form-label">Item / Product Name: *</label>
+              <input type="text" id="newItemName" class="form-input" placeholder="e.g. Heritage Hickory 7in Engineered Plank" required />
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newItemCategory" class="form-label">Category: *</label>
+              <select id="newItemCategory" class="form-select" required>
+                <option value="Hardwood">Hardwood</option>
+                <option value="LVP (Luxury Vinyl Plank)">LVP (Luxury Vinyl Plank)</option>
+                <option value="Tile & Stone">Tile & Stone</option>
+                <option value="Carpet & Rugs">Carpet & Rugs</option>
+                <option value="Laminate">Laminate</option>
+                <option value="Underlayment & Trim">Underlayment & Trim</option>
+                <option value="Adhesives & Supplies">Adhesives & Supplies</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="newItemManufacturer" class="form-label">Manufacturer / Brand: *</label>
+              <select id="newItemManufacturer" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- UOM & Packaging Hierarchy Configuration -->
+          <div class="packaging-setup-box mt-3">
+            <h4 class="form-section-subtitle"><i data-lucide="layers"></i> Multi-Level Packaging Hierarchy:</h4>
+            
+            <div class="grid-3-col mt-2">
+              <div class="form-group">
+                <label for="newItemBaseUom" class="form-label">Base Unit (Indivisible): *</label>
+                <select id="newItemBaseUom" class="form-select">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="newItemCaseQty" class="form-label">Base Units per Case / Box:</label>
+                <input type="number" id="newItemCaseQty" class="form-input font-mono" value="30" min="1" step="any" />
+              </div>
+
+              <div class="form-group">
+                <label for="newItemPalletQty" class="form-label">Cases per Pallet:</label>
+                <input type="number" id="newItemPalletQty" class="form-input font-mono" value="60" min="1" step="any" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Tenant Custom Fields for Items -->
+          <div class="dynamic-form-fields-section mt-4">
+            <h4 class="form-section-subtitle"><i data-lucide="sliders"></i> Tenant Custom Attributes:</h4>
+            <div class="grid-2-col mt-2" id="newItemCustomFieldsContainer">
+              <!-- Dynamically generated -->
+            </div>
+          </div>
+
+          <div class="grid-3-col mt-3">
+            <div class="form-group">
+              <label for="newItemCost" class="form-label">Unit Cost ($):</label>
+              <input type="number" id="newItemCost" class="form-input font-mono" min="0" step="0.01" value="2.85" />
+            </div>
+
+            <div class="form-group">
+              <label for="newItemPrice" class="form-label">Selling Price ($):</label>
+              <input type="number" id="newItemPrice" class="form-input font-mono" min="0" step="0.01" value="4.50" />
+            </div>
+
+            <div class="form-group">
+              <label for="newItemReorder" class="form-label">Reorder Point:</label>
+              <input type="number" id="newItemReorder" class="form-input font-mono" min="0" value="10" />
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addItemModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: ADD FACILITY -->
+  <div class="modal-backdrop" id="addFacilityModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="building" class="text-primary"></i>
+          <h3 class="modal-title">Add Facility / Operating Location</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addFacilityModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addFacilityForm">
+          <div class="form-group">
+            <label for="newFacilityName" class="form-label">Facility Name: *</label>
+            <input type="text" id="newFacilityName" class="form-input" placeholder="e.g. West Coast Distribution Center" required />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newFacilityCode" class="form-label">Facility Code: *</label>
+              <input type="text" id="newFacilityCode" class="form-input font-mono" placeholder="e.g. FAC-03" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newFacilityType" class="form-label">Facility Type: *</label>
+              <select id="newFacilityType" class="form-select">
+                <option value="warehouse">Main Warehouse / DC</option>
+                <option value="showroom">Showroom & Sample Floor</option>
+                <option value="mobile_van">Mobile Van / Fleet Vehicle</option>
+                <option value="staging">Jobsite Staging Yard</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="newFacilityTrackingMode" class="form-label">Default Tracking Mode:</label>
+            <select id="newFacilityTrackingMode" class="form-select">
+              <option value="lpn">LPN Pallet & Bin Tracking (Advanced WMS)</option>
+              <option value="summary">Summary Stock (Simple Counts)</option>
+            </select>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addFacilityModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Facility</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: ADD LOCATION BIN -->
+  <div class="modal-backdrop" id="addLocationModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="warehouse" class="text-primary"></i>
+          <h3 class="modal-title">Add Warehouse Bin / Rack Location</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addLocationModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addLocationForm">
+          <div class="form-group">
+            <label for="newLocFacilitySelect" class="form-label">Belongs to Facility: *</label>
+            <select id="newLocFacilitySelect" class="form-select" required>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newLocCode" class="form-label">Location Code / Tag: *</label>
+              <input type="text" id="newLocCode" class="form-input font-mono" placeholder="e.g. A03-R02-A" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newLocName" class="form-label">Descriptive Name:</label>
+              <input type="text" id="newLocName" class="form-input" placeholder="e.g. Aisle 3, Rack 2, Lower Bay" />
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newLocZone" class="form-label">Zone Type:</label>
+              <select id="newLocZone" class="form-select">
+                <option value="racking">Selective Pallet Racking</option>
+                <option value="floor_bulk">Bulk Floor Stacking</option>
+                <option value="roll_rack">Carpet & Vinyl Roll Carousel</option>
+                <option value="receiving">Inbound Receiving Bay</option>
+                <option value="staging">Outbound Staging Lane</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="newLocCapacity" class="form-label">Max Pallet / LPN Capacity:</label>
+              <input type="number" id="newLocCapacity" class="form-input font-mono" value="2" min="1" />
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addLocationModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Location</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 7: ADD MANUFACTURER -->
+  <div class="modal-backdrop" id="addManufacturerModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="truck" class="text-primary"></i>
+          <h3 class="modal-title">Add Manufacturer / Supplier</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addManufacturerModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addManufacturerForm">
+          <div class="form-group">
+            <label for="newMfrName" class="form-label">Manufacturer Name: *</label>
+            <input type="text" id="newMfrName" class="form-input" placeholder="e.g. Shaw Floors, Mohawk, Mannington" required />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newMfrRep" class="form-label">Sales Rep Name:</label>
+              <input type="text" id="newMfrRep" class="form-input" placeholder="e.g. Sarah Jenkins" />
+            </div>
+
+            <div class="form-group">
+              <label for="newMfrPhone" class="form-label">Phone Number:</label>
+              <input type="text" id="newMfrPhone" class="form-input" placeholder="e.g. (800) 555-0192" />
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newMfrEmail" class="form-label">Rep / Order Email:</label>
+              <input type="email" id="newMfrEmail" class="form-input" placeholder="e.g. orders@shawfloors.com" />
+            </div>
+
+            <div class="form-group">
+              <label for="newMfrLeadTime" class="form-label">Average Lead Time (Days):</label>
+              <input type="number" id="newMfrLeadTime" class="form-input font-mono" value="5" min="1" />
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addManufacturerModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Manufacturer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 8: ONBOARD NEW TENANT (DEVELOPER PORTAL) -->
+  <div class="modal-backdrop" id="createTenantModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="shield-check" class="text-accent"></i>
+          <h3 class="modal-title">Onboard New Company (Developer Portal)</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="createTenantModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="createTenantForm">
+          <div class="form-group">
+            <label for="newTenantName" class="form-label">Company Name: *</label>
+            <input type="text" id="newTenantName" class="form-input" placeholder="e.g. Pacific Hardwood & Tile" required />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newTenantAdminName" class="form-label">Company Admin Name: *</label>
+              <input type="text" id="newTenantAdminName" class="form-input" placeholder="e.g. Marcus Vance" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newTenantAdminEmail" class="form-label">Admin Email: *</label>
+              <input type="email" id="newTenantAdminEmail" class="form-input" placeholder="e.g. marcus@pacifichardwood.com" required />
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="newTenantTemplate" class="form-label">Starter Industry Template:</label>
+            <select id="newTenantTemplate" class="form-select">
+              <option value="flooring">Flooring & Tile Specialist (Preloaded with SqFt, Dye Lot, Roll conversions)</option>
+              <option value="general_wms">General Distribution WMS (Pallet, Case, Each)</option>
+            </select>
+          </div>
+
+          <!-- Generated Invite Link Preview -->
+          <div class="invite-link-preview-box mt-4">
+            <span class="invite-link-label"><i data-lucide="link"></i> Secure Free Onboarding Link:</span>
+            <div class="copy-input-group mt-1">
+              <input type="text" id="generatedInviteUrl" class="form-input font-mono text-sm" readonly value="https://simpletory.app/onboard?token=tok_demo_9842a" />
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyInviteLink">Copy</button>
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="createTenantModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow">Create & Activate Tenant</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Main JavaScript App -->
+  <script src="app.js"></script>
+</body>
+</html>
