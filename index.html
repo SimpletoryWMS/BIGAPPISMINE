@@ -14,6 +14,10 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
+  <!-- Supabase JS Client & Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+
   <!-- Main Stylesheet -->
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -66,6 +70,12 @@
 
       <!-- Tenant Switcher & Quick Actions -->
       <div class="top-bar-right">
+        <!-- Supabase Cloud Sync Status Badge -->
+        <div class="cloud-sync-chip" id="cloudSyncStatus" title="Supabase PostgreSQL Live Cloud Sync">
+          <span class="sync-dot live"></span>
+          <span class="sync-text">Supabase Live</span>
+        </div>
+
         <!-- Quick Barcode Scan Button -->
         <button id="quickScanBtn" class="btn btn-primary btn-sm btn-glow">
           <i data-lucide="scan-line"></i>

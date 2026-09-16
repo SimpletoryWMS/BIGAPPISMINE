@@ -500,6 +500,13 @@ class SimpletoryStore {
   save() {
     try {
       localStorage.setItem(DEFAULT_STORAGE_KEY, JSON.stringify(this.state));
+      // Debounced background sync to Supabase PostgreSQL
+      if (window.supabaseService && window.supabaseService.isConnected) {
+        clearTimeout(this._cloudSyncTimer);
+        this._cloudSyncTimer = setTimeout(() => {
+          window.supabaseService.pushStoreToCloud(this);
+        }, 1500);
+      }
     } catch (e) {
       console.error('Failed to save to localStorage:', e);
     }
@@ -769,6 +776,7 @@ class SimpletoryApp {
     this.bindEvents();
     this.renderAll();
     this.initIcons();
+    this.initCloudSync();
   }
 
   initElements() {
@@ -840,6 +848,50 @@ class SimpletoryApp {
     }
   }
 
+  async initCloudSync() {
+    const cloudBadge = document.getElementById('cloudSyncStatus');
+    if (cloudBadge) {
+      cloudBadge.addEventListener('click', async () => {
+        this.showToast('Triggering manual Supabase Cloud Sync...', 'info');
+        await this.syncWithCloud(true);
+      });
+    }
+
+    if (window.supabaseService && window.supabaseService.isConnected) {
+      await this.syncWithCloud();
+      // Setup Realtime websocket listener for live collaboration
+      window.supabaseService.subscribeRealtime(store.state.activeTenantId, (table, payload) => {
+        this.showToast(`⚡ Realtime update synced from Supabase (${table})`, 'info');
+        this.renderAll();
+      });
+    }
+  }
+
+  async syncWithCloud(force = false) {
+    if (!window.supabaseService || !window.supabaseService.isConnected) return;
+    try {
+      const remoteData = await window.supabaseService.fetchTenantData(store.state.activeTenantId);
+      if (remoteData && (remoteData.facilities.length > 0 || remoteData.items.length > 0)) {
+        if (remoteData.facilities.length > 0) store.state.facilities[store.state.activeTenantId] = remoteData.facilities;
+        if (remoteData.locations.length > 0) store.state.locations[store.state.activeTenantId] = remoteData.locations;
+        if (remoteData.items.length > 0) store.state.items[store.state.activeTenantId] = remoteData.items;
+        if (remoteData.licensePlates.length > 0) store.state.licensePlates[store.state.activeTenantId] = remoteData.licensePlates;
+        if (remoteData.unitsOfMeasure.length > 0) store.state.unitsOfMeasure[store.state.activeTenantId] = remoteData.unitsOfMeasure;
+        if (remoteData.customFields.length > 0) store.state.customFields[store.state.activeTenantId] = remoteData.customFields;
+        if (remoteData.transactions.length > 0) store.state.transactions[store.state.activeTenantId] = remoteData.transactions;
+        store.save();
+        this.renderAll();
+        if (force) this.showToast('✅ Supabase data refreshed and synced!', 'success');
+      } else {
+        // Initial cloud seed if tables are empty
+        await window.supabaseService.pushStoreToCloud(store);
+        if (force) this.showToast('☁️ Seeded initial store to Supabase PostgreSQL!', 'success');
+      }
+    } catch (e) {
+      console.warn('Cloud sync error:', e);
+    }
+  }
+
   isCurrentFacilityLpnEnabled() {
     const activeFacId = store.state.activeFacilityId;
     if (!activeFacId || activeFacId === 'all') {
@@ -882,7 +934,7 @@ class SimpletoryApp {
     }
 
     // Tenant Switcher
-    this.tenantSelect.addEventListener('change', (e) => {
+    this.tenantSelect.addEventListener('change', async (e) => {
       store.state.activeTenantId = e.target.value;
       const facilities = store.tenantFacilities;
       if (facilities.length > 0) {
@@ -891,6 +943,12 @@ class SimpletoryApp {
       store.save();
       this.renderAll();
       this.showToast(`Switched to organization: ${store.activeTenant.name}`, 'success');
+      if (window.supabaseService && window.supabaseService.isConnected) {
+        await this.syncWithCloud();
+        window.supabaseService.subscribeRealtime(store.state.activeTenantId, (table, payload) => {
+          this.renderAll();
+        });
+      }
     });
 
     // Facility Switcher
