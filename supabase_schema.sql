@@ -21,17 +21,38 @@ CREATE TABLE IF NOT EXISTS public.tenants (
 );
 
 -- ----------------------------------------------------------------------------
--- 2. USER PROFILES TABLE (Associated with Auth or Standalone)
+-- 2. USER PROFILES & ROLE-BASED ACCESS CONTROL (RBAC)
 -- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.role_permissions (
+    role TEXT NOT NULL, -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
+    permission_key TEXT NOT NULL, -- 'inventory.read', 'inventory.adjust', 'catalog.manage', 'settings.manage', 'users.manage'
+    description TEXT,
+    PRIMARY KEY (role, permission_key)
+);
+
 CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     email TEXT NOT NULL,
     name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'Warehouse Operator', -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Auditor'
-    facility_id TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    role TEXT NOT NULL DEFAULT 'Warehouse Operator', -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
+    all_facilities_access BOOLEAN NOT NULL DEFAULT TRUE,
+    facility_id TEXT, -- Primary default facility
+    status TEXT NOT NULL DEFAULT 'Active',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Granular per-facility user access grants
+CREATE TABLE IF NOT EXISTS public.user_facility_access (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+    tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    facility_id TEXT NOT NULL REFERENCES public.facilities(id) ON DELETE CASCADE,
+    access_level TEXT NOT NULL DEFAULT 'read_write', -- 'read_write', 'read_only'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, facility_id)
 );
 
 -- ----------------------------------------------------------------------------
@@ -64,7 +85,20 @@ CREATE TABLE IF NOT EXISTS public.custom_fields (
 );
 
 -- ----------------------------------------------------------------------------
--- 5. FACILITIES (Warehouses, Showrooms, Mobile Vans)
+-- 5. FACILITY TYPES (Manageable Operating Categories)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.facility_types (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    code TEXT NOT NULL, -- 'warehouse', 'showroom', 'mobile_van', 'hub'
+    name TEXT NOT NULL, -- 'Main Warehouse / DC', 'Showroom & Retail'
+    description TEXT,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ----------------------------------------------------------------------------
+-- 6. FACILITIES (Warehouses, Showrooms, Mobile Vans)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.facilities (
     id TEXT PRIMARY KEY,
@@ -154,12 +188,15 @@ CREATE TABLE IF NOT EXISTS public.inventory_transactions (
 );
 
 -- ----------------------------------------------------------------------------
--- 10. ROW LEVEL SECURITY (RLS) POLICIES
+-- 10. ROW LEVEL SECURITY (RLS) POLICIES & ACCESS CONTROL
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_facility_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.units_of_measure ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facility_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.facilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
@@ -169,7 +206,10 @@ ALTER TABLE public.inventory_transactions ENABLE ROW LEVEL SECURITY;
 -- Allow public / anon read and write for the interactive application
 -- (In production, replace with tenant-scoped auth JWT policies)
 CREATE POLICY "Allow public read-write for tenants" ON public.tenants FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for role_permissions" ON public.role_permissions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for user_profiles" ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for user_facility_access" ON public.user_facility_access FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for facility_types" ON public.facility_types FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for units_of_measure" ON public.units_of_measure FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for custom_fields" ON public.custom_fields FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for facilities" ON public.facilities FOR ALL USING (true) WITH CHECK (true);
@@ -178,6 +218,21 @@ CREATE POLICY "Allow public read-write for items" ON public.items FOR ALL USING 
 CREATE POLICY "Allow public read-write for lpns" ON public.lpns FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for inventory_transactions" ON public.inventory_transactions FOR ALL USING (true) WITH CHECK (true);
 
+-- Seed Canonical Role Permissions Matrix
+INSERT INTO public.role_permissions (role, permission_key, description)
+VALUES
+  ('Company Admin', 'all', 'Full tenant administrative & operational access'),
+  ('Warehouse Manager', 'inventory.receive', 'Inbound receiving and putaway'),
+  ('Warehouse Manager', 'inventory.relocate', 'Move pallets and stock between locations'),
+  ('Warehouse Manager', 'inventory.adjust', 'Adjust stock levels and reason codes'),
+  ('Warehouse Manager', 'catalog.manage', 'Add and edit SKUs and packaging hierarchies'),
+  ('Warehouse Manager', 'reports.view', 'View inventory audit ledger and KPI metrics'),
+  ('Warehouse Operator', 'inventory.scan', 'Scan barcodes and verify LPN contents'),
+  ('Warehouse Operator', 'inventory.relocate', 'Execute assigned transfer picks and putaways'),
+  ('Warehouse Operator', 'inventory.receive', 'Receive inbound items against POs'),
+  ('Viewer / Auditor', 'inventory.read', 'Read-only view of stock, locations, and audit logs')
+ON CONFLICT (role, permission_key) DO NOTHING;
+
 -- ----------------------------------------------------------------------------
 -- 11. SEED DEFAULT TENANTS & CORE DATA
 -- ----------------------------------------------------------------------------
@@ -185,6 +240,18 @@ INSERT INTO public.tenants (id, name, slug, template, tier)
 VALUES 
   ('tenant-flooring', 'Apex Flooring & Tile Solutions', 'apex-flooring', 'flooring', 'Enterprise Free Tier'),
   ('tenant-general', 'Cascade Distribution & Logistics', 'cascade-logistics', 'general_wms', 'Starter Tier')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Facility Types
+INSERT INTO public.facility_types (id, tenant_id, code, name, description, is_default)
+VALUES
+  ('ftype-wh-floor', 'tenant-flooring', 'warehouse', 'Main Warehouse / DC', 'Central distribution hub with racking & docks', TRUE),
+  ('ftype-shw-floor', 'tenant-flooring', 'showroom', 'Showroom & Retail', 'Customer-facing sales floor & sample library', FALSE),
+  ('ftype-van-floor', 'tenant-flooring', 'mobile_van', 'Mobile Fleet Unit', 'Installation contractor mobile van/truck', FALSE),
+  ('ftype-yard-floor', 'tenant-flooring', 'staging_yard', 'Staging Yard', 'Outdoor or jobsite contractor staging area', FALSE),
+  ('ftype-wh-gen', 'tenant-general', 'warehouse', 'Central Logistics Hub', 'Full-scale palletized distribution warehouse', TRUE),
+  ('ftype-dock-gen', 'tenant-general', 'cross_dock', 'Cross-Dock Terminal', 'Fast-turnaround inbound/outbound transit dock', FALSE),
+  ('ftype-store-gen', 'tenant-general', 'retail_store', 'Retail Branch Outlet', 'Local pickup and direct-to-consumer store', FALSE)
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed UOMs
@@ -334,4 +401,16 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.inventory_transactions (tenant_id, facility_id, type, lpn_id, sku, qty_change, uom, from_location_id, to_location_id, reference_doc, user_name, notes)
 VALUES
   ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849201', 'SKU-OAK-01', 1470, 'SQFT', 'loc-rcv-01', 'loc-a01-r01-a', 'PO-2026-0881', 'Derek Lumpkin', 'Initial container intake receiving & putaway'),
-  ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849203', 'SKU-TILE-02', 512, 'SQFT', 'loc-rcv-01', 'loc-a01-r02-b', 'PO-2026-0882', 'Derek Lumpkin', 'Italian porcelain crate putaway');
+  ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849203', 'SKU-TILE-02', 512, 'SQFT', 'loc-rcv-01', 'loc-a01-r02-b', 'PO-2026-0882', 'Derek Lumpkin', 'Italian porcelain crate putaway')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed User Profiles (Universal Generic Roles)
+INSERT INTO public.user_profiles (id, tenant_id, email, name, role, all_facilities_access, facility_id, status)
+VALUES
+  ('c0a80121-0001-4000-8000-000000000001', 'tenant-flooring', 'derek@apexflooring.com', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active'),
+  ('c0a80121-0002-4000-8000-000000000002', 'tenant-flooring', 'marcus@apexflooring.com', 'Marcus Vance', 'Warehouse Manager', FALSE, 'fac-main-dc', 'Active'),
+  ('c0a80121-0003-4000-8000-000000000003', 'tenant-flooring', 'carlos@apexflooring.com', 'Carlos Gutierrez', 'Warehouse Operator', FALSE, 'fac-mobile-03', 'Active'),
+  ('c0a80121-0004-4000-8000-000000000004', 'tenant-flooring', 'jessica@apexflooring.com', 'Jessica Taylor', 'Viewer / Auditor', FALSE, 'fac-showroom-02', 'Active'),
+  ('c0a80121-0005-4000-8000-000000000005', 'tenant-general', 'elena@cascadelogistics.com', 'Elena Rostova', 'Company Admin', TRUE, 'fac-gen-hub', 'Active')
+ON CONFLICT (id) DO NOTHING;
+

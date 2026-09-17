@@ -138,11 +138,11 @@
           <nav class="sidebar-nav">
             <a href="#tenant-settings" class="nav-item" data-view="tenant-settings">
               <i data-lucide="sliders"></i>
-              <span>Custom Fields & UOMs</span>
+              <span>Settings</span>
             </a>
             <a href="#users-roles" class="nav-item" data-view="users-roles">
               <i data-lucide="users"></i>
-              <span>Staff & Roles</span>
+              <span>User Management</span>
             </a>
             <a href="#developer-portal" class="nav-item" data-view="developer-portal">
               <i data-lucide="shield-alert"></i>
@@ -730,13 +730,13 @@
         </section>
 
         <!-- ============================================================ -->
-        <!-- VIEW 8: TENANT SETTINGS & CUSTOM FIELD BUILDER -->
+        <!-- VIEW 8: TENANT SETTINGS HUB -->
         <!-- ============================================================ -->
         <section id="view-tenant-settings" class="app-view">
           <div class="view-header">
             <div>
-              <h1 class="view-title">Tenant Configuration & Custom Field Engine</h1>
-              <p class="view-subtitle">Customize Units of Measure (UOM) and configure User-Defined Dynamic Fields (UDFs) for your specific industry.</p>
+              <h1 class="view-title">Settings & Master Configuration</h1>
+              <p class="view-subtitle">Manage company facilities, measurement units (UOM), custom user-defined fields (UDFs), and tracking policies.</p>
             </div>
             <div class="view-actions">
               <button class="btn btn-primary" id="btnSaveTenantConfig">
@@ -745,39 +745,56 @@
             </div>
           </div>
 
-          <div class="grid-2-col">
-            <!-- Left: User Defined Fields (UDF) Configuration -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-header-left">
-                  <i data-lucide="sliders" class="text-primary"></i>
-                  <h3 class="card-title">User-Defined Custom Fields (UDFs)</h3>
-                </div>
-                <button class="btn btn-sm btn-primary" id="btnAddNewCustomField">+ Add Field</button>
+          <!-- Section 1: Facilities & Warehouses -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <div class="card-header-left">
+                <i data-lucide="warehouse" class="text-primary"></i>
+                <h3 class="card-title">Facilities & Warehouses</h3>
               </div>
-              <div class="card-body">
-                <p class="text-muted mb-4">
-                  Define customized columns for items and license plates (e.g. <em>Square Foot per Box</em>, <em>Color Shade</em>, <em>Dye Lot #</em>, <em>Wear Layer</em>). These automatically inject into item setup forms, barcode tags, and tables.
-                </p>
-
-                <div class="custom-fields-editor-list" id="customFieldsEditorList">
-                  <!-- Rendered dynamically -->
-                </div>
+              <button class="btn btn-sm btn-primary" id="btnAddNewFacility">
+                <i data-lucide="plus"></i> Add Facility
+              </button>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-4">
+                Define and manage physical warehouses, retail locations, distribution centers, or mobile units in your organization.
+              </p>
+              <div class="table-container">
+                <table class="data-table" id="settingsFacilitiesTable">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Facility Name</th>
+                      <th>Type</th>
+                      <th>Address</th>
+                      <th>Tracking Mode</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="settingsFacilitiesTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
               </div>
             </div>
+          </div>
 
-            <!-- Right: Units of Measure (UOM) Configuration -->
+          <div class="grid-3-col">
+            <!-- Section 2: Units of Measure (UOM) Configuration -->
             <div class="card">
               <div class="card-header">
                 <div class="card-header-left">
                   <i data-lucide="layers" class="text-accent"></i>
-                  <h3 class="card-title">Tenant Units of Measure (UOM)</h3>
+                  <h3 class="card-title">Units of Measure</h3>
                 </div>
-                <button class="btn btn-sm btn-primary" id="btnAddNewUom">+ Add UOM</button>
+                <button class="btn btn-sm btn-primary" id="btnAddNewUom">
+                  <i data-lucide="plus"></i> Add UOM
+                </button>
               </div>
               <div class="card-body">
                 <p class="text-muted mb-4">
-                  Configure the units your organization uses for tracking and packaging.
+                  Measurement and packaging units used across your item catalogs and conversions.
                 </p>
 
                 <div class="uom-editor-list" id="uomEditorList">
@@ -785,35 +802,61 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Facility Tracking Mode Controls in Admin -->
-          <div class="card mt-4">
-            <div class="card-header">
-              <div class="card-header-left">
-                <i data-lucide="shield-check" class="text-primary"></i>
-                <h3 class="card-title">Facility Level Tracking Controls (LPN Mode vs. Summary Only)</h3>
+            <!-- Section 3: Manageable Facility Types -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="tag" class="text-primary"></i>
+                  <h3 class="card-title">Facility Types</h3>
+                </div>
+                <button class="btn btn-sm btn-primary" id="btnAddNewFacilityType">
+                  <i data-lucide="plus"></i> Add Type
+                </button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-4">
+                  Define custom facility classifications (e.g. Warehouse, Retail, Mobile Van, Hub).
+                </p>
+
+                <div class="facility-types-editor-list" id="facilityTypesEditorList">
+                  <!-- Rendered dynamically -->
+                </div>
               </div>
             </div>
-            <div class="card-body">
-              <p class="text-muted mb-4">
-                Configure whether each facility uses granular <strong>LPN Pallet/Bin Level Tracking</strong> or is locked to <strong>Summary Only</strong> (which completely removes and hides LPN options from users in that facility).
-              </p>
-              <div class="facility-tracking-matrix" id="facilityTrackingMatrix">
-                <!-- Rendered dynamically -->
+
+            <!-- Section 4: User Defined Fields (UDF) Configuration -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="sliders" class="text-primary"></i>
+                  <h3 class="card-title">Custom Fields (UDF)</h3>
+                </div>
+                <button class="btn btn-sm btn-primary" id="btnAddNewCustomField">
+                  <i data-lucide="plus"></i> Add Field
+                </button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-4">
+                  Dynamic custom fields for Items and LPNs (e.g. <em>Color</em>, <em>Dye Lot</em>, <em>OEM Part</em>).
+                </p>
+
+                <div class="custom-fields-editor-list" id="customFieldsEditorList">
+                  <!-- Rendered dynamically -->
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <!-- ============================================================ -->
-        <!-- VIEW 9: STAFF & ROLES -->
+        <!-- VIEW 9: USER MANAGEMENT -->
         <!-- ============================================================ -->
         <section id="view-users-roles" class="app-view">
           <div class="view-header">
             <div>
-              <h1 class="view-title">Company Staff & Role-Based Access (RBAC)</h1>
-              <p class="view-subtitle">Invite warehouse managers, operators, and field installers with scoped permissions.</p>
+              <h1 class="view-title">User Management & Access Control</h1>
+              <p class="view-subtitle">Manage company team members, assign universal roles (Admin, Manager, Operator, Viewer), and scope facility-level permissions.</p>
             </div>
             <div class="view-actions">
               <button class="btn btn-primary" id="btnInviteUserModal">
@@ -828,10 +871,10 @@
                 <table class="data-table" id="usersTable">
                   <thead>
                     <tr>
-                      <th>Staff Member</th>
+                      <th>Team Member</th>
                       <th>Email</th>
                       <th>Assigned Role</th>
-                      <th>Allowed Facilities</th>
+                      <th>Facility Access</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -891,7 +934,7 @@
       </a>
       <a href="#tenant-settings" class="mobile-nav-item" data-view="tenant-settings">
         <i data-lucide="sliders"></i>
-        <span>Config</span>
+        <span>Settings</span>
       </a>
     </nav>
   </div>
@@ -1385,6 +1428,11 @@
           </div>
 
           <div class="form-group mt-3">
+            <label for="newFacilityAddress" class="form-label">Physical Address / Notes:</label>
+            <input type="text" id="newFacilityAddress" class="form-input" placeholder="e.g. 5200 Harbor Blvd, Bay 12" />
+          </div>
+
+          <div class="form-group mt-3">
             <label for="newFacilityTrackingMode" class="form-label">Default Tracking Mode:</label>
             <select id="newFacilityTrackingMode" class="form-select">
               <option value="lpn">LPN Pallet & Bin Tracking (Advanced WMS)</option>
@@ -1564,10 +1612,150 @@
     </div>
   </div>
 
+  <!-- MODAL 9: INVITE TEAM MEMBER (USER MANAGEMENT) -->
+  <div class="modal-backdrop" id="inviteUserModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="user-plus" class="text-primary"></i>
+          <h3 class="modal-title">Invite Team Member</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="inviteUserModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="inviteUserForm">
+          <div class="form-group">
+            <label for="inviteUserName" class="form-label">Full Name: *</label>
+            <input type="text" id="inviteUserName" class="form-input" placeholder="e.g. Alex Morgan" required />
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="inviteUserEmail" class="form-label">Work Email: *</label>
+            <input type="email" id="inviteUserEmail" class="form-input" placeholder="e.g. alex@company.com" required />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="inviteUserRole" class="form-label">Assigned Role: *</label>
+              <select id="inviteUserRole" class="form-select" required>
+                <option value="Company Admin">Company Admin (Full Access)</option>
+                <option value="Warehouse Manager" selected>Warehouse Manager (Operations Lead)</option>
+                <option value="Warehouse Operator">Warehouse Operator (Floor Worker)</option>
+                <option value="Viewer / Auditor">Viewer / Auditor (Read-Only)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="inviteUserFacility" class="form-label">Facility Scope: *</label>
+              <select id="inviteUserFacility" class="form-select" required>
+                <option value="All Facilities">All Facilities</option>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="inviteUserModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow">Send Invitation & Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 11: ADD UNIT OF MEASURE (SETTINGS) -->
+  <div class="modal-backdrop" id="addUomModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="layers" class="text-accent"></i>
+          <h3 class="modal-title">Add Unit of Measure (UOM)</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addUomModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addUomForm">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="newUomCode" class="form-label">UOM Code: *</label>
+              <input type="text" id="newUomCode" class="form-input font-mono" placeholder="e.g. CTN, ROL, EA, PLT" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newUomCategory" class="form-label">Category: *</label>
+              <select id="newUomCategory" class="form-select" required>
+                <option value="count">Count (Units, Cartons, Pallets)</option>
+                <option value="area">Area (Sq Ft, Sq M)</option>
+                <option value="length">Length (Linear Ft, Meters)</option>
+                <option value="weight">Weight (Lbs, Kg)</option>
+                <option value="volume">Volume (Gallons, Liters)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="newUomName" class="form-label">Full Display Name: *</label>
+            <input type="text" id="newUomName" class="form-input" placeholder="e.g. Carton (Inner Pack), Master Case" required />
+          </div>
+
+          <div class="form-group mt-3">
+            <label class="checkbox-container">
+              <input type="checkbox" id="newUomIsBase" />
+              <span>Set as Default Base Unit for this category</span>
+            </label>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addUomModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save UOM</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 12: ADD FACILITY TYPE (SETTINGS) -->
+  <div class="modal-backdrop" id="addFacilityTypeModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="tag" class="text-primary"></i>
+          <h3 class="modal-title">Add Facility Type</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addFacilityTypeModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addFacilityTypeForm">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="newFacilityTypeCode" class="form-label">Type Code / Key: *</label>
+              <input type="text" id="newFacilityTypeCode" class="form-input font-mono" placeholder="e.g. cross_dock, staging_yard" required />
+            </div>
+
+            <div class="form-group">
+              <label for="newFacilityTypeName" class="form-label">Display Name: *</label>
+              <input type="text" id="newFacilityTypeName" class="form-input" placeholder="e.g. Cross-Dock Facility" required />
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="newFacilityTypeDesc" class="form-label">Description / Scope:</label>
+            <input type="text" id="newFacilityTypeDesc" class="form-input" placeholder="e.g. Rapid-transit distribution hub" />
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addFacilityTypeModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Facility Type</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js"></script>
+  <script src="app.js?v=3.1"></script>
 </body>
 </html>

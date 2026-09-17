@@ -71,6 +71,21 @@ const INITIAL_DB = {
     ]
   },
 
+  // Manageable Facility Types
+  facilityTypes: {
+    'tenant-flooring': [
+      { id: 'ftype-wh', code: 'warehouse', name: 'Main Warehouse / DC', description: 'Central distribution center with racking & docks', isDefault: true },
+      { id: 'ftype-shw', code: 'showroom', name: 'Showroom & Retail', description: 'Customer-facing sales floor & sample library', isDefault: false },
+      { id: 'ftype-van', code: 'mobile_van', name: 'Mobile Fleet Unit', description: 'Field contractor mobile installation vehicle', isDefault: false },
+      { id: 'ftype-yard', code: 'staging_yard', name: 'Jobsite Staging Yard', description: 'Outdoor contractor staging area', isDefault: false }
+    ],
+    'tenant-general': [
+      { id: 'ftype-gen-wh', code: 'warehouse', name: 'Central Logistics Hub', description: 'Palletized distribution warehouse', isDefault: true },
+      { id: 'ftype-gen-dock', code: 'cross_dock', name: 'Cross-Dock Terminal', description: 'Fast-transit sorting facility', isDefault: false },
+      { id: 'ftype-gen-store', code: 'retail_store', name: 'Retail Branch Outlet', description: 'Direct-to-consumer store', isDefault: false }
+    ]
+  },
+
   // Facilities with trackingMode: 'lpn' vs 'summary_only'
   facilities: {
     'tenant-flooring': [
@@ -459,16 +474,17 @@ const INITIAL_DB = {
     ]
   },
 
-  // Users & Staff
+  // Users & Access Control (Universal Generic Roles)
   users: {
     'tenant-flooring': [
       { id: 'usr-1', name: 'Derek Lumpkin', email: 'derek@apexflooring.com', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
-      { id: 'usr-2', name: 'Marcus Vance', email: 'marcus@apexflooring.com', role: 'Warehouse Lead', facilities: 'FAC-01 Main DC', status: 'Active' },
-      { id: 'usr-3', name: 'Carlos Gutierrez', email: 'carlos@apexflooring.com', role: 'Field Installer', facilities: 'FAC-03 Mobile Van #3', status: 'Active' },
-      { id: 'usr-4', name: 'Jessica Taylor', email: 'jessica@apexflooring.com', role: 'Showroom Sales', facilities: 'FAC-02 Showroom', status: 'Active' }
+      { id: 'usr-2', name: 'Marcus Vance', email: 'marcus@apexflooring.com', role: 'Warehouse Manager', facilities: 'FAC-01 Main DC', status: 'Active' },
+      { id: 'usr-3', name: 'Carlos Gutierrez', email: 'carlos@apexflooring.com', role: 'Warehouse Operator', facilities: 'FAC-03 Mobile Unit #3', status: 'Active' },
+      { id: 'usr-4', name: 'Jessica Taylor', email: 'jessica@apexflooring.com', role: 'Viewer / Auditor', facilities: 'FAC-02 Showroom', status: 'Active' }
     ],
     'tenant-general': [
-      { id: 'usr-g-1', name: 'Elena Rostova', email: 'elena@cascadelogistics.com', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
+      { id: 'usr-g-1', name: 'Elena Rostova', email: 'elena@cascadelogistics.com', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
+      { id: 'usr-g-2', name: 'David Chen', email: 'david@cascadelogistics.com', role: 'Warehouse Manager', facilities: 'FAC-GEN-01 West Hub', status: 'Active' }
     ]
   }
 };
@@ -485,9 +501,11 @@ class SimpletoryStore {
     try {
       const saved = localStorage.getItem(DEFAULT_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
         if (!parsed.itemUoms || Object.keys(parsed.itemUoms).length === 0) {
           parsed.itemUoms = JSON.parse(JSON.stringify(INITIAL_DB.itemUoms));
+        }
+        if (!parsed.facilityTypes || Object.keys(parsed.facilityTypes).length === 0) {
+          parsed.facilityTypes = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes));
         }
         return parsed;
       }
@@ -658,6 +676,16 @@ class SimpletoryStore {
 
   get tenantUsers() {
     return this.state.users[this.state.activeTenantId] || [];
+  }
+
+  get tenantFacilityTypes() {
+    if (!this.state.facilityTypes) {
+      this.state.facilityTypes = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes));
+    }
+    if (!this.state.facilityTypes[this.state.activeTenantId]) {
+      this.state.facilityTypes[this.state.activeTenantId] = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes[this.state.activeTenantId] || []));
+    }
+    return this.state.facilityTypes[this.state.activeTenantId];
   }
 }
 
@@ -1071,10 +1099,13 @@ class SimpletoryApp {
     document.getElementById('btnAddNewItem')?.addEventListener('click', () => this.openModal('addItemModal'));
     document.getElementById('btnAddFacilityModalBtn')?.addEventListener('click', () => this.openModal('addFacilityModal'));
     document.getElementById('btnAddFacilityQuick')?.addEventListener('click', () => this.openModal('addFacilityModal'));
+    document.getElementById('btnAddNewFacility')?.addEventListener('click', () => this.openModal('addFacilityModal'));
+    document.getElementById('btnAddNewFacilityType')?.addEventListener('click', () => this.openModal('addFacilityTypeModal'));
+    document.getElementById('btnAddNewUom')?.addEventListener('click', () => this.openModal('addUomModal'));
     document.getElementById('btnAddLocationModalBtn')?.addEventListener('click', () => this.openModal('addLocationModal'));
     document.getElementById('btnAddManufacturerModalBtn')?.addEventListener('click', () => this.openModal('addManufacturerModal'));
     document.getElementById('btnCreateNewTenantModal')?.addEventListener('click', () => this.openModal('createTenantModal'));
-    document.getElementById('btnInviteUserModal')?.addEventListener('click', () => this.showToast('User invitation email dispatched (Free tier SMTP)', 'success'));
+    document.getElementById('btnInviteUserModal')?.addEventListener('click', () => this.openInviteUserModal());
     document.getElementById('btnEditCustomFieldsLink')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
     document.getElementById('btnViewAllMovements')?.addEventListener('click', () => this.navigateTo('operations'));
 
@@ -1529,14 +1560,15 @@ class SimpletoryApp {
         const name = document.getElementById('newFacilityName').value.trim();
         const code = document.getElementById('newFacilityCode').value.trim().toUpperCase();
         const type = document.getElementById('newFacilityType').value;
+        const address = document.getElementById('newFacilityAddress')?.value.trim() || 'Operational Hub';
         const trackingMode = document.getElementById('newFacilityTrackingMode').value;
 
         const newFac = {
-          id: `fac-${Date.now()}`,
+          id: `fac-${code.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`,
           code,
           name,
           type,
-          address: 'Operational Hub',
+          address,
           trackingMode: trackingMode === 'summary' ? 'summary_only' : trackingMode
         };
 
@@ -1706,24 +1738,100 @@ class SimpletoryApp {
       }
     });
 
-    // Tenant UOM Builder
-    document.getElementById('btnAddNewUom')?.addEventListener('click', () => {
-      const uomName = prompt('Enter Unit of Measure Name (e.g., "Linear Yard", "Bundle", "Drum"):');
-      if (uomName && uomName.trim()) {
-        const code = prompt('Enter Short Code (e.g., "LYD", "BDL", "DRM"):') || uomName.slice(0, 3).toUpperCase();
+    // 8. Add UOM Form (Modal)
+    const addUomForm = document.getElementById('addUomForm');
+    if (addUomForm) {
+      addUomForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const code = document.getElementById('newUomCode').value.trim().toUpperCase();
+        const name = document.getElementById('newUomName').value.trim();
+        const category = document.getElementById('newUomCategory').value;
+        const isBase = document.getElementById('newUomIsBase').checked;
+
+        if (isBase) {
+          store.tenantUoms.forEach(u => {
+            if (u.category === category) u.isBaseDefault = false;
+          });
+        }
+
         const newUom = {
-          id: `uom-${Date.now()}`,
-          name: uomName.trim(),
-          code: code.trim().toUpperCase(),
-          category: 'count',
-          isBaseDefault: false
+          id: `uom-${code.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`,
+          name,
+          code,
+          category,
+          isBaseDefault: isBase
         };
+
+        if (!store.state.unitsOfMeasure[store.state.activeTenantId]) {
+          store.state.unitsOfMeasure[store.state.activeTenantId] = [];
+        }
         store.state.unitsOfMeasure[store.state.activeTenantId].push(newUom);
         store.save();
+        this.closeModal('addUomModal');
+        this.renderAll();
+        this.showToast(`Added Unit of Measure '${name}' (${code})`, 'success');
+      });
+    }
+
+    // 9. Invite Team Member Form (Modal)
+    const inviteUserForm = document.getElementById('inviteUserForm');
+    if (inviteUserForm) {
+      inviteUserForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('inviteUserName').value.trim();
+        const email = document.getElementById('inviteUserEmail').value.trim();
+        const role = document.getElementById('inviteUserRole').value;
+        const facilities = document.getElementById('inviteUserFacility').value;
+
+        const newUser = {
+          id: `usr-${Date.now()}`,
+          name,
+          email,
+          role,
+          facilities,
+          status: 'Active'
+        };
+
+        if (!store.state.users[store.state.activeTenantId]) {
+          store.state.users[store.state.activeTenantId] = [];
+        }
+        store.state.users[store.state.activeTenantId].push(newUser);
+        store.save();
+        this.closeModal('inviteUserModal');
+        this.renderUsers();
+        this.showToast(`Team member '${name}' invited as ${role}`, 'success');
+      });
+    }
+
+    // 10. Add Facility Type Form (Modal)
+    const addFTypeForm = document.getElementById('addFacilityTypeForm');
+    if (addFTypeForm) {
+      addFTypeForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const code = document.getElementById('newFacilityTypeCode').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const name = document.getElementById('newFacilityTypeName').value.trim();
+        const description = document.getElementById('newFacilityTypeDesc').value.trim();
+
+        const newFType = {
+          id: `ftype-${code}-${Date.now().toString().slice(-4)}`,
+          code,
+          name,
+          description: description || 'Operational Facility Category',
+          isDefault: false
+        };
+
+        if (!store.state.facilityTypes[store.state.activeTenantId]) {
+          store.state.facilityTypes[store.state.activeTenantId] = [];
+        }
+        store.state.facilityTypes[store.state.activeTenantId].push(newFType);
+        store.save();
+        addFTypeForm.reset();
+        this.closeModal('addFacilityTypeModal');
         this.renderTenantSettings();
-        this.showToast(`Added Unit of Measure '${uomName}' (${code})`, 'success');
-      }
-    });
+        this.populateModalSelects();
+        this.showToast(`Added Facility Type '${name}' (${code})`, 'success');
+      });
+    }
 
     document.getElementById('btnSaveTenantConfig')?.addEventListener('click', () => {
       this.showToast('Tenant configuration saved & synced!', 'success');
@@ -2796,61 +2904,124 @@ class SimpletoryApp {
   }
 
   // ============================================================================
-  // TENANT CONFIGURATION & CUSTOM FIELD ENGINE (UDFs)
+  // SETTINGS & MASTER CONFIGURATION
   // ============================================================================
   renderTenantSettings() {
-    const udfs = store.tenantCustomFields;
-    const udfListEl = document.getElementById('customFieldsEditorList');
-
-    udfListEl.innerHTML = udfs.map(udf => `
-      <div class="editor-row-item">
-        <i data-lucide="grip-vertical" style="color:var(--text-dim);width:16px;height:16px;"></i>
-        <div class="editor-field-name">${udf.label} <small class="font-mono text-muted" style="font-size:0.7rem;">(${udf.key})</small></div>
-        <span class="editor-field-type">${udf.type.toUpperCase()}</span>
-        <span class="badge ${udf.required ? 'badge-warning' : 'badge-subtle'}">${udf.required ? 'Required' : 'Optional'}</span>
-        <button class="btn btn-ghost btn-xs text-muted" onclick="app.removeCustomField('${udf.id}')" title="Delete Field">&times;</button>
-      </div>
-    `).join('');
-
-    const uoms = store.tenantUoms;
-    const uomListEl = document.getElementById('uomEditorList');
-
-    uomListEl.innerHTML = uoms.map(uom => `
-      <div class="editor-row-item">
-        <i data-lucide="layers" style="color:var(--accent-purple);width:16px;height:16px;"></i>
-        <div class="editor-field-name">${uom.name}</div>
-        <span class="badge badge-primary font-mono">${uom.code}</span>
-        <span class="badge badge-subtle">${uom.category}</span>
-        ${uom.isBaseDefault ? '<span class="badge badge-success">BASE DEFAULT</span>' : ''}
-      </div>
-    `).join('');
-
-    const matrixContainer = document.getElementById('facilityTrackingMatrix');
-    if (matrixContainer) {
-      matrixContainer.innerHTML = store.tenantFacilities.map(f => {
+    // 1. Unified Facilities & Tracking Mode Table in Settings
+    const facTableBody = document.getElementById('settingsFacilitiesTableBody');
+    if (facTableBody) {
+      facTableBody.innerHTML = store.tenantFacilities.map(f => {
         const isLpn = f.trackingMode === 'lpn';
         return `
-          <div class="facility-matrix-row">
-            <div class="facility-matrix-info">
-              <div class="facility-matrix-name">
-                <i data-lucide="building-2" style="color:var(--accent-cyan);width:16px;height:16px;"></i>
-                <span>${f.code} &mdash; ${f.name}</span>
-                <span class="badge ${isLpn ? 'badge-primary' : 'badge-warning'}">${isLpn ? 'LPN ENABLED' : 'SUMMARY ONLY (LOCKED)'}</span>
+          <tr>
+            <td><strong class="font-mono text-primary">${f.code}</strong></td>
+            <td><strong>${f.name}</strong></td>
+            <td><span class="badge badge-subtle">${(f.type || 'warehouse').toUpperCase()}</span></td>
+            <td><span class="text-muted">${f.address || 'Operational Hub'}</span></td>
+            <td>
+              <div class="facility-mode-toggle-group" style="margin:0; display:inline-flex; transform:scale(0.9); transform-origin:left center;">
+                <button class="facility-mode-btn ${isLpn ? 'active lpn-active' : ''}" onclick="app.toggleFacilityTrackingMode('${f.id}', 'lpn')">
+                  <i data-lucide="qr-code"></i> LPN Mode
+                </button>
+                <button class="facility-mode-btn ${!isLpn ? 'active summary-active' : ''}" onclick="app.toggleFacilityTrackingMode('${f.id}', 'summary_only')">
+                  <i data-lucide="lock"></i> Summary Only
+                </button>
               </div>
-              <span class="facility-matrix-sub">${f.type.toUpperCase()} &bull; ${f.address || 'Operational Location'}</span>
-            </div>
-            <div class="facility-mode-toggle-group">
-              <button class="facility-mode-btn ${isLpn ? 'active lpn-active' : ''}" onclick="app.toggleFacilityTrackingMode('${f.id}', 'lpn')">
-                <i data-lucide="qr-code"></i> LPN Level
-              </button>
-              <button class="facility-mode-btn ${!isLpn ? 'active summary-active' : ''}" onclick="app.toggleFacilityTrackingMode('${f.id}', 'summary_only')">
-                <i data-lucide="lock"></i> Summary Only
-              </button>
-            </div>
-          </div>
+            </td>
+            <td>
+              <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeFacility('${f.id}')" title="Delete Facility">&times;</button>
+            </td>
+          </tr>
         `;
       }).join('');
     }
+
+    // 2. Units of Measure (UOM) List
+    const uoms = store.tenantUoms;
+    const uomListEl = document.getElementById('uomEditorList');
+    if (uomListEl) {
+      uomListEl.innerHTML = uoms.map(uom => `
+        <div class="editor-row-item">
+          <i data-lucide="layers" style="color:var(--accent-purple);width:16px;height:16px;"></i>
+          <div class="editor-field-name">${uom.name}</div>
+          <span class="badge badge-primary font-mono">${uom.code}</span>
+          <span class="badge badge-subtle">${uom.category}</span>
+          ${uom.isBaseDefault ? '<span class="badge badge-success">BASE DEFAULT</span>' : ''}
+          <button class="btn btn-ghost btn-xs text-muted" onclick="app.removeUom('${uom.id}')" title="Delete UOM">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    // 3. Manageable Facility Types List
+    const ftypes = store.tenantFacilityTypes;
+    const ftypesListEl = document.getElementById('facilityTypesEditorList');
+    if (ftypesListEl) {
+      ftypesListEl.innerHTML = ftypes.map(ft => `
+        <div class="editor-row-item">
+          <i data-lucide="tag" style="color:var(--accent-cyan);width:16px;height:16px;"></i>
+          <div class="editor-field-name">
+            ${ft.name}
+            <small class="text-muted" style="display:block;font-size:0.72rem;font-weight:normal;">${ft.description || ''}</small>
+          </div>
+          <span class="badge badge-primary font-mono">${ft.code}</span>
+          ${ft.isDefault ? '<span class="badge badge-success">DEFAULT</span>' : ''}
+          <button class="btn btn-ghost btn-xs text-muted" onclick="app.removeFacilityType('${ft.id}')" title="Delete Facility Type" ${ft.isDefault ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&times;</button>
+        </div>
+      `).join('');
+    }
+
+    // 4. Custom Fields List
+    const udfs = store.tenantCustomFields;
+    const udfListEl = document.getElementById('customFieldsEditorList');
+    if (udfListEl) {
+      udfListEl.innerHTML = udfs.map(udf => `
+        <div class="editor-row-item">
+          <i data-lucide="grip-vertical" style="color:var(--text-dim);width:16px;height:16px;"></i>
+          <div class="editor-field-name">${udf.label} <small class="font-mono text-muted" style="font-size:0.7rem;">(${udf.key})</small></div>
+          <span class="editor-field-type">${udf.type.toUpperCase()}</span>
+          <span class="badge ${udf.required ? 'badge-warning' : 'badge-subtle'}">${udf.required ? 'Required' : 'Optional'}</span>
+          <button class="btn btn-ghost btn-xs text-muted" onclick="app.removeCustomField('${udf.id}')" title="Delete Field">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    this.initIcons();
+  }
+
+  removeFacility(facilityId) {
+    if (store.tenantFacilities.length <= 1) {
+      this.showToast('Cannot delete the only facility for this tenant', 'error');
+      return;
+    }
+    store.state.facilities[store.state.activeTenantId] = store.tenantFacilities.filter(f => f.id !== facilityId);
+    store.save();
+    this.renderAll();
+    this.showToast('Facility removed', 'info');
+  }
+
+  removeFacilityType(typeId) {
+    const ftypes = store.tenantFacilityTypes;
+    const target = ftypes.find(f => f.id === typeId);
+    if (target && target.isDefault) {
+      this.showToast('Cannot delete default system facility type', 'warning');
+      return;
+    }
+    if (ftypes.length <= 1) {
+      this.showToast('Cannot delete the only facility type for this tenant', 'error');
+      return;
+    }
+    store.state.facilityTypes[store.state.activeTenantId] = ftypes.filter(f => f.id !== typeId);
+    store.save();
+    this.renderTenantSettings();
+    this.populateModalSelects();
+    this.showToast('Facility type removed', 'info');
+  }
+
+  removeUom(uomId) {
+    store.state.unitsOfMeasure[store.state.activeTenantId] = store.tenantUoms.filter(u => u.id !== uomId);
+    store.save();
+    this.renderAll();
+    this.showToast('Unit of Measure removed', 'info');
   }
 
   removeCustomField(udfId) {
@@ -2862,24 +3033,73 @@ class SimpletoryApp {
   }
 
   // ============================================================================
-  // STAFF & ROLE ACCESS (RBAC)
+  // USER MANAGEMENT & ROLE-BASED ACCESS CONTROL (RBAC)
   // ============================================================================
   renderUsers() {
     const tableBody = document.getElementById('usersTableBody');
+    if (!tableBody) return;
     const users = store.tenantUsers;
+
+    const roleBadgeClasses = {
+      'Company Admin': 'badge-primary',
+      'Warehouse Manager': 'badge-accent',
+      'Warehouse Operator': 'badge-warning',
+      'Viewer / Auditor': 'badge-subtle'
+    };
 
     tableBody.innerHTML = users.map(usr => `
       <tr>
         <td><strong>${usr.name}</strong></td>
         <td><span class="text-muted">${usr.email}</span></td>
-        <td><span class="badge badge-primary">${usr.role}</span></td>
-        <td>${usr.facilities}</td>
-        <td><span class="badge badge-success">${usr.status}</span></td>
+        <td><span class="badge ${roleBadgeClasses[usr.role] || 'badge-primary'}">${usr.role}</span></td>
+        <td><span class="badge badge-subtle font-mono">${usr.facilities || 'All Facilities'}</span></td>
+        <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
         <td>
-          <button class="btn btn-ghost btn-xs" onclick="app.showToast('Permissions updated', 'info')"><i data-lucide="edit-2"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="app.editUserRole('${usr.id}')" title="Change Role"><i data-lucide="edit-2"></i></button>
+          <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
         </td>
       </tr>
     `).join('');
+
+    this.initIcons();
+  }
+
+  openInviteUserModal() {
+    const facSelect = document.getElementById('inviteUserFacility');
+    if (facSelect) {
+      facSelect.innerHTML = `
+        <option value="All Facilities">All Facilities (Global Scope)</option>
+        ${store.tenantFacilities.map(f => `<option value="${f.code} ${f.name}">${f.code} - ${f.name}</option>`).join('')}
+      `;
+    }
+    const nameInput = document.getElementById('inviteUserName');
+    const emailInput = document.getElementById('inviteUserEmail');
+    if (nameInput) nameInput.value = '';
+    if (emailInput) emailInput.value = '';
+    this.openModal('inviteUserModal');
+  }
+
+  editUserRole(userId) {
+    const user = store.tenantUsers.find(u => u.id === userId);
+    if (!user) return;
+    const newRole = prompt(`Update role for ${user.name} (Current: ${user.role}):\n1. Company Admin\n2. Warehouse Manager\n3. Warehouse Operator\n4. Viewer / Auditor`, user.role);
+    if (newRole && ['Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'].includes(newRole.trim())) {
+      user.role = newRole.trim();
+      store.save();
+      this.renderUsers();
+      this.showToast(`Updated role for ${user.name} to ${user.role}`, 'success');
+    }
+  }
+
+  removeUser(userId) {
+    if (store.tenantUsers.length <= 1) {
+      this.showToast('Cannot remove the only admin user', 'error');
+      return;
+    }
+    store.state.users[store.state.activeTenantId] = store.tenantUsers.filter(u => u.id !== userId);
+    store.save();
+    this.renderUsers();
+    this.showToast('Team member removed', 'info');
   }
 
   // ============================================================================
@@ -3045,6 +3265,11 @@ class SimpletoryApp {
     const newLocFacSel = document.getElementById('newLocFacilitySelect');
     if (newLocFacSel) {
       newLocFacSel.innerHTML = facilities.map(f => `<option value="${f.id}">${f.code} - ${f.name}</option>`).join('');
+    }
+
+    const newFacTypeSel = document.getElementById('newFacilityType');
+    if (newFacTypeSel) {
+      newFacTypeSel.innerHTML = store.tenantFacilityTypes.map(ft => `<option value="${ft.code}">${ft.name} (${ft.code})</option>`).join('');
     }
   }
 
