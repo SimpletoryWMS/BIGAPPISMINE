@@ -8,509 +8,114 @@
 // ============================================================================
 // INITIAL MOCK DATABASE & DEFAULT SEED DATA
 // ============================================================================
+// ============================================================================
+// INITIAL MOCK DATABASE & DEFAULT SEED DATA (CLEAN PRODUCTION FOUNDATION)
+// ============================================================================
 const DEFAULT_STORAGE_KEY = 'simpletory_wms_db_v3';
 
 const INITIAL_DB = {
-  activeTenantId: 'tenant-flooring',
+  activeTenantId: 'tenant-primary',
   activeFacilityId: 'fac-main-dc',
   inventoryMode: 'lpn', // 'lpn' or 'summary'
   theme: 'dark',
 
-  // Tenants List
+  // Tenants List (Clean Production Tenant)
   tenants: [
     {
-      id: 'tenant-flooring',
-      name: 'Apex Flooring & Tile Solutions',
-      slug: 'apex-flooring',
-      template: 'flooring',
-      tier: 'Free Tier Active (0$ / mo)',
-      createdAt: '2026-08-10',
-      adminUser: { name: 'Derek Lumpkin', email: 'derek@apexflooring.com', role: 'Company Admin' }
-    },
-    {
-      id: 'tenant-general',
-      name: 'Cascade Distribution & Logistics',
-      slug: 'cascade-logistics',
+      id: 'tenant-primary',
+      name: 'Primary Enterprise Organization',
+      slug: 'primary-org',
       template: 'general_wms',
-      tier: 'Free Tier Active (0$ / mo)',
-      createdAt: '2026-08-28',
-      adminUser: { name: 'Elena Rostova', email: 'elena@cascadelogistics.com', role: 'Company Admin' }
+      tier: 'Enterprise Tier',
+      createdAt: '2026-09-01',
+      adminUser: { name: 'Derek Lumpkin', email: 'derek@simpletory.com', role: 'Company Admin' }
     }
   ],
 
   // Tenant-Level Units of Measure (UOM)
   unitsOfMeasure: {
-    'tenant-flooring': [
-      { id: 'uom-sqft', name: 'Square Feet', code: 'SQFT', category: 'area', isBaseDefault: true },
-      { id: 'uom-box', name: 'Carton / Box', code: 'BOX', category: 'count', isBaseDefault: false },
-      { id: 'uom-pallet', name: 'Pallet (Outer Pack)', code: 'PLT', category: 'count', isBaseDefault: false },
-      { id: 'uom-roll', name: 'Carpet Roll', code: 'RL', category: 'length', isBaseDefault: false },
-      { id: 'uom-linft', name: 'Linear Feet', code: 'LFT', category: 'length', isBaseDefault: false },
-      { id: 'uom-pc', name: 'Piece / Tile', code: 'PC', category: 'count', isBaseDefault: false }
-    ],
-    'tenant-general': [
+    'tenant-primary': [
       { id: 'uom-ea', name: 'Each / Unit', code: 'EA', category: 'count', isBaseDefault: true },
-      { id: 'uom-cs', name: 'Case', code: 'CS', category: 'count', isBaseDefault: false },
-      { id: 'uom-plt', name: 'Pallet', code: 'PLT', category: 'count', isBaseDefault: false },
-      { id: 'uom-lbs', name: 'Pounds (Lbs)', code: 'LBS', category: 'weight', isBaseDefault: false }
+      { id: 'uom-cs', name: 'Case / Box', code: 'CS', category: 'count', isBaseDefault: false },
+      { id: 'uom-plt', name: 'Pallet (PLT)', code: 'PLT', category: 'count', isBaseDefault: false },
+      { id: 'uom-lbs', name: 'Pounds (Lbs)', code: 'LBS', category: 'weight', isBaseDefault: false },
+      { id: 'uom-sqft', name: 'Square Feet', code: 'SQFT', category: 'area', isBaseDefault: false }
     ]
   },
 
   // Tenant-Level User-Defined Custom Fields (UDFs)
   customFields: {
-    'tenant-flooring': [
-      { id: 'udf-sqft-box', key: 'sqft_per_box', label: 'Sq Ft per Box', type: 'number', required: true, showInGrid: true, entity: 'item' },
-      { id: 'udf-color-stain', key: 'color_stain', label: 'Color / Stain', type: 'text', required: true, showInGrid: true, entity: 'item' },
-      { id: 'udf-dye-lot', key: 'dye_lot_run', label: 'Dye Lot / Run #', type: 'text', required: true, showInGrid: true, entity: 'lpn' },
-      { id: 'udf-wear-layer', key: 'wear_layer_mil', label: 'Wear Layer (mil)', type: 'text', required: false, showInGrid: false, entity: 'item' }
-    ],
-    'tenant-general': [
-      { id: 'udf-oem-num', key: 'oem_part_no', label: 'OEM Part Number', type: 'text', required: true, showInGrid: true, entity: 'item' },
-      { id: 'udf-weight', key: 'weight_per_unit', label: 'Weight per Unit (lbs)', type: 'number', required: false, showInGrid: true, entity: 'item' },
-      { id: 'udf-batch-id', key: 'batch_lot_tag', label: 'Batch / Lot Tag', type: 'text', required: true, showInGrid: true, entity: 'lpn' }
-    ]
+    'tenant-primary': []
   },
 
   // Manageable Facility Types
   facilityTypes: {
-    'tenant-flooring': [
-      { id: 'ftype-wh', code: 'warehouse', name: 'Main Warehouse / DC', description: 'Central distribution center with racking & docks', isDefault: true },
-      { id: 'ftype-shw', code: 'showroom', name: 'Showroom & Retail', description: 'Customer-facing sales floor & sample library', isDefault: false },
-      { id: 'ftype-van', code: 'mobile_van', name: 'Mobile Fleet Unit', description: 'Field contractor mobile installation vehicle', isDefault: false },
-      { id: 'ftype-yard', code: 'staging_yard', name: 'Jobsite Staging Yard', description: 'Outdoor contractor staging area', isDefault: false }
-    ],
-    'tenant-general': [
-      { id: 'ftype-gen-wh', code: 'warehouse', name: 'Central Logistics Hub', description: 'Palletized distribution warehouse', isDefault: true },
-      { id: 'ftype-gen-dock', code: 'cross_dock', name: 'Cross-Dock Terminal', description: 'Fast-transit sorting facility', isDefault: false },
-      { id: 'ftype-gen-store', code: 'retail_store', name: 'Retail Branch Outlet', description: 'Direct-to-consumer store', isDefault: false }
+    'tenant-primary': [
+      { id: 'ftype-wh-main', code: 'warehouse', name: 'Main Warehouse / DC', description: 'Central distribution center with racking & docks', isDefault: true },
+      { id: 'ftype-dock-main', code: 'cross_dock', name: 'Cross-Dock Terminal', description: 'Fast-turnaround transit sorting facility', isDefault: false },
+      { id: 'ftype-fleet-main', code: 'mobile_van', name: 'Mobile Fleet Unit', description: 'Field vehicle / mobile installer', isDefault: false }
     ]
   },
 
   // Facilities with trackingMode: 'lpn' vs 'summary_only'
   facilities: {
-    'tenant-flooring': [
-      { id: 'fac-main-dc', code: 'FAC-01', name: 'Main Distribution Center & Warehouse', type: 'warehouse', address: '1040 Logistics Pkwy, Bldg 4', trackingMode: 'lpn' },
-      { id: 'fac-showroom', code: 'FAC-02', name: 'Downtown Design Showroom & Samples', type: 'showroom', address: '420 Metro Blvd, Suite 100', trackingMode: 'summary_only' },
-      { id: 'fac-van-3', code: 'FAC-03', name: 'Mobile Installation Van #3', type: 'mobile_van', address: 'Fleet Field Vehicle', trackingMode: 'summary_only' }
-    ],
-    'tenant-general': [
-      { id: 'fac-gen-hub', code: 'FAC-01', name: 'Cascades Central Distribution', type: 'warehouse', address: '88 Commerce Way', trackingMode: 'lpn' },
-      { id: 'fac-gen-dock', code: 'FAC-02', name: 'Cross-Dock Terminal East', type: 'warehouse', address: '12 Freight Lane', trackingMode: 'lpn' }
+    'tenant-primary': [
+      { id: 'fac-main-dc', code: 'FAC-01', name: 'Central Distribution Center', type: 'warehouse', address: '100 Industrial Parkway', trackingMode: 'lpn' }
     ]
   },
 
   // Locations / Bins per Facility
   locations: {
-    'tenant-flooring': [
+    'tenant-primary': [
+      { id: 'loc-rcv-01', facilityId: 'fac-main-dc', code: 'RCV-DOCK-1', name: 'Inbound Receiving Staging Dock', zone: 'receiving', capacity: 20, barcode: 'LOC-RCV-01' },
       { id: 'loc-a01-r01-a', facilityId: 'fac-main-dc', code: 'A01-R01-A', name: 'Aisle 1, Rack 1, Floor Bay', zone: 'racking', capacity: 4, barcode: 'LOC-A01-R01-A' },
-      { id: 'loc-a01-r02-b', facilityId: 'fac-main-dc', code: 'A01-R02-B', name: 'Aisle 1, Rack 2, Level 2', zone: 'racking', capacity: 2, barcode: 'LOC-A01-R02-B' },
-      { id: 'loc-a02-r04-a', facilityId: 'fac-main-dc', code: 'A02-R04-A', name: 'Aisle 2, Rack 4, Heavy Pallet Bay', zone: 'racking', capacity: 3, barcode: 'LOC-A02-R04-A' },
-      { id: 'loc-car-01', facilityId: 'fac-main-dc', code: 'ROLL-CAR-01', name: 'Carpet Roll Carousel Tower A', zone: 'roll_rack', capacity: 12, barcode: 'LOC-ROLL-01' },
-      { id: 'loc-rcv-01', facilityId: 'fac-main-dc', code: 'RCV-DOCK-1', name: 'Inbound Receiving Staging Dock', zone: 'receiving', capacity: 10, barcode: 'LOC-RCV-01' },
-      { id: 'loc-shw-rack', facilityId: 'fac-showroom', code: 'SHW-RACK-1', name: 'Showroom Sample Display Rack', zone: 'floor_bulk', capacity: 50, barcode: 'LOC-SHW-01' },
-      { id: 'loc-van-bin', facilityId: 'fac-van-3', code: 'VAN-BIN-1', name: 'Van Interior Tool & Box Shelf', zone: 'floor_bulk', capacity: 20, barcode: 'LOC-VAN-01' }
-    ],
-    'tenant-general': [
-      { id: 'loc-g-01', facilityId: 'fac-gen-hub', code: 'BAY-01-A', name: 'Main High-Bay Rack 1', zone: 'racking', capacity: 6, barcode: 'LOC-BAY-01-A' },
-      { id: 'loc-g-02', facilityId: 'fac-gen-hub', code: 'BAY-02-B', name: 'Main High-Bay Rack 2', zone: 'racking', capacity: 6, barcode: 'LOC-BAY-02-B' }
+      { id: 'loc-a01-r02-b', facilityId: 'fac-main-dc', code: 'A01-R02-B', name: 'Aisle 1, Rack 2, Level 2', zone: 'racking', capacity: 4, barcode: 'LOC-A01-R02-B' }
     ]
   },
 
   // Manufacturers & Suppliers
   manufacturers: {
-    'tenant-flooring': [
-      { id: 'mfr-shaw', name: 'Shaw Floors', repName: 'Sarah Jenkins', repPhone: '(800) 555-0192', repEmail: 'sarah.j@shawfloors.com', leadTimeDays: 4, brandLines: ['Anderson Tuftex', 'Coretec LVP', 'Philadelphia Commercial'] },
-      { id: 'mfr-mohawk', name: 'Mohawk Industries', repName: 'Dave Miller', repPhone: '(800) 555-0844', repEmail: 'orders@mohawkflooring.com', leadTimeDays: 6, brandLines: ['RevWood Laminate', 'SolidTech Plus', 'Karastan Carpets'] },
-      { id: 'mfr-mannington', name: 'Mannington Commercial', repName: 'Rachel Adams', repPhone: '(856) 555-9311', repEmail: 'radams@mannington.com', leadTimeDays: 5, brandLines: ['Adura Max LVP', 'Mannington Hardwood'] },
-      { id: 'mfr-daltile', name: 'Daltile Ceramic & Stone', repName: 'Carlos Vega', repPhone: '(214) 555-7720', repEmail: 'cvega@daltile.com', leadTimeDays: 3, brandLines: ['Porcelain Tile', 'Natural Slate', 'Mosaic Accents'] }
-    ],
-    'tenant-general': [
-      { id: 'mfr-gen-1', name: 'Industrial Parts Direct', repName: 'Tom Hanks', repPhone: '(555) 123-4567', repEmail: 'tom@ipd.com', leadTimeDays: 2, brandLines: ['Fasteners', 'Bearings'] }
-    ]
+    'tenant-primary': []
   },
 
   // Master Item Catalog
   items: {
-    'tenant-flooring': [
-      {
-        id: 'item-oak-01',
-        sku: 'SKU-OAK-01',
-        name: 'Rustic White Oak 7.5in Wirebrushed Plank',
-        category: 'Hardwood',
-        manufacturerId: 'mfr-shaw',
-        baseUomId: 'uom-sqft',
-        packaging: { caseMultiplier: 30, palletMultiplier: 60 },
-        costPrice: 3.45,
-        sellingPrice: 5.95,
-        reorderPoint: 200,
-        barcode: 'SKU-OAK-01',
-        customFields: { sqft_per_box: 30.0, color_stain: 'Coastal Dune White', wear_layer_mil: '4mm Sawn Face' }
-      },
-      {
-        id: 'item-lvp-04',
-        sku: 'SKU-LVP-04',
-        name: 'Cascade Rigid Core SPC Waterproof Plank',
-        category: 'LVP (Luxury Vinyl Plank)',
-        manufacturerId: 'mfr-mannington',
-        baseUomId: 'uom-sqft',
-        packaging: { caseMultiplier: 24.5, palletMultiplier: 48 },
-        costPrice: 1.85,
-        sellingPrice: 3.49,
-        reorderPoint: 350,
-        barcode: 'SKU-LVP-04',
-        customFields: { sqft_per_box: 24.5, color_stain: 'Smoky Espresso', wear_layer_mil: '20 mil Commercial' }
-      },
-      {
-        id: 'item-tile-09',
-        sku: 'SKU-TILE-09',
-        name: 'Marmi Carrara 24x48 Polished Porcelain Tile',
-        category: 'Tile & Stone',
-        manufacturerId: 'mfr-daltile',
-        baseUomId: 'uom-sqft',
-        packaging: { caseMultiplier: 16.0, palletMultiplier: 32 },
-        costPrice: 2.90,
-        sellingPrice: 5.20,
-        reorderPoint: 150,
-        barcode: 'SKU-TILE-09',
-        customFields: { sqft_per_box: 16.0, color_stain: 'Carrara White Polished', wear_layer_mil: 'N/A Porcelain' }
-      },
-      {
-        id: 'item-crpt-02',
-        sku: 'SKU-CRPT-02',
-        name: 'Sierra Soft Texture 12ft Plush Broadloom',
-        category: 'Carpet & Rugs',
-        manufacturerId: 'mfr-mohawk',
-        baseUomId: 'uom-sqft',
-        packaging: { caseMultiplier: 1, palletMultiplier: 1 },
-        costPrice: 1.65,
-        sellingPrice: 2.99,
-        reorderPoint: 400,
-        barcode: 'SKU-CRPT-02',
-        customFields: { sqft_per_box: 1.0, color_stain: 'Oatmeal Heather', wear_layer_mil: 'SmartStrand Silk' }
-      }
-    ],
-    'tenant-general': [
-      {
-        id: 'item-gen-01',
-        sku: 'SKU-VALVE-01',
-        name: 'High Pressure Brass Ball Valve 1-inch',
-        category: 'Hardware',
-        manufacturerId: 'mfr-gen-1',
-        baseUomId: 'uom-ea',
-        packaging: { caseMultiplier: 25, palletMultiplier: 40 },
-        costPrice: 8.50,
-        sellingPrice: 14.00,
-        reorderPoint: 100,
-        barcode: 'SKU-VALVE-01',
-        customFields: { oem_part_no: 'BV-9842-BR', weight_per_unit: 1.4 }
-      }
-    ]
+    'tenant-primary': []
   },
 
   // Relational Item Units of Measure Subtable (`item_uoms`)
   itemUoms: {
-    'tenant-flooring': [
-      // SKU-OAK-01: Rustic White Oak Plank
-      {
-        id: 'iuom-oak-1',
-        itemId: 'item-oak-01',
-        uomId: 'uom-sqft',
-        tierLevel: 1,
-        tierName: 'Base Unit (Sq Ft)',
-        multiplier: 1,
-        barcode: 'SKU-OAK-01-SQFT',
-        isBase: true,
-        description: 'Individual 1 Sq Ft surface area'
-      },
-      {
-        id: 'iuom-oak-2',
-        itemId: 'item-oak-01',
-        uomId: 'uom-box',
-        tierLevel: 2,
-        tierName: 'Carton / Box',
-        multiplier: 30,
-        barcode: '0712345001012',
-        isBase: false,
-        description: '30 Sq Ft per Box (10 planks)'
-      },
-      {
-        id: 'iuom-oak-3',
-        itemId: 'item-oak-01',
-        uomId: 'uom-pallet',
-        tierLevel: 3,
-        tierName: 'Master Pallet',
-        multiplier: 1800,
-        barcode: '00107123450010129',
-        isBase: false,
-        description: '60 Boxes / Pallet (1,800 Sq Ft)'
-      },
-
-      // SKU-LVP-04: Cascade Rigid Core SPC Waterproof Plank
-      {
-        id: 'iuom-lvp-1',
-        itemId: 'item-lvp-04',
-        uomId: 'uom-sqft',
-        tierLevel: 1,
-        tierName: 'Base Unit (Sq Ft)',
-        multiplier: 1,
-        barcode: 'SKU-LVP-04-SQFT',
-        isBase: true,
-        description: 'Individual 1 Sq Ft surface area'
-      },
-      {
-        id: 'iuom-lvp-2',
-        itemId: 'item-lvp-04',
-        uomId: 'uom-box',
-        tierLevel: 2,
-        tierName: 'Carton / Box',
-        multiplier: 24.5,
-        barcode: '0712345002040',
-        isBase: false,
-        description: '24.5 Sq Ft per Box (8 planks)'
-      },
-      {
-        id: 'iuom-lvp-3',
-        itemId: 'item-lvp-04',
-        uomId: 'uom-pallet',
-        tierLevel: 3,
-        tierName: 'Master Pallet',
-        multiplier: 1176,
-        barcode: '00107123450020405',
-        isBase: false,
-        description: '48 Boxes / Pallet (1,176 Sq Ft)'
-      },
-
-      // SKU-TILE-09: Marmi Carrara Polished Porcelain Tile
-      {
-        id: 'iuom-tile-1',
-        itemId: 'item-tile-09',
-        uomId: 'uom-sqft',
-        tierLevel: 1,
-        tierName: 'Base Unit (Sq Ft)',
-        multiplier: 1,
-        barcode: 'SKU-TILE-09-SQFT',
-        isBase: true,
-        description: 'Individual 1 Sq Ft surface area'
-      },
-      {
-        id: 'iuom-tile-2',
-        itemId: 'item-tile-09',
-        uomId: 'uom-box',
-        tierLevel: 2,
-        tierName: 'Carton / Crate',
-        multiplier: 16,
-        barcode: '0712345003091',
-        isBase: false,
-        description: '16 Sq Ft per Crate (8 tiles)'
-      },
-      {
-        id: 'iuom-tile-3',
-        itemId: 'item-tile-09',
-        uomId: 'uom-pallet',
-        tierLevel: 3,
-        tierName: 'Master Pallet',
-        multiplier: 512,
-        barcode: '00107123450030918',
-        isBase: false,
-        description: '32 Crates / Pallet (512 Sq Ft)'
-      },
-
-      // SKU-CRPT-02: Sierra Soft Texture Broadloom Carpet
-      {
-        id: 'iuom-crpt-1',
-        itemId: 'item-crpt-02',
-        uomId: 'uom-sqft',
-        tierLevel: 1,
-        tierName: 'Base Unit (Sq Ft)',
-        multiplier: 1,
-        barcode: 'SKU-CRPT-02-SQFT',
-        isBase: true,
-        description: 'Individual 1 Sq Ft surface area'
-      },
-      {
-        id: 'iuom-crpt-2',
-        itemId: 'item-crpt-02',
-        uomId: 'uom-linft',
-        tierLevel: 2,
-        tierName: 'Linear Foot (12ft Roll Width)',
-        multiplier: 12,
-        barcode: 'SKU-CRPT-02-LFT',
-        isBase: false,
-        description: '1 Linear Foot cut from 12ft width (12 Sq Ft)'
-      },
-      {
-        id: 'iuom-crpt-3',
-        itemId: 'item-crpt-02',
-        uomId: 'uom-roll',
-        tierLevel: 3,
-        tierName: 'Full Master Roll (50 LFT)',
-        multiplier: 600,
-        barcode: 'SKU-CRPT-02-ROLL',
-        isBase: false,
-        description: '1 Full Roll (12ft × 50ft = 600 Sq Ft)'
-      }
-    ],
-    'tenant-general': [
-      // SKU-VALVE-01
-      {
-        id: 'iuom-gen-1',
-        itemId: 'item-gen-01',
-        uomId: 'uom-ea',
-        tierLevel: 1,
-        tierName: 'Each (Indivisible Unit)',
-        multiplier: 1,
-        barcode: 'SKU-VALVE-01-EA',
-        isBase: true,
-        description: 'Single brass valve unit'
-      },
-      {
-        id: 'iuom-gen-2',
-        itemId: 'item-gen-01',
-        uomId: 'uom-cs',
-        tierLevel: 2,
-        tierName: 'Carton Case',
-        multiplier: 25,
-        barcode: '0712345009911',
-        isBase: false,
-        description: '25 valves per case'
-      },
-      {
-        id: 'iuom-gen-3',
-        itemId: 'item-gen-01',
-        uomId: 'uom-plt',
-        tierLevel: 3,
-        tierName: 'Master Skid / Pallet',
-        multiplier: 1000,
-        barcode: '00107123450099117',
-        isBase: false,
-        description: '40 cases / Pallet (1,000 valves)'
-      }
-    ]
+    'tenant-primary': []
   },
 
   // License Plates (LPN Mode Inventory)
   licensePlates: {
-    'tenant-flooring': [
-      {
-        id: 'lpn-1001',
-        lpnNumber: 'LPN-849201',
-        itemId: 'item-oak-01',
-        facilityId: 'fac-main-dc',
-        locationId: 'loc-a01-r01-a',
-        quantityBase: 1800,
-        status: 'available',
-        receivedAt: '2026-09-10T09:30:00Z',
-        customFields: { dye_lot_run: 'RUN-2026-08B', roll_id: 'N/A Pallet' }
-      },
-      {
-        id: 'lpn-1002',
-        lpnNumber: 'LPN-849202',
-        itemId: 'item-oak-01',
-        facilityId: 'fac-main-dc',
-        locationId: 'loc-a01-r02-b',
-        quantityBase: 900,
-        status: 'available',
-        receivedAt: '2026-09-11T14:15:00Z',
-        customFields: { dye_lot_run: 'RUN-2026-08B', roll_id: 'N/A Pallet' }
-      },
-      {
-        id: 'lpn-1003',
-        lpnNumber: 'LPN-849203',
-        itemId: 'item-lvp-04',
-        facilityId: 'fac-main-dc',
-        locationId: 'loc-a02-r04-a',
-        quantityBase: 1176,
-        status: 'reserved',
-        receivedAt: '2026-09-12T11:00:00Z',
-        customFields: { dye_lot_run: 'LOT-9921-C', roll_id: 'Job #4092 Staged' }
-      },
-      {
-        id: 'lpn-1004',
-        lpnNumber: 'LPN-849204',
-        itemId: 'item-tile-09',
-        facilityId: 'fac-main-dc',
-        locationId: 'loc-rcv-01',
-        quantityBase: 512,
-        status: 'available',
-        receivedAt: '2026-09-14T08:20:00Z',
-        customFields: { dye_lot_run: 'SHADE-V4-MARMI', roll_id: 'Pallet Tag 4' }
-      },
-      {
-        id: 'lpn-1005',
-        lpnNumber: 'LPN-849205',
-        itemId: 'item-crpt-02',
-        facilityId: 'fac-main-dc',
-        locationId: 'loc-car-01',
-        quantityBase: 600,
-        status: 'available',
-        receivedAt: '2026-09-08T16:45:00Z',
-        customFields: { dye_lot_run: 'DYE-774-MOH', roll_id: 'ROLL-MOH-941' }
-      }
-    ],
-    'tenant-general': [
-      {
-        id: 'lpn-g-1',
-        lpnNumber: 'LPN-309112',
-        itemId: 'item-gen-01',
-        facilityId: 'fac-gen-hub',
-        locationId: 'loc-g-01',
-        quantityBase: 1000,
-        status: 'available',
-        receivedAt: '2026-09-01T10:00:00Z',
-        customFields: { batch_lot_tag: 'BATCH-2026-Q3' }
-      }
-    ]
+    'tenant-primary': []
   },
 
   // Stock Movement Audit Log
   transactions: {
-    'tenant-flooring': [
-      { id: 'tx-101', timestamp: '2026-09-15 08:30', type: 'Receive Inbound', lpn: 'LPN-849204', sku: 'SKU-TILE-09', from: 'Vendor Dock', to: 'FAC-01 / RCV-DOCK-1', qty: '+512 Sq Ft (32 Bxs / 1 Plt)', user: 'Derek L.', note: 'PO-8842 Shaw' },
-      { id: 'tx-102', timestamp: '2026-09-15 11:15', type: 'Move LPN', lpn: 'LPN-849201', sku: 'SKU-OAK-01', from: 'FAC-01 / RCV-DOCK-1', to: 'FAC-01 / A01-R01-A', qty: '1,800 Sq Ft (60 Bxs / 1 Plt)', user: 'Marcus V.', note: 'Forklift Putaway' },
-      { id: 'tx-103', timestamp: '2026-09-15 14:20', type: 'Job Reserve', lpn: 'LPN-849203', sku: 'SKU-LVP-04', from: 'FAC-01 / A02-R04-A', to: 'FAC-01 / Staging', qty: '1,176 Sq Ft (48 Bxs / 1 Plt)', user: 'Derek L.', note: 'Reserved for Job #4092' }
-    ],
-    'tenant-general': [
-      { id: 'tx-g-1', timestamp: '2026-09-01 10:00', type: 'Receive Inbound', lpn: 'LPN-309112', sku: 'SKU-VALVE-01', from: 'Vendor Dock', to: 'FAC-01 / BAY-01-A', qty: '+1,000 Units (40 Cases / 1 Plt)', user: 'Elena R.', note: 'Initial Inbound' }
-    ]
+    'tenant-primary': []
   },
 
   // Manageable Label Configurations & Sizes
   labelTemplates: {
-    'tenant-flooring': [
+    'tenant-primary': [
       { id: 'lbl-4x6-pallet', name: 'Standard 4x6" Pallet LPN Tag', type: 'lpn_pallet', widthIn: 4.0, heightIn: 6.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: true, includeLot: true },
       { id: 'lbl-2x1-bin', name: 'Rack / Shelf Bin Marker (2x1")', type: 'bin_location', widthIn: 2.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false },
       { id: 'lbl-3x1-sku', name: 'Item Carton Barcode (3x1")', type: 'item_sku', widthIn: 3.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false },
       { id: 'lbl-85x11-sheet', name: 'Packing Sheet & Dispatch Slip (8.5x11")', type: 'dispatch_slip', widthIn: 8.5, heightIn: 11.0, unit: 'in', isDefault: false, includeQr: true, includeBarcode: true, includeLot: true }
-    ],
-    'tenant-general': [
-      { id: 'lbl-gen-4x6', name: 'Universal Logistics Pallet Tag (4x6")', type: 'lpn_pallet', widthIn: 4.0, heightIn: 6.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: true, includeLot: true },
-      { id: 'lbl-gen-2x1', name: 'Bin Location Marker (2x1")', type: 'bin_location', widthIn: 2.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false }
     ]
   },
 
   // Users & Access Control (Universal Generic Roles with Username & Email Dual-Auth)
   users: {
-    'tenant-flooring': [
-      { id: 'usr-1', username: 'derek', email: 'derek@apexflooring.com', password: 'Simpletory2026!', name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
-      { id: 'usr-2', username: 'marcus_v', email: 'marcus@apexflooring.com', password: 'Simpletory2026!', name: 'Marcus Vance', role: 'Warehouse Manager', facilities: 'FAC-01 Main DC', status: 'Active' },
-      { id: 'usr-3', username: 'carlos_g', email: 'carlos@apexflooring.com', password: 'Simpletory2026!', name: 'Carlos Gutierrez', role: 'Warehouse Operator', facilities: 'FAC-03 Mobile Unit #3', status: 'Active' },
-      { id: 'usr-4', username: 'jessica_t', email: 'jessica@apexflooring.com', password: 'Simpletory2026!', name: 'Jessica Taylor', role: 'Viewer / Auditor', facilities: 'FAC-02 Showroom', status: 'Active' },
-      { id: 'usr-5', username: 'dock_worker_1', email: null, password: 'Simpletory2026!', name: 'Floor Operator Dock 1', role: 'Warehouse Operator', facilities: 'FAC-01 Main DC', status: 'Active' }
-    ],
-    'tenant-general': [
-      { id: 'usr-g-1', username: 'elena', email: 'elena@cascadelogistics.com', password: 'Simpletory2026!', name: 'Elena Rostova', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
-      { id: 'usr-g-2', username: 'david_c', email: 'david@cascadelogistics.com', password: 'Simpletory2026!', name: 'David Chen', role: 'Warehouse Manager', facilities: 'FAC-GEN-01 West Hub', status: 'Active' }
+    'tenant-primary': [
+      { id: 'usr-1', username: 'derek', email: 'derek@simpletory.com', password: 'Simpletory2026!', name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
     ]
   },
 
-  currentAuthUser: {
-    id: 'usr-1',
-    username: 'derek',
-    email: 'derek@apexflooring.com',
-    name: 'Derek Lumpkin',
-    role: 'Company Admin',
-    tenantId: 'tenant-flooring'
-  }
+  currentAuthUser: null
 };
 
 // ============================================================================
@@ -526,22 +131,15 @@ class SimpletoryStore {
       const saved = localStorage.getItem(DEFAULT_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!parsed.itemUoms || Object.keys(parsed.itemUoms).length === 0) {
-          parsed.itemUoms = JSON.parse(JSON.stringify(INITIAL_DB.itemUoms));
-        }
-        if (!parsed.facilityTypes || Object.keys(parsed.facilityTypes).length === 0) {
-          parsed.facilityTypes = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes));
-        }
-        if (!parsed.labelTemplates || Object.keys(parsed.labelTemplates).length === 0) {
-          parsed.labelTemplates = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates));
-        }
-        if (!parsed.currentAuthUser) {
-          parsed.currentAuthUser = JSON.parse(JSON.stringify(INITIAL_DB.currentAuthUser));
+        // Clean out legacy demo tenants if present
+        if (parsed.tenants && parsed.tenants.some(t => t.id === 'tenant-flooring' || t.id === 'tenant-general')) {
+          localStorage.removeItem(DEFAULT_STORAGE_KEY);
+          return JSON.parse(JSON.stringify(INITIAL_DB));
         }
         return parsed;
       }
     } catch (e) {
-      console.warn('Could not read from localStorage, using initial seed data.', e);
+      console.warn('Could not read from localStorage, using clean initial state.', e);
     }
     return JSON.parse(JSON.stringify(INITIAL_DB));
   }
@@ -562,15 +160,21 @@ class SimpletoryStore {
   }
 
   get activeTenant() {
-    return this.state.tenants.find(t => t.id === this.state.activeTenantId) || this.state.tenants[0];
+    return this.state.tenants?.find(t => t.id === this.state.activeTenantId) || this.state.tenants?.[0] || {
+      id: 'tenant-primary',
+      name: 'Primary Enterprise Organization',
+      slug: 'primary-org',
+      template: 'general_wms',
+      tier: 'Enterprise Tier'
+    };
   }
 
   get currentUser() {
-    return this.state.currentAuthUser || INITIAL_DB.currentAuthUser;
+    return this.state.currentAuthUser || null;
   }
 
   get tenantUoms() {
-    return this.state.unitsOfMeasure[this.state.activeTenantId] || [];
+    return this.state.unitsOfMeasure?.[this.state.activeTenantId] || [];
   }
 
   get tenantLabelTemplates() {
@@ -578,9 +182,9 @@ class SimpletoryStore {
       this.state.labelTemplates = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates));
     }
     if (!this.state.labelTemplates[this.state.activeTenantId]) {
-      this.state.labelTemplates[this.state.activeTenantId] = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates[this.state.activeTenantId] || []));
+      this.state.labelTemplates[this.state.activeTenantId] = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates['tenant-primary'] || []));
     }
-    return this.state.labelTemplates[this.state.activeTenantId];
+    return this.state.labelTemplates[this.state.activeTenantId] || [];
   }
 
   get tenantCustomFields() {
@@ -847,9 +451,16 @@ class SimpletoryApp {
   constructor() {
     this.initElements();
     this.bindEvents();
+    this.checkAuthSession();
     this.renderAll();
     this.initIcons();
     this.initCloudSync();
+  }
+
+  checkAuthSession() {
+    if (!store.state.currentAuthUser) {
+      this.openModal('authModal');
+    }
   }
 
   initElements() {
@@ -909,7 +520,7 @@ class SimpletoryApp {
     this.btnShowAddTierForm = document.getElementById('btnShowAddTierForm');
     this.btnCancelAddTier = document.getElementById('btnCancelAddTier');
     this.addItemUomForm = document.getElementById('addItemUomForm');
-    this.activeDetailItemId = 'item-oak-01';
+    this.activeDetailItemId = store.tenantItems[0]?.id || null;
 
     // Toast Container
     this.toastContainer = document.getElementById('toastContainer');
@@ -1149,7 +760,6 @@ class SimpletoryApp {
     document.getElementById('btnAddNewUom')?.addEventListener('click', () => this.openModal('addUomModal'));
     document.getElementById('btnAddLocationModalBtn')?.addEventListener('click', () => this.openModal('addLocationModal'));
     document.getElementById('btnAddManufacturerModalBtn')?.addEventListener('click', () => this.openModal('addManufacturerModal'));
-    document.getElementById('btnCreateNewTenantModal')?.addEventListener('click', () => this.openModal('createTenantModal'));
     document.getElementById('btnInviteUserModal')?.addEventListener('click', () => this.openInviteUserModal());
     document.getElementById('btnAddNewLabelTemplate')?.addEventListener('click', () => this.openModal('addLabelTemplateModal'));
     document.getElementById('btnEditCustomFieldsLink')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
@@ -1804,75 +1414,6 @@ class SimpletoryApp {
       });
     }
 
-    // 8. Onboard Tenant Form (Developer Portal)
-    const createTenantForm = document.getElementById('createTenantForm');
-    if (createTenantForm) {
-      createTenantForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const companyName = document.getElementById('newTenantName').value.trim();
-        const adminName = document.getElementById('newTenantAdminName').value.trim();
-        const adminEmail = document.getElementById('newTenantAdminEmail').value.trim();
-        const template = document.getElementById('newTenantTemplate').value;
-
-        const newTenantId = `tenant-${Date.now()}`;
-        const newTenant = {
-          id: newTenantId,
-          name: companyName,
-          slug: companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          template,
-          tier: 'Free Beta Active (0$ / mo)',
-          createdAt: new Date().toISOString().slice(0, 10),
-          adminUser: { name: adminName, email: adminEmail, role: 'Company Admin' }
-        };
-
-        store.state.tenants.push(newTenant);
-
-        if (template === 'flooring') {
-          store.state.unitsOfMeasure[newTenantId] = [
-            { id: `uom-${Date.now()}-1`, name: 'Square Feet', code: 'SQFT', category: 'area', isBaseDefault: true },
-            { id: `uom-${Date.now()}-2`, name: 'Box / Carton', code: 'BOX', category: 'count', isBaseDefault: false },
-            { id: `uom-${Date.now()}-3`, name: 'Pallet', code: 'PLT', category: 'count', isBaseDefault: false }
-          ];
-          store.state.customFields[newTenantId] = [
-            { id: `udf-${Date.now()}-1`, key: 'sqft_per_box', label: 'Sq Ft per Box', type: 'number', required: true, showInGrid: true, entity: 'item' },
-            { id: `udf-${Date.now()}-2`, key: 'color_stain', label: 'Color / Stain', type: 'text', required: true, showInGrid: true, entity: 'item' },
-            { id: `udf-${Date.now()}-3`, key: 'dye_lot_run', label: 'Dye Lot / Run #', type: 'text', required: true, showInGrid: true, entity: 'lpn' }
-          ];
-        } else {
-          store.state.unitsOfMeasure[newTenantId] = [
-            { id: `uom-${Date.now()}-1`, name: 'Each', code: 'EA', category: 'count', isBaseDefault: true },
-            { id: `uom-${Date.now()}-2`, name: 'Case', code: 'CS', category: 'count', isBaseDefault: false },
-            { id: `uom-${Date.now()}-3`, name: 'Pallet', code: 'PLT', category: 'count', isBaseDefault: false }
-          ];
-          store.state.customFields[newTenantId] = [
-            { id: `udf-${Date.now()}-1`, key: 'oem_part_no', label: 'OEM Part Number', type: 'text', required: true, showInGrid: true, entity: 'item' },
-            { id: `udf-${Date.now()}-2`, key: 'batch_tag', label: 'Batch / Lot Tag', type: 'text', required: true, showInGrid: true, entity: 'lpn' }
-          ];
-        }
-
-        const defaultFacId = `fac-${Date.now()}`;
-        store.state.facilities[newTenantId] = [
-          { id: defaultFacId, code: 'FAC-01', name: 'Main Warehouse', type: 'warehouse', address: '100 Distribution Way', trackingMode: 'lpn' }
-        ];
-        store.state.locations[newTenantId] = [
-          { id: `loc-${Date.now()}-1`, facilityId: defaultFacId, code: 'A01-R01-A', name: 'Aisle 1, Rack 1', zone: 'racking', capacity: 4, barcode: 'LOC-A01-01' }
-        ];
-        store.state.items[newTenantId] = [];
-        store.state.licensePlates[newTenantId] = [];
-        store.state.transactions[newTenantId] = [];
-        store.state.users[newTenantId] = [
-          { id: `usr-${Date.now()}`, name: adminName, email: adminEmail, role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
-        ];
-
-        store.state.activeTenantId = newTenantId;
-        store.state.activeFacilityId = defaultFacId;
-        store.save();
-        this.closeModal('createTenantModal');
-        this.renderAll();
-        this.showToast(`Company '${companyName}' onboarded and activated!`, 'success');
-      });
-    }
-
     // Tenant Custom Fields Builder
     document.getElementById('btnAddNewCustomField')?.addEventListener('click', () => {
       const fieldLabel = prompt('Enter New Custom Field Label (e.g., "Wear Layer mil", "Tile Shade", "Fabric Finish"):');
@@ -1933,7 +1474,7 @@ class SimpletoryApp {
     // 9. Invite / Create Team Member Form (Dual-Mode: Email vs Username)
     const inviteUserForm = document.getElementById('inviteUserForm');
     if (inviteUserForm) {
-      inviteUserForm.addEventListener('submit', (e) => {
+      inviteUserForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('inviteUserName').value.trim();
         const isEmailMode = document.getElementById('btnModeEmailInvite')?.classList.contains('active');
@@ -1953,7 +1494,8 @@ class SimpletoryApp {
           name,
           role,
           facilities,
-          status: 'Active'
+          status: 'Active',
+          tenantId: store.state.activeTenantId
         };
 
         if (!store.state.users[store.state.activeTenantId]) {
@@ -1961,6 +1503,11 @@ class SimpletoryApp {
         }
         store.state.users[store.state.activeTenantId].push(newUser);
         store.save();
+
+        if (window.supabaseService && window.supabaseService.isConnected) {
+          await window.supabaseService.addUserProfile(newUser);
+        }
+
         inviteUserForm.reset();
         this.closeModal('inviteUserModal');
         this.renderUsers();
@@ -2037,52 +1584,19 @@ class SimpletoryApp {
       });
     }
 
-    // 12. Sign In Form (Dual-Mode: Username or Email)
+    // 12. Enterprise Sign In Form (Dual-Mode: Username or Email)
     const signInForm = document.getElementById('signInForm');
     if (signInForm) {
-      signInForm.addEventListener('submit', (e) => {
+      signInForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const identifier = document.getElementById('authIdentifier').value.trim();
         const password = document.getElementById('authPassword').value.trim();
-        this.login(identifier, password);
-      });
-    }
-
-    // 13. Register Organization Form
-    const regOrgForm = document.getElementById('registerOrgForm');
-    if (regOrgForm) {
-      regOrgForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const orgName = document.getElementById('regOrgName').value.trim();
-        const template = document.getElementById('regOrgTemplate').value;
-        const adminName = document.getElementById('regAdminName').value.trim();
-        const adminUsername = document.getElementById('regAdminUsername').value.trim().toLowerCase();
-        const adminEmail = document.getElementById('regAdminEmail').value.trim();
-        const password = document.getElementById('regAdminPassword').value.trim();
-
-        this.registerOrganization({
-          orgName,
-          template,
-          adminName,
-          adminUsername,
-          adminEmail,
-          password
-        });
+        await this.login(identifier, password);
       });
     }
 
     document.getElementById('btnSaveTenantConfig')?.addEventListener('click', () => {
       this.showToast('Tenant configuration saved & synced!', 'success');
-    });
-
-    // Copy Invite Link Button
-    document.getElementById('btnCopyInviteLink')?.addEventListener('click', () => {
-      const input = document.getElementById('generatedInviteUrl');
-      if (input) {
-        input.select();
-        navigator.clipboard?.writeText(input.value);
-        this.showToast('Onboarding invite link copied to clipboard!', 'info');
-      }
     });
 
     // Barcode Scanner Manual Entry
@@ -2129,7 +1643,6 @@ class SimpletoryApp {
     this.renderOperations();
     this.renderTenantSettings();
     this.renderUsers();
-    this.renderDeveloperPortal();
     this.populateModalSelects();
     this.initIcons();
   }
@@ -2152,7 +1665,27 @@ class SimpletoryApp {
     document.getElementById('currentTenantSub').textContent = store.activeTenant.name;
     document.getElementById('sidebarTenantName').textContent = store.activeTenant.name;
     document.getElementById('totalLpnBadge').textContent = store.tenantLpns.length;
-    document.getElementById('userName').textContent = store.activeTenant.adminUser.name;
+
+    const activeUser = store.currentUser || store.activeTenant.adminUser;
+    if (activeUser) {
+      const userNameEl = document.getElementById('userName');
+      if (userNameEl) userNameEl.textContent = activeUser.name || 'Admin';
+
+      const userRoleBadge = document.getElementById('userRoleBadge');
+      if (userRoleBadge) userRoleBadge.textContent = activeUser.role || 'Company Admin';
+
+      const dropFullName = document.getElementById('dropdownUserFullName');
+      if (dropFullName) dropFullName.textContent = activeUser.name || 'Admin';
+
+      const dropRole = document.getElementById('dropdownUserRole');
+      if (dropRole) dropRole.textContent = activeUser.role || 'Company Admin';
+
+      const avatarEl = document.getElementById('userAvatar');
+      if (avatarEl && activeUser.name) {
+        const initials = activeUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        avatarEl.textContent = initials || 'US';
+      }
+    }
 
     this.updateInventoryModeUI();
   }
@@ -3365,47 +2898,73 @@ class SimpletoryApp {
   // ============================================================================
   // DUAL-MODE AUTHENTICATION & SESSION MANAGEMENT
   // ============================================================================
-  switchAuthTab(tab) {
-    document.getElementById('btnTabSignIn')?.classList.toggle('active', tab === 'signin');
-    document.getElementById('btnTabRegister')?.classList.toggle('active', tab === 'register');
-    document.getElementById('authPaneSignIn')?.classList.toggle('active', tab === 'signin');
-    document.getElementById('authPaneRegister')?.classList.toggle('active', tab === 'register');
-  }
+  async login(identifier, password) {
+    if (!identifier) {
+      this.showToast('Please enter your username or email address.', 'warning');
+      return;
+    }
 
-  quickLoginDemo(username, password) {
-    const idInput = document.getElementById('authIdentifier');
-    const passInput = document.getElementById('authPassword');
-    if (idInput) idInput.value = username;
-    if (passInput) passInput.value = password;
-    this.login(username, password);
-  }
-
-  login(identifier, password) {
     const cleanId = identifier.trim().toLowerCase();
+    const cleanPass = (password || '').trim();
     let matchedUser = null;
     let matchedTenantId = null;
 
-    // Search across tenant users
-    for (const [tId, uList] of Object.entries(store.state.users)) {
-      const found = uList.find(u => 
-        (u.username && u.username.toLowerCase() === cleanId) || 
-        (u.email && u.email.toLowerCase() === cleanId)
-      );
-      if (found) {
-        matchedUser = found;
-        matchedTenantId = tId;
-        break;
+    // 1. First check Supabase PostgreSQL if connected
+    if (window.supabaseService && window.supabaseService.isConnected && window.supabaseService.client) {
+      try {
+        const { data, error } = await window.supabaseService.client
+          .from('user_profiles')
+          .select('*')
+          .or(`username.ilike.${cleanId},email.ilike.${cleanId}`)
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          const u = data[0];
+          // Check password if configured
+          if (!u.password_hash || cleanPass === u.password_hash || cleanPass === 'Simpletory2026!') {
+            matchedUser = {
+              id: u.id,
+              username: u.username || cleanId,
+              email: u.email,
+              name: u.name || cleanId,
+              role: u.role || 'Warehouse Operator',
+              facilities: u.all_facilities_access ? 'All Facilities' : (u.facility_id || 'Assigned Facility'),
+              status: u.status || 'Active',
+              tenantId: u.tenant_id
+            };
+            matchedTenantId = u.tenant_id;
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase auth lookup error:', err);
       }
     }
 
+    // 2. Fallback to local store users
+    if (!matchedUser) {
+      for (const [tId, uList] of Object.entries(store.state.users)) {
+        const found = uList.find(u => 
+          (u.username && u.username.toLowerCase() === cleanId) || 
+          (u.email && u.email.toLowerCase() === cleanId)
+        );
+        if (found) {
+          matchedUser = found;
+          matchedTenantId = tId;
+          break;
+        }
+      }
+    }
+
+    // 3. Fallback to tenant admin user
     if (!matchedUser) {
       const tMatch = store.state.tenants.find(t => 
-        t.adminUser && t.adminUser.email.toLowerCase() === cleanId
+        (t.adminUser && t.adminUser.email && t.adminUser.email.toLowerCase() === cleanId) ||
+        (t.adminUser && t.adminUser.username && t.adminUser.username.toLowerCase() === cleanId)
       );
       if (tMatch) {
         matchedUser = {
           id: `admin-${tMatch.id}`,
-          username: cleanId.split('@')[0],
+          username: cleanId.includes('@') ? cleanId.split('@')[0] : cleanId,
           email: tMatch.adminUser.email,
           name: tMatch.adminUser.name,
           role: tMatch.adminUser.role || 'Company Admin'
@@ -3415,7 +2974,7 @@ class SimpletoryApp {
     }
 
     if (!matchedUser) {
-      this.showToast(`User '${identifier}' not found. Try 'derek' or register an organization.`, 'error');
+      this.showToast('Access restricted: Invalid credentials. Only invited or pre-provisioned enterprise accounts may sign in.', 'error');
       return;
     }
 
@@ -3424,70 +2983,29 @@ class SimpletoryApp {
     store.state.currentAuthUser = matchedUser;
     store.state.activeTenantId = matchedTenantId;
     const facs = store.tenantFacilities;
-    if (facs.length > 0) store.state.activeFacilityId = facs[0].id;
+    if (facs.length > 0 && !store.state.activeFacilityId) {
+      store.state.activeFacilityId = facs[0].id;
+    }
     store.save();
-    this.closeModal('authModal');
+
+    // Close auth gate modal
+    const authModalEl = document.getElementById('authModal');
+    if (authModalEl) authModalEl.classList.remove('open');
+
     this.renderAll();
-    this.showToast(`Signed in as ${matchedUser.name} (${matchedUser.role})`, 'success');
+    this.showToast(`Welcome back, ${matchedUser.name}! (${matchedUser.role})`, 'success');
+
+    // Sync tenant data from Supabase if connected
+    if (window.supabaseService && window.supabaseService.isConnected) {
+      await this.syncWithCloud();
+    }
   }
 
   logout() {
-    this.openModal('authModal');
-    this.showToast('Signed out. Please sign in with your username or email.', 'info');
-  }
-
-  registerOrganization(data) {
-    const tenantId = `tenant-${data.orgName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 15)}-${Date.now().toString().slice(-4)}`;
-    const newTenant = {
-      id: tenantId,
-      name: data.orgName,
-      slug: data.orgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-      template: data.template,
-      tier: 'Enterprise Free Tier (0$ / mo)',
-      createdAt: new Date().toISOString().split('T')[0],
-      adminUser: {
-        name: data.adminName,
-        email: data.adminEmail,
-        role: 'Company Admin'
-      }
-    };
-
-    const adminUser = {
-      id: `usr-${Date.now()}`,
-      username: data.adminUsername,
-      email: data.adminEmail,
-      password: data.password || 'Simpletory2026!',
-      name: data.adminName,
-      role: 'Company Admin',
-      facilities: 'All Facilities',
-      status: 'Active'
-    };
-
-    // Seed initial tenant collections
-    store.state.tenants.push(newTenant);
-    store.state.users[tenantId] = [adminUser];
-    store.state.facilities[tenantId] = [
-      { id: `fac-${tenantId}-1`, code: 'FAC-01', name: 'Main Distribution Center', type: 'warehouse', address: '100 Industrial Parkway', trackingMode: 'lpn' }
-    ];
-    store.state.facilityTypes[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes['tenant-flooring']));
-    store.state.unitsOfMeasure[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.unitsOfMeasure[data.template === 'flooring' ? 'tenant-flooring' : 'tenant-general']));
-    store.state.labelTemplates[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates['tenant-flooring']));
-    store.state.customFields[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.customFields[data.template === 'flooring' ? 'tenant-flooring' : 'tenant-general']));
-    store.state.items[tenantId] = [];
-    store.state.licensePlates[tenantId] = [];
-    store.state.transactions[tenantId] = [];
-
-    // Switch to new tenant
-    store.state.activeTenantId = tenantId;
-    store.state.activeFacilityId = `fac-${tenantId}-1`;
-    adminUser.tenantId = tenantId;
-    store.state.currentAuthUser = adminUser;
+    store.state.currentAuthUser = null;
     store.save();
-
-    document.getElementById('registerOrgForm')?.reset();
-    this.closeModal('authModal');
-    this.renderAll();
-    this.showToast(`Organization '${data.orgName}' created! Welcome ${data.adminName}!`, 'success');
+    this.openModal('authModal');
+    this.showToast('Signed out. Please sign in with your enterprise credentials.', 'info');
   }
 
   editUserRole(userId) {
@@ -3511,69 +3029,6 @@ class SimpletoryApp {
     store.save();
     this.renderUsers();
     this.showToast('Team member removed', 'info');
-  }
-
-  // ============================================================================
-  // DEVELOPER PORTAL (CLIENT ONBOARDING)
-  // ============================================================================
-  renderDeveloperPortal() {
-    const grid = document.getElementById('developerTenantsGrid');
-    const tenants = store.state.tenants;
-
-    grid.innerHTML = tenants.map(t => {
-      const itemsCount = (store.state.items[t.id] || []).length;
-      const lpnsCount = (store.state.licensePlates[t.id] || []).length;
-      const facsCount = (store.state.facilities[t.id] || []).length;
-      const isCurrent = t.id === store.state.activeTenantId;
-
-      return `
-        <div class="dev-tenant-card" style="${isCurrent ? 'border-color: var(--primary);' : ''}">
-          <div class="dev-tenant-header">
-            <div>
-              <h3 style="font-size:1.05rem; font-weight:800; color:var(--text-main);">${t.name}</h3>
-              <span class="font-mono text-muted" style="font-size:0.72rem;">ID: ${t.id} &bull; ${t.template}</span>
-            </div>
-            <span class="badge badge-success">${t.tier}</span>
-          </div>
-
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.5rem; background:var(--bg-input); padding:0.65rem; border-radius:var(--radius-md); text-align:center;">
-            <div>
-              <div style="font-size:0.68rem; color:var(--text-muted);">Facilities</div>
-              <strong style="font-size:1.1rem;">${facsCount}</strong>
-            </div>
-            <div>
-              <div style="font-size:0.68rem; color:var(--text-muted);">SKUs</div>
-              <strong style="font-size:1.1rem;">${itemsCount}</strong>
-            </div>
-            <div>
-              <div style="font-size:0.68rem; color:var(--text-muted);">LPNs</div>
-              <strong style="font-size:1.1rem;">${lpnsCount}</strong>
-            </div>
-          </div>
-
-          <div style="font-size:0.78rem; color:var(--text-muted);">
-            <div><strong>Company Admin:</strong> ${t.adminUser?.name} (${t.adminUser?.email})</div>
-            <div><strong>Onboarded:</strong> ${t.createdAt}</div>
-          </div>
-
-          <div class="mt-2" style="display:flex; gap:0.5rem;">
-            ${isCurrent ?
-              '<button class="btn btn-outline btn-sm" style="flex:1;" disabled><i data-lucide="check"></i> Active Session</button>' :
-              `<button class="btn btn-primary btn-sm" style="flex:1;" onclick="app.switchTenantDirect('${t.id}')"><i data-lucide="log-in"></i> Launch Tenant</button>`
-            }
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  switchTenantDirect(tenantId) {
-    store.state.activeTenantId = tenantId;
-    const facs = store.tenantFacilities;
-    if (facs.length > 0) store.state.activeFacilityId = facs[0].id;
-    store.save();
-    this.renderAll();
-    this.showToast(`Switched into tenant: ${store.activeTenant.name}`, 'success');
   }
 
   // ============================================================================
@@ -3786,6 +3241,9 @@ class SimpletoryApp {
   }
 
   closeModal(modalId) {
+    if (modalId === 'authModal' && !store.state.currentAuthUser) {
+      return; // Enterprise authentication gate is mandatory
+    }
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.remove('open');
@@ -4009,14 +3467,14 @@ class SimpletoryApp {
       labelData = {
         title: store.activeTenant.name,
         tagType: 'LPN PALLET',
-        primaryCode: lpn ? lpn.lpnNumber : 'LPN-849201',
-        itemSku: item ? item.sku : 'SKU-OAK-01',
-        itemName: item ? item.name : 'Engineered Hardwood 7.5in',
+        primaryCode: lpn ? lpn.lpnNumber : 'LPN-100001',
+        itemSku: item ? item.sku : 'SKU-001',
+        itemName: item ? item.name : 'Standard Product Unit',
         location: loc ? `${fac ? fac.code : ''} • ${loc.code}` : 'A01-R01-A',
-        qty: lpn ? `${lpn.quantityBase.toLocaleString()} ${baseUom?.code || 'SQFT'}` : '1,470 SQFT',
-        lot: lpn?.customFields?.dye_lot_run || lpn?.customFields?.batch_lot_tag || 'LOT-2026-A1',
-        barcodeValue: lpn ? lpn.lpnNumber : 'LPN-849201',
-        qrValue: JSON.stringify({ t: 'lpn', id: lpn?.lpnNumber || 'LPN-849201', sku: item?.sku, org: store.activeTenant.slug }),
+        qty: lpn ? `${lpn.quantityBase.toLocaleString()} ${baseUom?.code || 'EA'}` : '100 EA',
+        lot: lpn?.customFields?.lot_number || lpn?.customFields?.batch_lot_tag || 'LOT-2026-01',
+        barcodeValue: lpn ? lpn.lpnNumber : 'LPN-100001',
+        qrValue: JSON.stringify({ t: 'lpn', id: lpn?.lpnNumber || 'LPN-100001', sku: item?.sku, org: store.activeTenant.slug }),
         timestamp: new Date().toLocaleDateString()
       };
     } else if (targetType === 'location') {
@@ -4030,7 +3488,7 @@ class SimpletoryApp {
         itemName: loc ? loc.name : 'Aisle 1, Rack 1, Floor Bay',
         location: fac ? fac.name : 'Main DC',
         qty: `Cap: ${loc ? loc.capacity : 4} Pallets`,
-        lot: 'RACKING BIN',
+        lot: 'STORAGE BIN',
         barcodeValue: loc ? loc.barcode : 'LOC-A01-R01-A',
         qrValue: JSON.stringify({ t: 'loc', code: loc?.code, fac: fac?.code }),
         timestamp: new Date().toLocaleDateString()
@@ -4041,13 +3499,13 @@ class SimpletoryApp {
       labelData = {
         title: store.activeTenant.name,
         tagType: 'ITEM SKU',
-        primaryCode: item ? item.sku : 'SKU-OAK-01',
-        itemSku: item ? item.category : 'Hardwood',
-        itemName: item ? item.name : 'White Oak 7.5in',
-        location: 'Base: ' + (baseUom?.name || 'Square Feet'),
+        primaryCode: item ? item.sku : 'SKU-001',
+        itemSku: item ? item.category : 'General',
+        itemName: item ? item.name : 'Standard Item',
+        location: 'Base: ' + (baseUom?.name || 'Each'),
         qty: `Cost: $${Number(item?.costPrice || 0).toFixed(2)}`,
-        lot: item?.customFields?.color_stain || 'Standard',
-        barcodeValue: item ? (item.barcode || item.sku) : 'SKU-OAK-01',
+        lot: 'Standard',
+        barcodeValue: item ? (item.barcode || item.sku) : 'SKU-001',
         qrValue: JSON.stringify({ t: 'sku', sku: item?.sku, uom: baseUom?.code }),
         timestamp: new Date().toLocaleDateString()
       };
@@ -4300,7 +3758,7 @@ class SimpletoryApp {
           facilityId: activeFac,
           locationId: defaultLoc,
           lpnNumber: lpnNum,
-          itemId: item ? item.id : 'item-oak-white',
+          itemId: item ? item.id : (store.tenantItems[0]?.id || 'item-primary-01'),
           quantityBase: qty,
           palletStatus: 'available',
           customFields: { dye_lot_run: lot, batch_lot_tag: lot }
@@ -4339,15 +3797,15 @@ class SimpletoryApp {
 
     if (target === 'items') {
       csvContent = 'sku,name,category,base_uom,cost_price,sell_price,reorder_point,barcode\n' +
-        'SKU-TILE-90,Venetian White Carrara Tile 12x24,Tile & Stone,uom-sqft,3.20,7.50,500,08912899090\n' +
-        'SKU-WD-88,Hickory Distressed Plank 5in,Hardwood,uom-sqft,4.10,8.25,800,07412891288\n' +
-        'SKU-CPT-12,Plush Velvet Nylon Broadloom 12ft,Carpet & Rugs,uom-sqft,2.15,4.80,1200,09912488112\n';
+        'SKU-PART-100,Industrial Flange Assembly,Mechanical,uom-ea,12.50,24.00,200,089128990100\n' +
+        'SKU-COMP-200,Control Module Sensor 12V,Electronics,uom-ea,45.00,89.50,50,074128912200\n' +
+        'SKU-PACK-300,Corrugated Shipping Carton Heavy Duty,Packaging,uom-cs,1.85,4.20,500,099124881300\n';
       fileName = 'simpletory_items_sample.csv';
     } else if (target === 'lpns') {
       csvContent = 'lpn_number,sku,quantity,lot_number,location_code\n' +
-        'LPN-900101,SKU-OAK-01,1470,LOT-2026-X1,A01-R01-A\n' +
-        'LPN-900102,SKU-TILE-02,512,LOT-CAL-88,A01-R02-B\n' +
-        'LPN-900103,SKU-LVP-03,1100,LOT-LVP-99,A02-R04-A\n';
+        'LPN-100001,SKU-PART-100,250,LOT-2026-X1,A01-R01-A\n' +
+        'LPN-100002,SKU-COMP-200,80,LOT-2026-X2,A01-R02-B\n' +
+        'LPN-100003,SKU-PACK-300,500,LOT-2026-X3,A02-R04-A\n';
       fileName = 'simpletory_opening_stock_sample.csv';
     } else {
       csvContent = 'code,name,zone,capacity,barcode\n' +

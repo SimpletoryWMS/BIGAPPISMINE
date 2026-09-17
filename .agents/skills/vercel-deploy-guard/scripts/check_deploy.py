@@ -46,9 +46,9 @@ def check_supabase_creds():
     with open(SUPABASE_CONFIG_PATH, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
-    # Look for SUPABASE_URL / SUPABASE_ANON_KEY
-    url_match = re.search(r"""SUPABASE_URL\s*=\s*['"]([^'"]+)['"]""", content)
-    key_match = re.search(r"""SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)['"]""", content)
+    # Look for SUPABASE_URL / SUPABASE_ANON_KEY or SUPABASE_CONFIG object
+    url_match = re.search(r"""(?:SUPABASE_URL\s*=\s*['"]|url\s*:\s*['"])([^'"]+)['"]""", content)
+    key_match = re.search(r"""(?:SUPABASE_ANON_KEY\s*=\s*['"]|anonKey\s*:\s*['"])([^'"]+)['"]""", content)
 
     if not url_match or not url_match.group(1) or 'YOUR_SUPABASE' in url_match.group(1):
         issues.append("SUPABASE_URL is missing or contains placeholder in supabase-config.js")

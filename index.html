@@ -168,10 +168,6 @@
               <i data-lucide="users"></i>
               <span>User Management</span>
             </a>
-            <a href="#developer-portal" class="nav-item" data-view="developer-portal">
-              <i data-lucide="shield-alert"></i>
-              <span>Developer Onboarding</span>
-            </a>
           </nav>
         </div>
 
@@ -180,8 +176,8 @@
           <div class="tenant-status-card">
             <div class="status-indicator-dot online"></div>
             <div class="tenant-status-info">
-              <span class="tenant-status-name" id="sidebarTenantName">Apex Flooring</span>
-              <span class="tenant-status-tier">Free Tier Active (0$ / mo)</span>
+              <span class="tenant-status-name" id="sidebarTenantName">Simpletory Enterprise</span>
+              <span class="tenant-status-tier">Enterprise Active</span>
             </div>
           </div>
         </div>
@@ -462,7 +458,7 @@
                 <i data-lucide="info" class="text-primary"></i>
                 <h3 class="card-title">Item Master Specifications & Properties</h3>
               </div>
-              <span class="badge badge-primary" id="itemDetailCategoryBadge">Hardwood</span>
+              <span class="badge badge-primary" id="itemDetailCategoryBadge">General</span>
             </div>
             <div class="card-body">
               <div class="item-metadata-grid" id="itemDetailMetaGrid">
@@ -949,30 +945,6 @@
           </div>
         </section>
 
-        <!-- ============================================================ -->
-        <!-- VIEW 10: DEVELOPER SUPER-ADMIN PORTAL (CLIENT ONBOARDING) -->
-        <!-- ============================================================ -->
-        <section id="view-developer-portal" class="app-view">
-          <div class="view-header">
-            <div>
-              <div class="flex-align-center gap-2">
-                <h1 class="view-title">Developer Master Portal</h1>
-                <span class="badge badge-accent">Platform Super-Admin</span>
-              </div>
-              <p class="view-subtitle">Create new client companies, assign initial Company Admins, and generate zero-cost onboarding links.</p>
-            </div>
-            <div class="view-actions">
-              <button class="btn btn-primary" id="btnCreateNewTenantModal">
-                <i data-lucide="plus-circle"></i> Onboard New Company
-              </button>
-            </div>
-          </div>
-
-          <div class="developer-tenants-grid" id="developerTenantsGrid">
-            <!-- Populated dynamically -->
-          </div>
-        </section>
-
       </main>
     </div>
 
@@ -1370,7 +1342,7 @@
 
             <div class="form-group">
               <label for="newItemName" class="form-label">Item / Product Name: *</label>
-              <input type="text" id="newItemName" class="form-input" placeholder="e.g. Heritage Hickory 7in Engineered Plank" required />
+              <input type="text" id="newItemName" class="form-input" placeholder="e.g. Industrial Flange Assembly 4-Inch" required />
             </div>
           </div>
 
@@ -1378,13 +1350,13 @@
             <div class="form-group">
               <label for="newItemCategory" class="form-label">Category: *</label>
               <select id="newItemCategory" class="form-select" required>
-                <option value="Hardwood">Hardwood</option>
-                <option value="LVP (Luxury Vinyl Plank)">LVP (Luxury Vinyl Plank)</option>
-                <option value="Tile & Stone">Tile & Stone</option>
-                <option value="Carpet & Rugs">Carpet & Rugs</option>
-                <option value="Laminate">Laminate</option>
-                <option value="Underlayment & Trim">Underlayment & Trim</option>
-                <option value="Adhesives & Supplies">Adhesives & Supplies</option>
+                <option value="General">General</option>
+                <option value="Finished Goods">Finished Goods</option>
+                <option value="Raw Materials">Raw Materials</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Supplies & Accessories">Supplies & Accessories</option>
               </select>
             </div>
 
@@ -1618,60 +1590,7 @@
     </div>
   </div>
 
-  <!-- MODAL 8: ONBOARD NEW TENANT (DEVELOPER PORTAL) -->
-  <div class="modal-backdrop" id="createTenantModal">
-    <div class="modal-dialog modal-md">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <i data-lucide="shield-check" class="text-accent"></i>
-          <h3 class="modal-title">Onboard New Company (Developer Portal)</h3>
-        </div>
-        <button class="modal-close-btn" data-close-modal="createTenantModal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="createTenantForm">
-          <div class="form-group">
-            <label for="newTenantName" class="form-label">Company Name: *</label>
-            <input type="text" id="newTenantName" class="form-input" placeholder="e.g. Pacific Hardwood & Tile" required />
-          </div>
 
-          <div class="grid-2-col mt-3">
-            <div class="form-group">
-              <label for="newTenantAdminName" class="form-label">Company Admin Name: *</label>
-              <input type="text" id="newTenantAdminName" class="form-input" placeholder="e.g. Marcus Vance" required />
-            </div>
-
-            <div class="form-group">
-              <label for="newTenantAdminEmail" class="form-label">Admin Email: *</label>
-              <input type="email" id="newTenantAdminEmail" class="form-input" placeholder="e.g. marcus@pacifichardwood.com" required />
-            </div>
-          </div>
-
-          <div class="form-group mt-3">
-            <label for="newTenantTemplate" class="form-label">Starter Industry Template:</label>
-            <select id="newTenantTemplate" class="form-select">
-              <option value="flooring">Flooring & Tile Specialist (Preloaded with SqFt, Dye Lot, Roll conversions)</option>
-              <option value="general_wms">General Distribution WMS (Pallet, Case, Each)</option>
-            </select>
-          </div>
-
-          <!-- Generated Invite Link Preview -->
-          <div class="invite-link-preview-box mt-4">
-            <span class="invite-link-label"><i data-lucide="link"></i> Secure Free Onboarding Link:</span>
-            <div class="copy-input-group mt-1">
-              <input type="text" id="generatedInviteUrl" class="form-input font-mono text-sm" readonly value="https://simpletory.app/onboard?token=tok_demo_9842a" />
-              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyInviteLink">Copy</button>
-            </div>
-          </div>
-
-          <div class="modal-footer mt-4">
-            <button type="button" class="btn btn-secondary" data-close-modal="createTenantModal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-glow">Create & Activate Tenant</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL 9: INVITE / CREATE TEAM MEMBER (USER MANAGEMENT) -->
   <div class="modal-backdrop" id="inviteUserModal">
@@ -1909,105 +1828,43 @@
     </div>
   </div>
 
-  <!-- MODAL 14: AUTHENTICATION & LOGIN / SIGNUP SCREEN -->
-  <div class="modal-backdrop" id="authModal">
-    <div class="modal-dialog modal-md">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <i data-lucide="shield-check" class="text-primary"></i>
-          <h3 class="modal-title">Simpletory WMS Authentication</h3>
-        </div>
-        <button class="modal-close-btn" data-close-modal="authModal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="auth-tab-group">
-          <button type="button" class="auth-tab-btn active" id="btnTabSignIn" onclick="app.switchAuthTab('signin')">
-            <i data-lucide="log-in" style="width:14px;height:14px;margin-right:4px;"></i> Sign In
-          </button>
-          <button type="button" class="auth-tab-btn" id="btnTabRegister" onclick="app.switchAuthTab('register')">
-            <i data-lucide="building" style="width:14px;height:14px;margin-right:4px;"></i> Register Organization
-          </button>
-        </div>
-
-        <!-- Tab 1: Dual-Mode Sign In (Email or Username) -->
-        <div id="authPaneSignIn" class="auth-tab-pane active">
-          <form id="signInForm">
-            <div class="form-group">
-              <label for="authIdentifier" class="form-label">Username or Work Email: *</label>
-              <input type="text" id="authIdentifier" class="form-input" placeholder="e.g. derek or dock_worker_1" required />
-            </div>
-
-            <div class="form-group mt-3">
-              <label for="authPassword" class="form-label">Password: *</label>
-              <input type="password" id="authPassword" class="form-input font-mono" placeholder="••••••••" required />
-            </div>
-
-            <div class="modal-footer mt-4">
-              <button type="button" class="btn btn-secondary" data-close-modal="authModal">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-glow" style="flex:1;">
-                <i data-lucide="log-in"></i> Sign In to Account
-              </button>
-            </div>
-          </form>
-
-          <!-- Quick Switch Demo Users -->
-          <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-subtle);">
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.6rem; font-weight:600;">⚡ Quick Demo Floor & Admin Switch:</div>
-            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
-              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('derek', 'Simpletory2026!')">👑 Admin (derek)</button>
-              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('marcus_v', 'Simpletory2026!')">📋 Manager (marcus_v)</button>
-              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('carlos_g', 'Simpletory2026!')">📦 Operator (carlos_g)</button>
-              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('dock_worker_1', 'Simpletory2026!')">🚚 Floor (dock_worker_1)</button>
-            </div>
+  <!-- AUTHENTICATION & LOGIN GATE -->
+  <div class="modal-backdrop auth-gate-backdrop" id="authModal">
+    <div class="modal-dialog modal-sm auth-gate-card">
+      <div class="modal-header auth-gate-header">
+        <div class="auth-gate-brand">
+          <div class="brand-logo" style="width:40px;height:40px;border-radius:10px;">
+            <i data-lucide="boxes" style="width:24px;height:24px;color:var(--primary);"></i>
+          </div>
+          <div>
+            <h2 class="auth-gate-title">Simpletory <span class="badge badge-primary">WMS v3.0</span></h2>
+            <p class="auth-gate-subtitle">Enterprise Multi-Tenant Warehouse Platform</p>
           </div>
         </div>
-
-        <!-- Tab 2: Register New Organization -->
-        <div id="authPaneRegister" class="auth-tab-pane">
-          <form id="registerOrgForm">
-            <div class="form-group">
-              <label for="regOrgName" class="form-label">Company / Organization Name: *</label>
-              <input type="text" id="regOrgName" class="form-input" placeholder="e.g. Pacific Logistics & Freight" required />
-            </div>
-
-            <div class="form-group mt-3">
-              <label for="regOrgTemplate" class="form-label">Industry Starter Template: *</label>
-              <select id="regOrgTemplate" class="form-select" required>
-                <option value="flooring">Flooring & Tile Specialist (SqFt, Dye Lots, Rolls)</option>
-                <option value="general_wms" selected>General Logistics & Distribution (Pallet, Case, EA)</option>
-              </select>
-            </div>
-
-            <div class="grid-2-col mt-3">
-              <div class="form-group">
-                <label for="regAdminName" class="form-label">Admin Full Name: *</label>
-                <input type="text" id="regAdminName" class="form-input" placeholder="e.g. John Doe" required />
-              </div>
-              <div class="form-group">
-                <label for="regAdminUsername" class="form-label">Admin Username: *</label>
-                <input type="text" id="regAdminUsername" class="form-input font-mono" placeholder="e.g. jdoe" required />
-              </div>
-            </div>
-
-            <div class="grid-2-col mt-3">
-              <div class="form-group">
-                <label for="regAdminEmail" class="form-label">Admin Work Email: *</label>
-                <input type="email" id="regAdminEmail" class="form-input" placeholder="e.g. john@pacificlogistics.com" required />
-              </div>
-              <div class="form-group">
-                <label for="regAdminPassword" class="form-label">Password: *</label>
-                <input type="password" id="regAdminPassword" class="form-input font-mono" placeholder="••••••••" required />
-              </div>
-            </div>
-
-            <div class="modal-footer mt-4">
-              <button type="button" class="btn btn-secondary" onclick="app.switchAuthTab('signin')">Back to Login</button>
-              <button type="submit" class="btn btn-primary btn-glow" style="flex:1;">
-                <i data-lucide="plus-circle"></i> Create Organization & Admin
-              </button>
-            </div>
-          </form>
+      </div>
+      <div class="modal-body">
+        <div class="auth-invite-notice">
+          <i data-lucide="shield-check" class="text-primary" style="width:20px;height:20px;flex-shrink:0;"></i>
+          <span><strong>Invite-Only Enterprise Access:</strong> Log in with your assigned Work Email or Username. Contact your organization administrator if you need credentials.</span>
         </div>
+
+        <form id="signInForm" class="mt-3">
+          <div class="form-group">
+            <label for="authIdentifier" class="form-label">Username or Work Email: *</label>
+            <input type="text" id="authIdentifier" class="form-input" placeholder="e.g. derek or operator_id" required autocomplete="username" />
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="authPassword" class="form-label">Password: *</label>
+            <input type="password" id="authPassword" class="form-input font-mono" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+
+          <div class="modal-footer mt-4" style="padding:0; border:none;">
+            <button type="submit" class="btn btn-primary btn-glow" style="width:100%; justify-content:center; padding:0.75rem;">
+              <i data-lucide="log-in"></i> Sign In to Account
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

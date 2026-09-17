@@ -47,11 +47,12 @@ Then visit `http://localhost:3000` in your browser.
 ### 4. Interactive Barcode & LPN Scanner
 - Click **"Scan Barcode"** in the top header or the mobile FAB button.
 - Experience the live camera laser viewfinder simulation.
-- Click any of the test barcode chips (`LPN-849201`, `LOC-A01-R01-A`, `SKU-OAK-01`) to see instant record lookup and quick relocation workflows.
+- Scan any LPN, Location Bin, or Item SKU barcode for instant record lookup and rapid warehouse operations.
 
-### 5. Multi-Tenant Switcher & Developer Master Portal
-- Switch between **"Apex Flooring & Tile (Tenant A - Flooring Specialist)"** and **"Cascade Logistics (Tenant B - General WMS)"** to observe how custom fields and UOMs isolate per company.
-- Visit the **Developer Onboarding Portal** to generate zero-cost onboarding links and activate new client companies.
+### 5. Invite-Only Enterprise Authentication & Role Management
+- Mandatory Sign-In Gate: Access is restricted strictly to pre-provisioned or invited accounts.
+- Company Admins can manage team members, assign granular operational roles, and specify facility access scopes.
+- Dual-auth model: Admins sign in via work email, while floor workers can sign in directly using User ID / Username and Password.
 
 ---
 

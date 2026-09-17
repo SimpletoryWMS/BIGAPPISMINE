@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS public.items (
     tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     sku TEXT NOT NULL,
     name TEXT NOT NULL,
-    category TEXT NOT NULL DEFAULT 'Hardwood',
+    category TEXT NOT NULL DEFAULT 'General',
     base_uom TEXT NOT NULL,
     packaging_hierarchy JSONB NOT NULL DEFAULT '[]'::JSONB,
     custom_attributes JSONB NOT NULL DEFAULT '{}'::JSONB,
@@ -307,7 +307,22 @@ CREATE POLICY "Allow public read-write for inventory_transactions" ON public.inv
 DROP POLICY IF EXISTS "Allow public read-write for label_templates" ON public.label_templates;
 CREATE POLICY "Allow public read-write for label_templates" ON public.label_templates FOR ALL USING (true) WITH CHECK (true);
 
--- Seed Canonical Role Permissions Matrix
+-- Indexes for Tenant Isolation & High Performance Querying
+CREATE INDEX IF NOT EXISTS idx_user_profiles_tenant ON public.user_profiles (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_user_facility_access_tenant ON public.user_facility_access (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_units_of_measure_tenant ON public.units_of_measure (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_custom_fields_tenant ON public.custom_fields (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_facility_types_tenant ON public.facility_types (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_facilities_tenant ON public.facilities (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_locations_tenant ON public.locations (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_items_tenant ON public.items (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_lpns_tenant ON public.lpns (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_tenant ON public.inventory_transactions (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_label_templates_tenant ON public.label_templates (tenant_id);
+
+-- ----------------------------------------------------------------------------
+-- 11. SEED CANONICAL ROLE PERMISSIONS MATRIX
+-- ----------------------------------------------------------------------------
 INSERT INTO public.role_permissions (role, permission_key, description)
 VALUES
   ('Company Admin', 'all', 'Full tenant administrative & operational access'),
@@ -323,195 +338,58 @@ VALUES
 ON CONFLICT (role, permission_key) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- 11. SEED DEFAULT TENANTS & CORE DATA
+-- 12. SEED PRIMARY ENTERPRISE TENANT & CORE FOUNDATION
 -- ----------------------------------------------------------------------------
 INSERT INTO public.tenants (id, name, slug, template, tier)
 VALUES 
-  ('tenant-flooring', 'Apex Flooring & Tile Solutions', 'apex-flooring', 'flooring', 'Enterprise Free Tier'),
-  ('tenant-general', 'Cascade Distribution & Logistics', 'cascade-logistics', 'general_wms', 'Starter Tier')
+  ('tenant-primary', 'Primary Enterprise Organization', 'primary-org', 'general_wms', 'Enterprise Tier')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed Facility Types
+-- Seed Standard Facility Types
 INSERT INTO public.facility_types (id, tenant_id, code, name, description, is_default)
 VALUES
-  ('ftype-wh-floor', 'tenant-flooring', 'warehouse', 'Main Warehouse / DC', 'Central distribution hub with racking & docks', TRUE),
-  ('ftype-shw-floor', 'tenant-flooring', 'showroom', 'Showroom & Retail', 'Customer-facing sales floor & sample library', FALSE),
-  ('ftype-van-floor', 'tenant-flooring', 'mobile_van', 'Mobile Fleet Unit', 'Installation contractor mobile van/truck', FALSE),
-  ('ftype-yard-floor', 'tenant-flooring', 'staging_yard', 'Staging Yard', 'Outdoor or jobsite contractor staging area', FALSE),
-  ('ftype-wh-gen', 'tenant-general', 'warehouse', 'Central Logistics Hub', 'Full-scale palletized distribution warehouse', TRUE),
-  ('ftype-dock-gen', 'tenant-general', 'cross_dock', 'Cross-Dock Terminal', 'Fast-turnaround inbound/outbound transit dock', FALSE),
-  ('ftype-store-gen', 'tenant-general', 'retail_store', 'Retail Branch Outlet', 'Local pickup and direct-to-consumer store', FALSE)
+  ('ftype-wh-main', 'tenant-primary', 'warehouse', 'Main Warehouse / DC', 'Central distribution hub with racking & docks', TRUE),
+  ('ftype-dock-main', 'tenant-primary', 'cross_dock', 'Cross-Dock Terminal', 'Fast-turnaround transit facility', FALSE),
+  ('ftype-fleet-main', 'tenant-primary', 'mobile_van', 'Mobile Fleet Unit', 'Installation / contractor mobile vehicle', FALSE)
 ON CONFLICT (id) DO NOTHING;
 
--- Seed UOMs
+-- Seed Standard Units of Measure
 INSERT INTO public.units_of_measure (id, tenant_id, name, code, category, is_base_default)
 VALUES
-  ('uom-sqft', 'tenant-flooring', 'Square Feet', 'SQFT', 'area', TRUE),
-  ('uom-box', 'tenant-flooring', 'Carton / Box', 'BOX', 'count', FALSE),
-  ('uom-pallet', 'tenant-flooring', 'Pallet (Outer Pack)', 'PLT', 'count', FALSE),
-  ('uom-roll', 'tenant-flooring', 'Carpet Roll', 'RL', 'length', FALSE),
-  ('uom-linft', 'tenant-flooring', 'Linear Feet', 'LFT', 'length', FALSE),
-  ('uom-pc', 'tenant-flooring', 'Piece / Tile', 'PC', 'count', FALSE),
-  ('uom-ea', 'tenant-general', 'Each / Unit', 'EA', 'count', TRUE),
-  ('uom-cs', 'tenant-general', 'Case', 'CS', 'count', FALSE),
-  ('uom-plt', 'tenant-general', 'Pallet', 'PLT', 'count', FALSE),
-  ('uom-lbs', 'tenant-general', 'Pounds (Lbs)', 'LBS', 'weight', FALSE)
+  ('uom-ea', 'tenant-primary', 'Each / Unit', 'EA', 'count', TRUE),
+  ('uom-cs', 'tenant-primary', 'Case / Box', 'CS', 'count', FALSE),
+  ('uom-plt', 'tenant-primary', 'Pallet (PLT)', 'PLT', 'count', FALSE),
+  ('uom-lbs', 'tenant-primary', 'Pounds (Lbs)', 'LBS', 'weight', FALSE),
+  ('uom-sqft', 'tenant-primary', 'Square Feet', 'SQFT', 'area', FALSE)
 ON CONFLICT (id) DO NOTHING;
 
--- Seed Custom Fields (UDFs)
-INSERT INTO public.custom_fields (id, tenant_id, key, label, type, required, show_in_grid, entity)
-VALUES
-  ('udf-sqft-box', 'tenant-flooring', 'sqft_per_box', 'Sq Ft per Box', 'number', TRUE, TRUE, 'item'),
-  ('udf-color-stain', 'tenant-flooring', 'color_stain', 'Color / Stain', 'text', TRUE, TRUE, 'item'),
-  ('udf-dye-lot', 'tenant-flooring', 'dye_lot_run', 'Dye Lot / Run #', 'text', TRUE, TRUE, 'lpn'),
-  ('udf-wear-layer', 'tenant-flooring', 'wear_layer_mil', 'Wear Layer (mil)', 'text', FALSE, FALSE, 'item'),
-  ('udf-oem-num', 'tenant-general', 'oem_part_no', 'OEM Part Number', 'text', TRUE, TRUE, 'item'),
-  ('udf-weight', 'tenant-general', 'weight_per_unit', 'Weight per Unit (lbs)', 'number', FALSE, TRUE, 'item'),
-  ('udf-batch-id', 'tenant-general', 'batch_lot_tag', 'Batch / Lot Tag', 'text', TRUE, TRUE, 'lpn')
-ON CONFLICT (id) DO NOTHING;
-
--- Seed Facilities
+-- Seed Standard Primary Warehouse Facility
 INSERT INTO public.facilities (id, tenant_id, code, name, type, address, tracking_mode)
 VALUES
-  ('fac-main-dc', 'tenant-flooring', 'FAC-01', 'Main Distribution Center & Warehouse', 'warehouse', '1040 Logistics Pkwy, Bldg 4', 'lpn'),
-  ('fac-showroom', 'tenant-flooring', 'FAC-02', 'Downtown Design Showroom & Samples', 'showroom', '420 Metro Blvd, Suite 100', 'summary_only'),
-  ('fac-van-3', 'tenant-flooring', 'FAC-03', 'Mobile Installation Van #3', 'mobile_van', 'Fleet Field Vehicle', 'summary_only'),
-  ('fac-gen-hub', 'tenant-general', 'FAC-01', 'Cascades Central Distribution', 'warehouse', '88 Commerce Way', 'lpn'),
-  ('fac-gen-dock', 'tenant-general', 'FAC-02', 'Cross-Dock Terminal East', 'warehouse', '12 Freight Lane', 'lpn')
+  ('fac-main-dc', 'tenant-primary', 'FAC-01', 'Central Distribution Center', 'warehouse', '100 Industrial Pkwy', 'lpn')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed Locations
+-- Seed Standard Receiving and Racking Location Bins
 INSERT INTO public.locations (id, tenant_id, facility_id, code, name, zone, capacity, barcode)
 VALUES
-  ('loc-a01-r01-a', 'tenant-flooring', 'fac-main-dc', 'A01-R01-A', 'Aisle 1, Rack 1, Floor Bay', 'racking', 4, 'LOC-A01-R01-A'),
-  ('loc-a01-r02-b', 'tenant-flooring', 'fac-main-dc', 'A01-R02-B', 'Aisle 1, Rack 2, Level 2', 'racking', 2, 'LOC-A01-R02-B'),
-  ('loc-a02-r04-a', 'tenant-flooring', 'fac-main-dc', 'A02-R04-A', 'Aisle 2, Rack 4, Heavy Pallet Bay', 'racking', 3, 'LOC-A02-R04-A'),
-  ('loc-car-01', 'tenant-flooring', 'fac-main-dc', 'ROLL-CAR-01', 'Carpet Roll Carousel Tower A', 'roll_rack', 12, 'LOC-ROLL-01'),
-  ('loc-rcv-01', 'tenant-flooring', 'fac-main-dc', 'RCV-DOCK-1', 'Inbound Receiving Staging Dock', 'receiving', 10, 'LOC-RCV-01'),
-  ('loc-shw-rack', 'tenant-flooring', 'fac-showroom', 'SHW-RACK-1', 'Showroom Sample Display Rack', 'floor_bulk', 50, 'LOC-SHW-01'),
-  ('loc-van-bin', 'tenant-flooring', 'fac-van-3', 'VAN-BIN-1', 'Van Interior Tool & Box Shelf', 'floor_bulk', 20, 'LOC-VAN-01'),
-  ('loc-g-01', 'tenant-general', 'fac-gen-hub', 'BAY-01-A', 'Main High-Bay Rack 1', 'racking', 6, 'LOC-BAY-01-A'),
-  ('loc-g-02', 'tenant-general', 'fac-gen-hub', 'BAY-02-B', 'Main High-Bay Rack 2', 'racking', 6, 'LOC-BAY-02-B')
+  ('loc-rcv-01', 'tenant-primary', 'fac-main-dc', 'RCV-DOCK-1', 'Inbound Receiving Staging Dock', 'receiving', 20, 'LOC-RCV-01'),
+  ('loc-a01-r01-a', 'tenant-primary', 'fac-main-dc', 'A01-R01-A', 'Aisle 1, Rack 1, Floor Bay', 'racking', 4, 'LOC-A01-R01-A'),
+  ('loc-a01-r02-b', 'tenant-primary', 'fac-main-dc', 'A01-R02-B', 'Aisle 1, Rack 2, Level 2', 'racking', 4, 'LOC-A01-R02-B')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed Catalog Items
-INSERT INTO public.items (id, tenant_id, sku, name, category, base_uom, packaging_hierarchy, custom_attributes, min_safety_stock, reorder_point, cost_price, sell_price, barcode)
-VALUES
-  (
-    'item-oak-white',
-    'tenant-flooring',
-    'SKU-OAK-01',
-    'European White Oak Engineered Hardwood 7.5in',
-    'Hardwood',
-    'SQFT',
-    '[{"level": 1, "uom": "BOX", "name": "Carton / Box", "ratioToBase": 24.5, "barcode": "07412891234"}, {"level": 2, "uom": "PLT", "name": "Pallet (60 Boxes)", "ratioToBase": 1470, "barcode": "07412891235"}]'::JSONB,
-    '{"sqft_per_box": 24.5, "color_stain": "Nordic Natural Matte", "wear_layer_mil": "4mm Sawn Veneer"}'::JSONB,
-    500,
-    1500,
-    3.85,
-    6.99,
-    'SKU-OAK-01'
-  ),
-  (
-    'item-tile-calacatta',
-    'tenant-flooring',
-    'SKU-TILE-02',
-    'Calacatta Gold Polished Porcelain Tile 24x48',
-    'Tile & Stone',
-    'SQFT',
-    '[{"level": 1, "uom": "BOX", "name": "Carton (2 Pcs)", "ratioToBase": 16.0, "barcode": "08912899011"}, {"level": 2, "uom": "PLT", "name": "Pallet (32 Boxes)", "ratioToBase": 512, "barcode": "08912899012"}]'::JSONB,
-    '{"sqft_per_box": 16.0, "color_stain": "Calacatta Warm Gold", "wear_layer_mil": "N/A - Porcelain"}'::JSONB,
-    300,
-    800,
-    2.40,
-    5.49,
-    'SKU-TILE-02'
-  ),
-  (
-    'item-lvp-slate',
-    'tenant-flooring',
-    'SKU-LVP-03',
-    'Summit Rigid Core LVP Waterproof Plank 20mil',
-    'Vinyl / LVP',
-    'SQFT',
-    '[{"level": 1, "uom": "BOX", "name": "Carton / Box", "ratioToBase": 20.0, "barcode": "06512398411"}, {"level": 2, "uom": "PLT", "name": "Pallet (55 Boxes)", "ratioToBase": 1100, "barcode": "06512398412"}]'::JSONB,
-    '{"sqft_per_box": 20.0, "color_stain": "Charcoal Slate Wirebrush", "wear_layer_mil": "20 mil Commercial"}'::JSONB,
-    1000,
-    2500,
-    1.65,
-    3.79,
-    'SKU-LVP-03'
-  ),
-  (
-    'item-carpet-berber',
-    'tenant-flooring',
-    'SKU-CPT-04',
-    'Highland Wool Loop Pattern Broadloom 12ft Roll',
-    'Carpet & Rugs',
-    'SQFT',
-    '[{"level": 1, "uom": "RL", "name": "Carpet Roll (12ft x 100ft)", "ratioToBase": 1200.0, "barcode": "09912488111"}]'::JSONB,
-    '{"sqft_per_box": 1200.0, "color_stain": "Oatmeal Heather", "wear_layer_mil": "Heavy Traffic"}'::JSONB,
-    1200,
-    2400,
-    1.90,
-    4.25,
-    'SKU-CPT-04'
-  ),
-  (
-    'item-gen-fastener',
-    'tenant-general',
-    'SKU-IND-501',
-    'M8 Grade 8.8 Galvanized Flange Bolt (100pk)',
-    'Industrial Hardware',
-    'EA',
-    '[{"level": 1, "uom": "CS", "name": "Case (10 Packs)", "ratioToBase": 10.0, "barcode": "01239912001"}, {"level": 2, "uom": "PLT", "name": "Pallet (50 Cases)", "ratioToBase": 500.0, "barcode": "01239912002"}]'::JSONB,
-    '{"oem_part_no": "FLG-M8-100G", "weight_per_unit": 4.5}'::JSONB,
-    50,
-    200,
-    12.50,
-    24.95,
-    'SKU-IND-501'
-  )
-ON CONFLICT (id) DO NOTHING;
-
--- Seed LPNS (License Plate Pallets)
-INSERT INTO public.lpns (id, tenant_id, facility_id, location_id, lpn_number, sku, lot_number, quantity, uom, pallet_status, custom_attributes)
-VALUES
-  ('lpn-849201', 'tenant-flooring', 'fac-main-dc', 'loc-a01-r01-a', 'LPN-849201', 'SKU-OAK-01', 'LOT-2026-A1', 1470, 'SQFT', 'available', '{"dye_lot_run": "LOT-2026-A1"}'::JSONB),
-  ('lpn-849202', 'tenant-flooring', 'fac-main-dc', 'loc-a01-r01-a', 'LPN-849202', 'SKU-OAK-01', 'LOT-2026-A1', 1470, 'SQFT', 'available', '{"dye_lot_run": "LOT-2026-A1"}'::JSONB),
-  ('lpn-849203', 'tenant-flooring', 'fac-main-dc', 'loc-a01-r02-b', 'LPN-849203', 'SKU-TILE-02', 'LOT-CAL-99', 512, 'SQFT', 'available', '{"dye_lot_run": "LOT-CAL-99"}'::JSONB),
-  ('lpn-849204', 'tenant-flooring', 'fac-main-dc', 'loc-a02-r04-a', 'LPN-849204', 'SKU-LVP-03', 'LOT-LVP-884', 1100, 'SQFT', 'available', '{"dye_lot_run": "LOT-LVP-884"}'::JSONB),
-  ('lpn-849205', 'tenant-flooring', 'fac-main-dc', 'loc-car-01', 'LPN-849205', 'SKU-CPT-04', 'ROLL-BER-01', 1200, 'SQFT', 'available', '{"dye_lot_run": "ROLL-BER-01"}'::JSONB),
-  ('lpn-849206', 'tenant-flooring', 'fac-main-dc', 'loc-rcv-01', 'LPN-849206', 'SKU-OAK-01', 'LOT-2026-B2', 735, 'SQFT', 'available', '{"dye_lot_run": "LOT-2026-B2"}'::JSONB),
-  ('lpn-990101', 'tenant-general', 'fac-gen-hub', 'loc-g-01', 'LPN-990101', 'SKU-IND-501', 'BATCH-88A', 500, 'EA', 'available', '{"batch_lot_tag": "BATCH-88A"}'::JSONB)
-ON CONFLICT (id) DO NOTHING;
-
--- Seed Initial Transactions
-INSERT INTO public.inventory_transactions (tenant_id, facility_id, type, lpn_id, sku, qty_change, uom, from_location_id, to_location_id, reference_doc, user_name, notes)
-VALUES
-  ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849201', 'SKU-OAK-01', 1470, 'SQFT', 'loc-rcv-01', 'loc-a01-r01-a', 'PO-2026-0881', 'Derek Lumpkin', 'Initial container intake receiving & putaway'),
-  ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849203', 'SKU-TILE-02', 512, 'SQFT', 'loc-rcv-01', 'loc-a01-r02-b', 'PO-2026-0882', 'Derek Lumpkin', 'Italian porcelain crate putaway')
-ON CONFLICT (id) DO NOTHING;
-
--- Seed User Profiles (Universal Generic Roles with Username & Email Dual-Auth)
-INSERT INTO public.user_profiles (id, tenant_id, username, email, password_hash, name, role, all_facilities_access, facility_id, status)
-VALUES
-  ('c0a80121-0001-4000-8000-000000000001', 'tenant-flooring', 'derek', 'derek@apexflooring.com', 'Simpletory2026!', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active'),
-  ('c0a80121-0002-4000-8000-000000000002', 'tenant-flooring', 'marcus_v', 'marcus@apexflooring.com', 'Simpletory2026!', 'Marcus Vance', 'Warehouse Manager', FALSE, 'fac-main-dc', 'Active'),
-  ('c0a80121-0003-4000-8000-000000000003', 'tenant-flooring', 'carlos_g', 'carlos@apexflooring.com', 'Simpletory2026!', 'Carlos Gutierrez', 'Warehouse Operator', FALSE, 'fac-van-3', 'Active'),
-  ('c0a80121-0004-4000-8000-000000000004', 'tenant-flooring', 'jessica_t', 'jessica@apexflooring.com', 'Simpletory2026!', 'Jessica Taylor', 'Viewer / Auditor', FALSE, 'fac-showroom', 'Active'),
-  ('c0a80121-0005-4000-8000-000000000005', 'tenant-general', 'elena', 'elena@cascadelogistics.com', 'Simpletory2026!', 'Elena Rostova', 'Company Admin', TRUE, 'fac-gen-wh', 'Active'),
-  ('c0a80121-0006-4000-8000-000000000006', 'tenant-flooring', 'dock_worker_1', NULL, 'Simpletory2026!', 'Floor Operator Dock 1', 'Warehouse Operator', FALSE, 'fac-main-dc', 'Active')
-ON CONFLICT (id) DO NOTHING;
-
--- Seed Default Configurable Label Templates
+-- Seed Standard Configurable Label Templates
 INSERT INTO public.label_templates (id, tenant_id, name, type, width_in, height_in, unit, is_default, include_qr, include_barcode, include_lot)
 VALUES
-  ('lbl-4x6-pallet', 'tenant-flooring', 'Standard 4x6" Pallet LPN Tag', 'lpn_pallet', 4.0, 6.0, 'in', TRUE, TRUE, TRUE, TRUE),
-  ('lbl-2x1-bin', 'tenant-flooring', 'Rack / Shelf Bin Marker (2x1")', 'bin_location', 2.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
-  ('lbl-3x1-sku', 'tenant-flooring', 'Item Carton Barcode (3x1")', 'item_sku', 3.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
-  ('lbl-85x11-sheet', 'tenant-flooring', 'Packing Sheet & Dispatch Slip (8.5x11")', 'dispatch_slip', 8.5, 11.0, 'in', FALSE, TRUE, TRUE, TRUE),
-  ('lbl-gen-4x6', 'tenant-general', 'Universal Logistics Pallet Tag (4x6")', 'lpn_pallet', 4.0, 6.0, 'in', TRUE, TRUE, TRUE, TRUE),
-  ('lbl-gen-2x1', 'tenant-general', 'Bin Location Marker (2x1")', 'bin_location', 2.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE)
+  ('lbl-4x6-pallet', 'tenant-primary', 'Standard 4x6" Pallet LPN Tag', 'lpn_pallet', 4.0, 6.0, 'in', TRUE, TRUE, TRUE, TRUE),
+  ('lbl-2x1-bin', 'tenant-primary', 'Rack / Shelf Bin Marker (2x1")', 'bin_location', 2.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
+  ('lbl-3x1-sku', 'tenant-primary', 'Item Carton Barcode (3x1")', 'item_sku', 3.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
+  ('lbl-85x11-sheet', 'tenant-primary', 'Packing Sheet & Dispatch Slip (8.5x11")', 'dispatch_slip', 8.5, 11.0, 'in', FALSE, TRUE, TRUE, TRUE)
 ON CONFLICT (id) DO NOTHING;
+
+-- Seed Initial Super Administrator Profile
+INSERT INTO public.user_profiles (id, tenant_id, username, email, password_hash, name, role, all_facilities_access, facility_id, status)
+VALUES
+  ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', 'Simpletory2026!', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active')
+ON CONFLICT (id) DO NOTHING;
+
 

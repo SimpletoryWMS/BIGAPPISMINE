@@ -255,13 +255,14 @@ class SupabaseService {
       // 3. Sync Catalog Items
       const items = store.tenantItems;
       for (const i of items) {
+        const baseUom = store.getItemBaseUom ? store.getItemBaseUom(i.id)?.code : 'EA';
         await this.client.from('items').upsert({
           id: i.id,
           tenant_id: tenantId,
           sku: i.sku,
           name: i.name,
           category: i.category || 'General',
-          base_uom: 'SQFT',
+          base_uom: baseUom || 'EA',
           custom_attributes: i.customFields || {},
           cost_price: i.costPrice || 0,
           sell_price: i.sellingPrice || 0,
@@ -273,17 +274,18 @@ class SupabaseService {
       // 4. Sync LPNs
       const lpns = store.tenantLpns;
       for (const l of lpns) {
-        const item = items.find(i => i.id === l.itemId) || items[0];
+        const item = items.find(i => i.id === l.itemId);
+        const baseUom = item && store.getItemBaseUom ? store.getItemBaseUom(item.id)?.code : 'EA';
         await this.client.from('lpns').upsert({
           id: l.id,
           tenant_id: tenantId,
           facility_id: l.facilityId,
           location_id: l.locationId,
           lpn_number: l.lpnNumber,
-          sku: item ? item.sku : 'SKU-OAK-01',
-          lot_number: l.customFields?.dye_lot_run || 'LOT-2026',
+          sku: item ? item.sku : 'SKU-GEN-01',
+          lot_number: l.customFields?.dye_lot_run || l.customFields?.lot_number || 'LOT-2026',
           quantity: l.quantityBase,
-          uom: 'SQFT',
+          uom: baseUom || 'EA',
           pallet_status: l.status || 'available',
           custom_attributes: l.customFields || {}
         });
@@ -307,11 +309,49 @@ class SupabaseService {
         });
       }
 
+      // 6. Sync User Profiles
+      const users = store.tenantUsers;
+      for (const u of users) {
+        await this.client.from('user_profiles').upsert({
+          id: u.id.startsWith('usr-') || u.id.length === 36 ? u.id : undefined,
+          tenant_id: tenantId,
+          username: u.username || (u.email ? u.email.split('@')[0] : 'admin'),
+          email: u.email || null,
+          name: u.name,
+          role: u.role || 'Warehouse Operator',
+          all_facilities_access: u.facilities === 'All Facilities' || !u.facilities,
+          facility_id: u.facilities !== 'All Facilities' ? u.facilities : null,
+          status: u.status || 'Active'
+        });
+      }
+
       this.updateStatus('live');
       console.log('☁️ Successfully synchronized store to Supabase PostgreSQL.');
     } catch (e) {
       console.error('Failed pushing store to Supabase:', e);
       this.updateStatus('live');
+    }
+  }
+
+  // Insert invited/created user profile to Supabase PostgreSQL
+  async addUserProfile(user) {
+    if (!this.client || !this.isConnected) return;
+    try {
+      const payload = {
+        tenant_id: user.tenantId || store.state.activeTenantId,
+        username: user.username || (user.email ? user.email.split('@')[0] : 'user'),
+        email: user.email || null,
+        name: user.name,
+        role: user.role || 'Warehouse Operator',
+        all_facilities_access: user.facilities === 'All Facilities' || !user.facilities,
+        facility_id: user.facilities !== 'All Facilities' ? user.facilities : null,
+        status: user.status || 'Active',
+        password_hash: user.password || 'Simpletory2026!'
+      };
+      await this.client.from('user_profiles').insert(payload);
+      console.log('☁️ User profile saved to Supabase:', user.name);
+    } catch (e) {
+      console.warn('Failed to insert user profile to Supabase:', e);
     }
   }
 
