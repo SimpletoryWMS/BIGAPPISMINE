@@ -355,6 +355,26 @@ class SupabaseService {
     }
   }
 
+  // Update User Password in Supabase PostgreSQL
+  async updateUserPassword(userIdOrUsername, newPassword) {
+    if (!this.client || !this.isConnected) return;
+    try {
+      const isUuid = userIdOrUsername && userIdOrUsername.length === 36;
+      let query = this.client.from('user_profiles').update({ password_hash: newPassword, updated_at: new Date().toISOString() });
+      if (isUuid) {
+        query = query.eq('id', userIdOrUsername);
+      } else {
+        query = query.or(`username.ilike.${userIdOrUsername},email.ilike.${userIdOrUsername}`);
+      }
+      const { error } = await query;
+      if (!error) {
+        console.log('☁️ Password updated in Supabase PostgreSQL for:', userIdOrUsername);
+      }
+    } catch (e) {
+      console.warn('Failed to update password in Supabase:', e);
+    }
+  }
+
   // Subscribe to Realtime Updates
   subscribeRealtime(tenantId, onUpdateCallback) {
     if (!this.client) return;

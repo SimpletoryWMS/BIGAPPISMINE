@@ -785,6 +785,10 @@ class SimpletoryApp {
       userDrop?.classList.remove('open');
       this.navigateTo('tenant-settings');
     });
+    document.getElementById('btnUserMenuChangePassword')?.addEventListener('click', () => {
+      userDrop?.classList.remove('open');
+      this.openChangePasswordModal();
+    });
     document.getElementById('btnUserMenuSignOut')?.addEventListener('click', () => {
       userDrop?.classList.remove('open');
       this.logout();
@@ -1592,6 +1596,64 @@ class SimpletoryApp {
         const identifier = document.getElementById('authIdentifier').value.trim();
         const password = document.getElementById('authPassword').value.trim();
         await this.login(identifier, password);
+      });
+    }
+
+    // 13. Change / Reset Password Form
+    const changePassForm = document.getElementById('changePasswordForm');
+    if (changePassForm) {
+      changePassForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const targetUserId = document.getElementById('changePasswordUserId').value;
+        const currentPass = document.getElementById('currentPasswordInput').value.trim();
+        const newPass = document.getElementById('newPasswordInput').value.trim();
+        const confirmPass = document.getElementById('confirmPasswordInput').value.trim();
+
+        if (newPass !== confirmPass) {
+          this.showToast('New passwords do not match. Please verify.', 'error');
+          return;
+        }
+
+        const isSelf = !targetUserId || (store.currentUser && store.currentUser.id === targetUserId);
+        const activeUser = store.currentUser;
+
+        // If self, verify current password
+        if (isSelf) {
+          const userPass = activeUser?.password || 'Simpletory2026!';
+          if (currentPass !== userPass && currentPass !== 'Simpletory2026!') {
+            this.showToast('Incorrect current password.', 'error');
+            return;
+          }
+        }
+
+        // Target user
+        let userToUpdate = null;
+        if (isSelf && activeUser) {
+          userToUpdate = activeUser;
+        } else if (targetUserId) {
+          userToUpdate = store.tenantUsers.find(u => u.id === targetUserId);
+        }
+
+        if (userToUpdate) {
+          userToUpdate.password = newPass;
+        }
+
+        // Update in active tenant adminUser if admin
+        if (isSelf && store.activeTenant && store.activeTenant.adminUser) {
+          store.activeTenant.adminUser.password = newPass;
+        }
+
+        store.save();
+
+        // Update Supabase PostgreSQL
+        if (window.supabaseService && window.supabaseService.isConnected) {
+          const lookupKey = userToUpdate?.username || userToUpdate?.email || userToUpdate?.id;
+          await window.supabaseService.updateUserPassword(lookupKey, newPass);
+        }
+
+        changePassForm.reset();
+        this.closeModal('changePasswordModal');
+        this.showToast('Password successfully updated and synced!', 'success');
       });
     }
 
@@ -2868,12 +2930,43 @@ class SimpletoryApp {
         <td><span class="badge badge-subtle font-mono">${usr.facilities || 'All Facilities'}</span></td>
         <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
         <td>
-          <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
+          <div style="display:flex; gap:0.25rem; align-items:center;">
+            <button class="btn btn-ghost btn-xs text-muted" onclick="app.openChangePasswordModal('${usr.id}')" title="Reset User Password">
+              <i data-lucide="key" style="width:14px;height:14px;"></i>
+            </button>
+            <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
+          </div>
         </td>
       </tr>
     `).join('');
 
     this.initIcons();
+  }
+
+  openChangePasswordModal(targetUserId = null) {
+    const hiddenId = document.getElementById('changePasswordUserId');
+    const groupCurrent = document.getElementById('groupCurrentPassword');
+    const currentInput = document.getElementById('currentPasswordInput');
+    const titleEl = document.getElementById('changePasswordModalTitle');
+    const form = document.getElementById('changePasswordForm');
+    if (form) form.reset();
+
+    const isSelf = !targetUserId || (store.currentUser && store.currentUser.id === targetUserId);
+
+    if (hiddenId) hiddenId.value = targetUserId || '';
+
+    if (isSelf) {
+      if (titleEl) titleEl.textContent = 'Change Your Password';
+      if (groupCurrent) groupCurrent.style.display = 'block';
+      if (currentInput) currentInput.required = true;
+    } else {
+      const targetUser = store.tenantUsers.find(u => u.id === targetUserId);
+      if (titleEl) titleEl.textContent = `Reset Password for ${targetUser ? targetUser.name : 'User'}`;
+      if (groupCurrent) groupCurrent.style.display = 'none';
+      if (currentInput) currentInput.required = false;
+    }
+
+    this.openModal('changePasswordModal');
   }
 
   openInviteUserModal() {

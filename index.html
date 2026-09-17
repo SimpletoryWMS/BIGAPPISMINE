@@ -108,6 +108,10 @@
             <i data-lucide="settings" style="width:16px;height:16px;color:var(--accent-purple);"></i>
             <span>Tenant Settings</span>
           </button>
+          <button class="user-menu-item" id="btnUserMenuChangePassword">
+            <i data-lucide="key" style="width:16px;height:16px;color:var(--accent-amber);"></i>
+            <span>Change Password</span>
+          </button>
           <div class="user-menu-divider"></div>
           <button class="user-menu-item text-danger" id="btnUserMenuSignOut">
             <i data-lucide="log-out" style="width:16px;height:16px;color:var(--accent-rose);"></i>
@@ -1863,6 +1867,44 @@
             <button type="submit" class="btn btn-primary btn-glow" style="width:100%; justify-content:center; padding:0.75rem;">
               <i data-lucide="log-in"></i> Sign In to Account
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHANGE / RESET PASSWORD -->
+  <div class="modal-backdrop" id="changePasswordModal">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="key" class="text-primary"></i>
+          <h3 class="modal-title" id="changePasswordModalTitle">Change Password</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="changePasswordModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="changePasswordForm">
+          <input type="hidden" id="changePasswordUserId" />
+
+          <div class="form-group" id="groupCurrentPassword">
+            <label for="currentPasswordInput" class="form-label">Current Password: *</label>
+            <input type="password" id="currentPasswordInput" class="form-input font-mono" placeholder="Enter current password" required />
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="newPasswordInput" class="form-label">New Password: *</label>
+            <input type="password" id="newPasswordInput" class="form-input font-mono" placeholder="Min. 6 characters" minlength="6" required />
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="confirmPasswordInput" class="form-label">Confirm New Password: *</label>
+            <input type="password" id="confirmPasswordInput" class="form-input font-mono" placeholder="Re-enter new password" minlength="6" required />
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="changePasswordModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow">Update Password</button>
           </div>
         </form>
       </div>
