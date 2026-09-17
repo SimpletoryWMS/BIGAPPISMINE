@@ -973,16 +973,16 @@ class SimpletoryApp {
     };
 
     // Header Mode Buttons
-    this.headerModeLpnBtn.addEventListener('click', () => setInventoryMode('lpn'));
-    this.headerModeSummaryBtn.addEventListener('click', () => setInventoryMode('summary'));
+    this.headerModeLpnBtn?.addEventListener('click', () => setInventoryMode('lpn'));
+    this.headerModeSummaryBtn?.addEventListener('click', () => setInventoryMode('summary'));
 
     // Dashboard Mode Buttons
     this.dashModeLpnBtn?.addEventListener('click', () => setInventoryMode('lpn'));
     this.dashModeSummaryBtn?.addEventListener('click', () => setInventoryMode('summary'));
 
     // Inventory View Mode Buttons
-    this.viewToggleLpn.addEventListener('click', () => setInventoryMode('lpn'));
-    this.viewToggleSummary.addEventListener('click', () => setInventoryMode('summary'));
+    this.viewToggleLpn?.addEventListener('click', () => setInventoryMode('lpn'));
+    this.viewToggleSummary?.addEventListener('click', () => setInventoryMode('summary'));
 
     // Inventory Search & Filters
     [this.inventorySearchInput, this.filterFacilitySelect, this.filterCategorySelect, this.filterStatusSelect].forEach(el => {
@@ -1053,7 +1053,7 @@ class SimpletoryApp {
       this.triggerReceiveForItem(this.activeDetailItemId);
     });
     document.getElementById('btnItemDetailAdjust')?.addEventListener('click', () => {
-      this.triggerAdjustModal(null, this.activeDetailItemId);
+      this.triggerAdjustForItem(this.activeDetailItemId);
     });
 
     // Quick Action Bar in Dashboard
@@ -1252,97 +1252,6 @@ class SimpletoryApp {
       });
     }
 
-    // 3. Adjust Stock Out / Job Dispatch Form
-    const adjForm = document.getElementById('adjustStockForm');
-    if (adjForm) {
-      const updateAdjComputation = () => {
-        const isLpnMode = this.isCurrentFacilityLpnEnabled();
-        const lpnSel = document.getElementById('adjLpnSelect');
-        const itemSel = document.getElementById('adjItemSelect');
-        const qtyInput = document.getElementById('adjQuantityInput');
-        const uomSel = document.getElementById('adjUomSelect');
-        const compText = document.getElementById('adjComputationText');
-        const consumeAll = document.getElementById('adjConsumeAllCheckbox');
-
-        let item, availableBase = 0;
-
-        if (isLpnMode) {
-          const lpn = store.tenantLpns.find(l => l.id === lpnSel.value);
-          if (lpn) {
-            item = store.tenantItems.find(i => i.id === lpn.itemId);
-            availableBase = lpn.quantityBase;
-          }
-        } else {
-          item = store.tenantItems.find(i => i.id === itemSel.value);
-          if (item) {
-            const activeFacId = store.state.activeFacilityId;
-            const facLpns = store.tenantLpns.filter(l => l.itemId === item.id && (activeFacId === 'all' || l.facilityId === activeFacId));
-            availableBase = facLpns.reduce((s, l) => s + l.quantityBase, 0);
-          }
-        }
-
-        if (!item) return;
-
-        const uomType = uomSel.value;
-        const uomName = item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea';
-
-        if (consumeAll.checked) {
-          const convAvail = UomEngine.convert(item, availableBase, 'base');
-          if (uomType === 'pallet') {
-            qtyInput.value = convAvail.fullPallets;
-          } else if (uomType === 'case') {
-            qtyInput.value = convAvail.fullCases;
-          } else {
-            qtyInput.value = availableBase;
-          }
-        }
-
-        const deductQty = parseFloat(qtyInput.value) || 0;
-        const deductConv = UomEngine.convert(item, deductQty, uomType);
-        const remainingBase = availableBase - deductConv.baseUnits;
-
-        if (remainingBase < 0) {
-          compText.innerHTML = `<span style="color:var(--accent-rose); font-weight:700;">⚠️ Error: Requested deduction (${deductConv.baseUnits.toLocaleString()} ${uomName}) exceeds available stock (${availableBase.toLocaleString()} ${uomName})</span>`;
-          document.getElementById('btnSubmitAdjustStock').disabled = true;
-        } else {
-          document.getElementById('btnSubmitAdjustStock').disabled = false;
-          compText.innerHTML = `Deducting: <strong>${deductConv.baseUnits.toLocaleString()} ${uomName}</strong> (${deductConv.fullCases} Cases) &bull; Remaining Balance: <strong>${remainingBase.toLocaleString()} ${uomName}</strong> (${Math.floor(remainingBase / (item.packaging?.caseMultiplier || 1))} Cases)`;
-        }
-      };
-
-      document.getElementById('adjLpnSelect')?.addEventListener('change', () => {
-        this.populateAdjUoms();
-        this.updateAdjPreviewCard();
-        updateAdjComputation();
-      });
-      document.getElementById('adjItemSelect')?.addEventListener('change', () => {
-        this.populateAdjUoms();
-        this.updateAdjPreviewCard();
-        updateAdjComputation();
-      });
-      document.getElementById('adjQuantityInput')?.addEventListener('input', updateAdjComputation);
-      document.getElementById('adjUomSelect')?.addEventListener('change', updateAdjComputation);
-      document.getElementById('adjConsumeAllCheckbox')?.addEventListener('change', updateAdjComputation);
-
-      adjForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const isLpnMode = this.isCurrentFacilityLpnEnabled();
-        const lpnId = document.getElementById('adjLpnSelect').value;
-        const itemId = document.getElementById('adjItemSelect').value;
-        const reasonCode = document.getElementById('adjReasonCodeSelect').value;
-        const reference = document.getElementById('adjReferenceInput').value.trim();
-        const destination = document.getElementById('adjDestinationInput').value.trim();
-        const deductQty = parseFloat(document.getElementById('adjQuantityInput').value);
-        const deductUom = document.getElementById('adjUomSelect').value;
-
-        const reasonLabels = {
-          job_dispatch: 'Job Dispatch',
-          damage_scrap: 'Scrap / Damage',
-          cycle_count_loss: 'Cycle Count Shrinkage',
-          sample_pull: 'Showroom Sample',
-          rtv: 'Return to Vendor'
-        };
-
     // 3. Dispatch Inventory Form
     const dspForm = document.getElementById('dispatchStockForm');
     if (dspForm) {
@@ -1529,39 +1438,6 @@ class SimpletoryApp {
       });
     }
 
-    // 5. Add Manufacturer Form
-    const addMfrForm = document.getElementById('addManufacturerForm');
-    if (addMfrForm) {
-      addMfrForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('newMfrName').value.trim();
-        const repName = document.getElementById('newMfrRep').value.trim();
-        const repPhone = document.getElementById('newMfrPhone').value.trim();
-        const repEmail = document.getElementById('newMfrEmail').value.trim();
-        const leadTimeDays = parseInt(document.getElementById('newMfrLeadTime').value, 10) || 5;
-
-        const newMfr = {
-          id: `mfr-${Date.now()}`,
-          name,
-          repName,
-          repPhone,
-          repEmail,
-          leadTimeDays,
-          brandLines: [name]
-        };
-
-        if (!store.state.manufacturers[store.state.activeTenantId]) {
-          store.state.manufacturers[store.state.activeTenantId] = [];
-        }
-        store.state.manufacturers[store.state.activeTenantId].push(newMfr);
-        store.save();
-        this.closeModal('addManufacturerModal');
-        this.renderAll();
-        this.showToast(`Added manufacturer: ${name}`, 'success');
-      });
-    }
-      });
-    }
 
     // 4. Add Item Form
     const addItemForm = document.getElementById('addItemForm');
@@ -1945,14 +1821,16 @@ class SimpletoryApp {
     const isLpn = store.state.inventoryMode === 'lpn' && lpnSupported;
 
     // Header Mode Toggle
-    if (!lpnSupported) {
-      this.headerModePillToggle.style.display = 'none';
-      this.headerLockedSummaryBadge.classList.remove('hidden');
-    } else {
-      this.headerModePillToggle.style.display = 'flex';
-      this.headerLockedSummaryBadge.classList.add('hidden');
-      this.headerModeLpnBtn.classList.toggle('active', isLpn);
-      this.headerModeSummaryBtn.classList.toggle('active', !isLpn);
+    if (this.headerModePillToggle) {
+      if (!lpnSupported) {
+        this.headerModePillToggle.style.display = 'none';
+        this.headerLockedSummaryBadge?.classList.remove('hidden');
+      } else {
+        this.headerModePillToggle.style.display = 'flex';
+        this.headerLockedSummaryBadge?.classList.add('hidden');
+        this.headerModeLpnBtn?.classList.toggle('active', isLpn);
+        this.headerModeSummaryBtn?.classList.toggle('active', !isLpn);
+      }
     }
 
     // Dashboard Mode Toggle
@@ -1972,23 +1850,25 @@ class SimpletoryApp {
     if (this.viewToggleLpn) {
       if (!lpnSupported) {
         this.viewToggleLpn.style.display = 'none';
-        this.viewToggleSummary.classList.add('active');
+        this.viewToggleSummary?.classList.add('active');
       } else {
         this.viewToggleLpn.style.display = 'inline-flex';
         this.viewToggleLpn.classList.toggle('active', isLpn);
-        this.viewToggleSummary.classList.toggle('active', !isLpn);
+        this.viewToggleSummary?.classList.toggle('active', !isLpn);
       }
     }
 
-    this.lpnModeContainer.classList.toggle('active', isLpn);
-    this.summaryModeContainer.classList.toggle('active', !isLpn);
+    this.lpnModeContainer?.classList.toggle('active', isLpn);
+    this.summaryModeContainer?.classList.toggle('active', !isLpn);
 
-    if (!lpnSupported) {
-      this.inventoryModeBadge.textContent = 'Facility Locked: Summary Mode';
-      this.inventoryModeBadge.className = 'badge badge-warning';
-    } else {
-      this.inventoryModeBadge.textContent = isLpn ? 'LPN Pallet Tracking Active' : 'Summary Stock Mode Active';
-      this.inventoryModeBadge.className = isLpn ? 'badge badge-primary' : 'badge badge-accent';
+    if (this.inventoryModeBadge) {
+      if (!lpnSupported) {
+        this.inventoryModeBadge.textContent = 'Facility Locked: Summary Mode';
+        this.inventoryModeBadge.className = 'badge badge-warning';
+      } else {
+        this.inventoryModeBadge.textContent = isLpn ? 'LPN Pallet Tracking Active' : 'Summary Stock Mode Active';
+        this.inventoryModeBadge.className = isLpn ? 'badge badge-primary' : 'badge badge-accent';
+      }
     }
   }
 
@@ -2455,7 +2335,6 @@ class SimpletoryApp {
     }).join('');
 
     this.initIcons();
-  }
   }
 
   // ============================================================================
@@ -3254,88 +3133,11 @@ class SimpletoryApp {
   }
 
   triggerAdjustModal(lpnId = null, itemId = null) {
-    const isLpnMode = this.isCurrentFacilityLpnEnabled();
-    const lpnGroup = document.getElementById('adjLpnGroup');
-    const itemGroup = document.getElementById('adjItemGroup');
-    const lpnSel = document.getElementById('adjLpnSelect');
-    const itemSel = document.getElementById('adjItemSelect');
-
-    if (isLpnMode) {
-      lpnGroup.style.display = 'flex';
-      itemGroup.style.display = 'none';
-
-      lpnSel.innerHTML = store.tenantLpns.map(l => {
-        const item = store.tenantItems.find(i => i.id === l.itemId);
-        const loc = store.tenantLocations.find(loc => loc.id === l.locationId);
-        return `<option value="${l.id}" ${l.id === lpnId ? 'selected' : ''}>${l.lpnNumber} &bull; ${item ? item.sku : ''} (${l.quantityBase} ${item && item.baseUomId === 'uom-sqft' ? 'SqFt' : 'Ea'} in ${loc ? loc.code : 'Bin'})</option>`;
-      }).join('');
-      if (lpnId) lpnSel.value = lpnId;
-    } else {
-      lpnGroup.style.display = 'none';
-      itemGroup.style.display = 'flex';
-
-      itemSel.innerHTML = store.tenantItems.map(i => {
-        const facLpns = store.tenantLpns.filter(l => l.itemId === i.id);
-        const total = facLpns.reduce((s, l) => s + l.quantityBase, 0);
-        return `<option value="${i.id}" ${i.id === itemId ? 'selected' : ''}>${i.sku} - ${i.name} (Total In Stock: ${total.toLocaleString()} ${i.baseUomId === 'uom-sqft' ? 'SqFt' : 'Ea'})</option>`;
-      }).join('');
-      if (itemId) itemSel.value = itemId;
+    if (lpnId && !itemId) {
+      const lpn = store.tenantLpns.find(l => l.id === lpnId);
+      if (lpn) itemId = lpn.itemId;
     }
-
-    this.populateAdjUoms();
-    document.getElementById('adjConsumeAllCheckbox').checked = false;
-    document.getElementById('adjQuantityInput').value = '1';
-
-    this.updateAdjPreviewCard();
-    this.openModal('adjustStockModal');
-
-    // Trigger calculation update
-    const qtyInput = document.getElementById('adjQuantityInput');
-    qtyInput.dispatchEvent(new Event('input'));
-  }
-
-  updateAdjPreviewCard() {
-    const isLpnMode = this.isCurrentFacilityLpnEnabled();
-    const previewEl = document.getElementById('adjStockPreviewCard');
-    const lpnSel = document.getElementById('adjLpnSelect');
-    const itemSel = document.getElementById('adjItemSelect');
-
-    if (isLpnMode) {
-      const lpn = store.tenantLpns.find(l => l.id === lpnSel.value) || store.tenantLpns[0];
-      if (lpn) {
-        const item = store.tenantItems.find(i => i.id === lpn.itemId);
-        const loc = store.tenantLocations.find(loc => loc.id === lpn.locationId);
-        const fac = store.tenantFacilities.find(f => f.id === lpn.facilityId);
-        const pkg = UomEngine.formatPackagingBadge(item, lpn.quantityBase);
-
-        previewEl.innerHTML = `
-          <div style="font-size:0.82rem; line-height:1.4;">
-            <div style="display:flex; justify-content:space-between;">
-              <span><strong>Source LPN:</strong> <span class="font-mono text-primary">${lpn.lpnNumber}</span> (${item ? item.sku : ''})</span>
-              <span class="badge badge-success">${lpn.status.toUpperCase()}</span>
-            </div>
-            <div><strong>Stored At:</strong> ${fac ? fac.code : ''} &bull; ${loc ? loc.code : 'Bin'} (${loc ? loc.name : ''})</div>
-            <div><strong>Available Stock:</strong> <span class="font-mono text-lg font-bold">${lpn.quantityBase.toLocaleString()}</span> ${item && item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'} &bull; <span class="badge badge-primary">${pkg}</span></div>
-          </div>
-        `;
-      }
-    } else {
-      const item = store.tenantItems.find(i => i.id === itemSel.value) || store.tenantItems[0];
-      if (item) {
-        const activeFacId = store.state.activeFacilityId;
-        const facLpns = store.tenantLpns.filter(l => l.itemId === item.id && (activeFacId === 'all' || l.facilityId === activeFacId));
-        const total = facLpns.reduce((s, l) => s + l.quantityBase, 0);
-        const pkg = UomEngine.formatPackagingBadge(item, total);
-
-        previewEl.innerHTML = `
-          <div style="font-size:0.82rem; line-height:1.4;">
-            <div><strong>Product:</strong> <span class="font-mono text-primary">${item.sku}</span> &mdash; ${item.name}</div>
-            <div><strong>Facility Summary:</strong> ${store.activeTenant.name}</div>
-            <div><strong>Total Available:</strong> <span class="font-mono text-lg font-bold">${total.toLocaleString()}</span> ${item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'} &bull; <span class="badge badge-primary">${pkg}</span></div>
-          </div>
-        `;
-      }
-    }
+    this.triggerAdjustForItem(itemId);
   }
 
   openModal(modalId) {
