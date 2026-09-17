@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <!-- Facility & Mode Quick Selector in Header -->
+      <!-- Active Facility Selector in Header -->
       <div class="top-bar-center">
         <div class="facility-context-chip">
           <i data-lucide="building-2" class="chip-icon"></i>
@@ -49,22 +49,6 @@
           <select id="globalFacilitySelect" class="header-select">
             <!-- Populated dynamically by app.js -->
           </select>
-        </div>
-
-        <div class="quick-uom-mode-chip" id="headerModeChipContainer">
-          <i data-lucide="layers" class="chip-icon"></i>
-          <span class="chip-label">View:</span>
-          <div class="mode-pill-toggle" id="headerModePillToggle">
-            <button id="headerModeLpnBtn" class="mode-pill active" title="License Plate Number / Pallet Bin Tracking">
-              <i data-lucide="qr-code"></i> LPN Mode
-            </button>
-            <button id="headerModeSummaryBtn" class="mode-pill" title="Aggregated Summary by Location">
-              <i data-lucide="table"></i> Summary Mode
-            </button>
-          </div>
-          <div id="headerLockedSummaryBadge" class="facility-locked-badge hidden" title="This facility is configured in Admin as Summary Only">
-            <i data-lucide="lock"></i> Summary Only Facility
-          </div>
         </div>
       </div>
 
@@ -125,8 +109,8 @@
               <span class="nav-badge" id="totalLpnBadge">0</span>
             </a>
             <a href="#operations" class="nav-item" data-view="operations">
-              <i data-lucide="arrow-left-right"></i>
-              <span>Stock Movements</span>
+              <i data-lucide="history"></i>
+              <span>Inventory History</span>
             </a>
           </nav>
         </div>
@@ -144,7 +128,7 @@
             </a>
             <a href="#manufacturers" class="nav-item" data-view="manufacturers">
               <i data-lucide="truck"></i>
-              <span>Manufacturers</span>
+              <span>Manufacturers & Suppliers</span>
             </a>
           </nav>
         </div>
@@ -289,7 +273,7 @@
               <div class="card-header">
                 <div class="card-header-left">
                   <i data-lucide="history" class="text-primary"></i>
-                  <h3 class="card-title">Recent Stock Movements & Audit Trail</h3>
+                  <h3 class="card-title">Recent Inventory History & Audit Trail</h3>
                 </div>
                 <button class="btn btn-ghost btn-sm" id="btnViewAllMovements">View All</button>
               </div>
@@ -333,25 +317,23 @@
         </section>
 
         <!-- ============================================================ -->
-        <!-- VIEW 2: INVENTORY STOCK (DUAL MODE: LPN vs SUMMARY) -->
+        <!-- VIEW 2: INVENTORY STOCK (CLEAN GROUPED ITEM TABLE) -->
         <!-- ============================================================ -->
         <section id="view-inventory" class="app-view">
           <div class="view-header">
             <div>
-              <div class="flex-align-center gap-2">
-                <h1 class="view-title">Inventory Stock Explorer</h1>
-                <span class="badge badge-primary" id="inventoryModeBadge">LPN Tracking Active</span>
-              </div>
-              <p class="view-subtitle">Search, filter, relocate, and inspect physical stock across all facilities.</p>
+              <h1 class="view-title">Inventory Stock</h1>
+              <p class="view-subtitle">Physical on-hand inventory balances, packaging breakdowns, and bin locations grouped by item.</p>
             </div>
             <div class="view-actions">
-              <!-- View Mode Toggle in View Header -->
-              <div class="segmented-control">
-                <button id="viewToggleLpn" class="segmented-btn active"><i data-lucide="qr-code"></i> License Plates (LPN)</button>
-                <button id="viewToggleSummary" class="segmented-btn"><i data-lucide="table"></i> Summary by Location</button>
-              </div>
-              <button class="btn btn-primary" id="btnReceiveInbound">
-                <i data-lucide="plus-circle"></i> Receive Inbound Stock
+              <button class="btn btn-primary btn-glow" id="btnReceiveInbound">
+                <i data-lucide="package-plus"></i> Receive New Inventory
+              </button>
+              <button class="btn btn-secondary" id="btnDispatchInventory">
+                <i data-lucide="package-minus"></i> Dispatch Inventory
+              </button>
+              <button class="btn btn-outline" id="btnAdjustInventory">
+                <i data-lucide="sliders"></i> Adjust Inventory
               </button>
             </div>
           </div>
@@ -360,7 +342,7 @@
           <div class="filter-toolbar">
             <div class="search-input-wrapper">
               <i data-lucide="search" class="search-icon"></i>
-              <input type="text" id="inventorySearchInput" class="search-input" placeholder="Search SKU, LPN tag, Item Name, Dye Lot, Barcode..." />
+              <input type="text" id="inventorySearchInput" class="search-input" placeholder="Search SKU, Item Name, Category, Location, Lot #..." />
             </div>
 
             <div class="filter-group">
@@ -376,51 +358,36 @@
 
               <select id="filterStatusSelect" class="filter-select">
                 <option value="all">All Stock Statuses</option>
-                <option value="available">Available</option>
-                <option value="reserved">Reserved for Job</option>
-                <option value="damaged">Damaged / Quarantine</option>
+                <option value="in_stock">In Stock (> 0)</option>
+                <option value="low_stock">Low Stock (At / Below Reorder)</option>
+                <option value="out_of_stock">Out of Stock (0)</option>
               </select>
             </div>
           </div>
 
-          <!-- Dynamic UDF Columns Indicator Banner -->
-          <div class="custom-fields-notice-banner" id="udfNoticeBanner">
-            <i data-lucide="sparkles" class="banner-icon"></i>
-            <span id="udfBannerText">Displaying Tenant-Configured Attributes: <strong>Square Foot per Box</strong>, <strong>Color / Stain</strong>, <strong>Dye Lot / Run #</strong></span>
-            <button class="btn btn-xs btn-outline" id="btnEditCustomFieldsLink">Edit Tenant Fields</button>
-          </div>
-
-          <!-- LPN MODE CONTAINER -->
-          <div id="lpnModeContainer" class="inventory-mode-container active">
-            <div class="lpn-cards-grid" id="lpnCardsGrid">
-              <!-- LPN Cards rendered dynamically -->
-            </div>
-          </div>
-
-          <!-- SUMMARY MODE CONTAINER -->
-          <div id="summaryModeContainer" class="inventory-mode-container">
-            <div class="card">
-              <div class="card-body no-padding">
-                <div class="table-container">
-                  <table class="data-table" id="summaryStockTable">
-                    <thead>
-                      <tr id="summaryTableHeaderRow">
-                        <th>SKU / Item</th>
-                        <th>Category</th>
-                        <th>Facility</th>
-                        <th>Location</th>
-                        <!-- Dynamic UDF Headers injected here -->
-                        <th>Total In Stock</th>
-                        <th>Packaging Breakdown</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="summaryStockTableBody">
-                      <!-- Populated dynamically -->
-                    </tbody>
-                  </table>
-                </div>
+          <!-- Main Inventory Stock Table Card (Matches Item Catalog Aesthetic) -->
+          <div class="card">
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="inventoryMasterStockTable">
+                  <thead>
+                    <tr id="inventoryTableHeaderRow">
+                      <th>SKU</th>
+                      <th>Item Name</th>
+                      <th>Category</th>
+                      <th>Locations / Bins</th>
+                      <th>Total On-Hand</th>
+                      <th>Packaging Breakdown</th>
+                      <th>Active Lots / LPNs</th>
+                      <th>Stock Value</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventoryMasterStockTableBody">
+                    <!-- Populated dynamically by app.js -->
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -679,7 +646,7 @@
         </section>
 
         <!-- ============================================================ -->
-        <!-- VIEW 6: MASTER DATA - MANUFACTURERS -->
+        <!-- VIEW 6: MASTER DATA - MANUFACTURERS & SUPPLIERS -->
         <!-- ============================================================ -->
         <section id="view-manufacturers" class="app-view">
           <div class="view-header">
@@ -689,24 +656,44 @@
             </div>
             <div class="view-actions">
               <button class="btn btn-primary" id="btnAddManufacturerModalBtn">
-                <i data-lucide="plus"></i> Add Manufacturer
+                <i data-lucide="plus"></i> Add Manufacturer / Supplier
               </button>
             </div>
           </div>
 
-          <div class="manufacturers-grid" id="manufacturersGrid">
-            <!-- Populated dynamically -->
+          <div class="card">
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="manufacturersMasterTable">
+                  <thead>
+                    <tr>
+                      <th>Manufacturer / Supplier</th>
+                      <th>Sales Rep</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>Lead Time</th>
+                      <th>Brand Lines</th>
+                      <th>Active SKUs</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="manufacturersTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </section>
 
         <!-- ============================================================ -->
-        <!-- VIEW 7: STOCK MOVEMENTS & AUDIT LOG -->
+        <!-- VIEW 7: INVENTORY HISTORY (STOCK MOVEMENTS & AUDIT LOG) -->
         <!-- ============================================================ -->
         <section id="view-operations" class="app-view">
           <div class="view-header">
             <div>
-              <h1 class="view-title">Stock Movements & Audit History</h1>
-              <p class="view-subtitle">Complete ledger of all inbound receipts, LPN relocations, job dispatches, and adjustments.</p>
+              <h1 class="view-title">Inventory History</h1>
+              <p class="view-subtitle">Complete ledger of all inbound receipts, dispatches, relocations, and stock adjustments.</p>
             </div>
             <div class="view-actions">
               <button class="btn btn-secondary" id="btnExportAuditLog">
@@ -1107,95 +1094,151 @@
     </div>
   </div>
 
-  <!-- MODAL: ADJUST STOCK OUT / JOB DISPATCH -->
-  <div class="modal-backdrop" id="adjustStockModal">
+  <!-- MODAL: DISPATCH INVENTORY -->
+  <div class="modal-backdrop" id="dispatchStockModal">
     <div class="modal-dialog modal-lg">
       <div class="modal-header">
         <div class="modal-title-group">
           <i data-lucide="package-minus" class="text-accent"></i>
-          <h3 class="modal-title">Adjust Stock Out / Job Dispatch</h3>
+          <h3 class="modal-title">Dispatch Inventory</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="dispatchStockModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="dispatchStockForm">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="dspItemSelect" class="form-label">Select SKU / Item: *</label>
+              <select id="dspItemSelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="dspLocationSelect" class="form-label">Source Facility & Location: *</label>
+              <select id="dspLocationSelect" class="form-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="dspDestinationInput" class="form-label">Dispatch Destination / Customer / Van: *</label>
+              <input type="text" id="dspDestinationInput" class="form-input" placeholder="e.g. Job #4092 - Smith Master Bath / Van #3" required />
+            </div>
+
+            <div class="form-group">
+              <label for="dspReferenceInput" class="form-label">Order # / Reference Doc: *</label>
+              <input type="text" id="dspReferenceInput" class="form-input font-mono" placeholder="e.g. WO-88192" required />
+            </div>
+          </div>
+
+          <!-- Quantity to Dispatch -->
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="dspQuantityInput" class="form-label">Quantity to Dispatch: *</label>
+              <input type="number" id="dspQuantityInput" class="form-input font-mono text-lg" min="0.1" step="any" value="1" required />
+            </div>
+
+            <div class="form-group">
+              <label for="dspUomSelect" class="form-label">Unit of Measure: *</label>
+              <select id="dspUomSelect" class="form-select text-lg">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Live Computation Banner -->
+          <div class="form-rollup-preview mt-3" id="dspComputationBanner">
+            <i data-lucide="calculator"></i>
+            <span id="dspComputationText">Dispatching: 1 Case (30 Sq Ft)</span>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="dispatchStockModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitDispatchStock">
+              <i data-lucide="check"></i> Confirm & Dispatch Inventory
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADJUST INVENTORY -->
+  <div class="modal-backdrop" id="adjustStockModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="sliders" class="text-primary"></i>
+          <h3 class="modal-title">Adjust Inventory</h3>
         </div>
         <button class="modal-close-btn" data-close-modal="adjustStockModal">&times;</button>
       </div>
       <div class="modal-body">
         <form id="adjustStockForm">
           <div class="grid-2-col">
-            <!-- Source selection (LPN vs Item) -->
-            <div class="form-group" id="adjLpnGroup">
-              <label for="adjLpnSelect" class="form-label">Source License Plate (LPN): *</label>
-              <select id="adjLpnSelect" class="form-select">
-                <!-- Populated dynamically -->
-              </select>
-            </div>
-
-            <div class="form-group" id="adjItemGroup" style="display:none;">
-              <label for="adjItemSelect" class="form-label">Select SKU / Item: *</label>
-              <select id="adjItemSelect" class="form-select">
+            <div class="form-group">
+              <label for="adjInvItemSelect" class="form-label">Select SKU / Item: *</label>
+              <select id="adjInvItemSelect" class="form-select" required>
                 <!-- Populated dynamically -->
               </select>
             </div>
 
             <div class="form-group">
-              <label for="adjReasonCodeSelect" class="form-label">Adjustment Reason Code: *</label>
-              <select id="adjReasonCodeSelect" class="form-select" required>
-                <option value="job_dispatch">📦 Job Order Pick / Installation Dispatch</option>
-                <option value="damage_scrap">⚠️ Damaged / Broken / Defective Scrap</option>
-                <option value="cycle_count_loss">🔍 Cycle Count Loss / Shrinkage</option>
-                <option value="sample_pull">🏷️ Showroom / Sales Sample Pull</option>
-                <option value="rtv">🔄 Return to Vendor (RTV)</option>
+              <label for="adjInvLocationSelect" class="form-label">Facility & Location: *</label>
+              <select id="adjInvLocationSelect" class="form-select" required>
+                <!-- Populated dynamically -->
               </select>
             </div>
           </div>
 
-          <!-- LPN / Item Available Balance Preview Card -->
-          <div class="lpn-quick-preview-card mt-3" id="adjStockPreviewCard">
-            <!-- Dynamic balance summary -->
-          </div>
-
           <div class="grid-2-col mt-3">
             <div class="form-group">
-              <label for="adjReferenceInput" class="form-label">Job # / Work Order / Reference Note: *</label>
-              <input type="text" id="adjReferenceInput" class="form-input font-mono" placeholder="e.g. Job #4092 - Smith Master Bath Remodel" required />
+              <label for="adjInvTypeSelect" class="form-label">Adjustment Type: *</label>
+              <select id="adjInvTypeSelect" class="form-select" required>
+                <option value="set">Count Correction (Set Exact On-Hand)</option>
+                <option value="add">Add Stock (+ Quantity)</option>
+                <option value="deduct">Deduct Stock (- Quantity)</option>
+              </select>
             </div>
 
             <div class="form-group">
-              <label for="adjDestinationInput" class="form-label">Dispatch Destination / Installer:</label>
-              <input type="text" id="adjDestinationInput" class="form-input" placeholder="e.g. Service Van #3 / Carlos G." />
-            </div>
-          </div>
-
-          <!-- Quantity to Deduct -->
-          <div class="grid-2-col mt-3">
-            <div class="form-group">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label for="adjQuantityInput" class="form-label">Quantity to Deduct: *</label>
-                <label style="font-size:0.72rem; color:var(--accent-cyan); cursor:pointer;">
-                  <input type="checkbox" id="adjConsumeAllCheckbox" /> Consume Entire Balance
-                </label>
-              </div>
-              <input type="number" id="adjQuantityInput" class="form-input font-mono text-lg" min="0.1" step="any" value="1" required />
-            </div>
-
-            <div class="form-group">
-              <label for="adjUomSelect" class="form-label">Deduction Unit: *</label>
-              <select id="adjUomSelect" class="form-select text-lg">
-                <option value="case">Case / Carton (Inner Pack)</option>
-                <option value="pallet">Full Pallet (Outer Pack)</option>
-                <option value="base">Base Units (Sq Ft / Each)</option>
+              <label for="adjInvReasonSelect" class="form-label">Reason Code: *</label>
+              <select id="adjInvReasonSelect" class="form-select" required>
+                <option value="cycle_count">🔍 Cycle Count Correction</option>
+                <option value="damaged">⚠️ Damaged / Defective Scrap</option>
+                <option value="sample">🏷️ Showroom / Sample Pull</option>
+                <option value="found_stock">📦 Found Unrecorded Stock</option>
+                <option value="shrinkage">📉 Shrinkage / Inventory Loss</option>
               </select>
             </div>
           </div>
 
-          <!-- Live Computation Banner: Deducted vs Remaining -->
-          <div class="form-rollup-preview mt-3" id="adjComputationBanner">
-            <i data-lucide="calculator"></i>
-            <span id="adjComputationText">Deducting: 1 Case (30 Sq Ft) &bull; Remaining Balance: 59 Cases (1,770 Sq Ft)</span>
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="adjInvQuantityInput" class="form-label">Quantity: *</label>
+              <input type="number" id="adjInvQuantityInput" class="form-input font-mono text-lg" min="0" step="any" value="1" required />
+            </div>
+
+            <div class="form-group">
+              <label for="adjInvUomSelect" class="form-label">Unit of Measure: *</label>
+              <select id="adjInvUomSelect" class="form-select text-lg">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="adjInvNotesInput" class="form-label">Adjustment Notes / Auditor Reference: *</label>
+            <input type="text" id="adjInvNotesInput" class="form-input" placeholder="e.g. Q3 Physical inventory count audit" required />
           </div>
 
           <div class="modal-footer mt-4">
             <button type="button" class="btn btn-secondary" data-close-modal="adjustStockModal">Cancel</button>
             <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitAdjustStock">
-              <i data-lucide="check"></i> Confirm Outbound Deduction
+              <i data-lucide="check"></i> Confirm Inventory Adjustment
             </button>
           </div>
         </form>

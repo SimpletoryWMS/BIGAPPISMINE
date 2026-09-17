@@ -1059,13 +1059,15 @@ class SimpletoryApp {
     // Quick Action Bar in Dashboard
     document.getElementById('stripReceiveBtn')?.addEventListener('click', () => this.openModal('receiveStockModal'));
     document.getElementById('stripMoveBtn')?.addEventListener('click', () => this.openModal('moveLpnModal'));
-    document.getElementById('stripPickBtn')?.addEventListener('click', () => this.triggerAdjustModal());
+    document.getElementById('stripPickBtn')?.addEventListener('click', () => this.triggerDispatchForItem());
     document.getElementById('stripItemCatalogBtn')?.addEventListener('click', () => this.navigateTo('items'));
     document.getElementById('stripCustomFieldsBtn')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
 
     document.getElementById('btnQuickReceiveFromDash')?.addEventListener('click', () => this.openModal('receiveStockModal'));
     document.getElementById('btnQuickMoveFromDash')?.addEventListener('click', () => this.openModal('moveLpnModal'));
     document.getElementById('btnReceiveInbound')?.addEventListener('click', () => this.openModal('receiveStockModal'));
+    document.getElementById('btnDispatchInventory')?.addEventListener('click', () => this.triggerDispatchForItem());
+    document.getElementById('btnAdjustInventory')?.addEventListener('click', () => this.triggerAdjustForItem());
     document.getElementById('btnAddNewItem')?.addEventListener('click', () => this.openModal('addItemModal'));
     document.getElementById('btnAddFacilityModalBtn')?.addEventListener('click', () => this.openModal('addFacilityModal'));
     document.getElementById('btnAddFacilityQuick')?.addEventListener('click', () => this.openModal('addFacilityModal'));
@@ -1341,89 +1343,223 @@ class SimpletoryApp {
           rtv: 'Return to Vendor'
         };
 
-        if (isLpnMode) {
-          const lpn = store.tenantLpns.find(l => l.id === lpnId);
-          if (!lpn) return;
-          const item = store.tenantItems.find(i => i.id === lpn.itemId);
-          const conv = UomEngine.convert(item, deductQty, deductUom);
-          const loc = store.tenantLocations.find(l => l.id === lpn.locationId);
-          const fac = store.tenantFacilities.find(f => f.id === lpn.facilityId);
+    // 3. Dispatch Inventory Form
+    const dspForm = document.getElementById('dispatchStockForm');
+    if (dspForm) {
+      const updateDspPreview = () => {
+        const itemSelect = document.getElementById('dspItemSelect');
+        const qtyInput = document.getElementById('dspQuantityInput');
+        const uomSelect = document.getElementById('dspUomSelect');
+        const previewText = document.getElementById('dspComputationText');
 
-          if (conv.baseUnits > lpn.quantityBase) {
-            this.showToast('Cannot deduct more than available LPN balance!', 'warning');
-            return;
-          }
+        const item = store.tenantItems.find(i => i.id === itemSelect?.value);
+        if (!item) return;
 
-          lpn.quantityBase = Number((lpn.quantityBase - conv.baseUnits).toFixed(2));
+        const qty = parseFloat(qtyInput.value) || 0;
+        const uomTierId = uomSelect?.value;
+        const conv = UomEngine.convert(item, qty, uomTierId);
+        const baseUom = store.getItemBaseUom(item.id);
+        const itemUoms = store.getItemUoms(item.id);
+        const selectedTier = itemUoms.find(u => u.id === uomTierId) || itemUoms[0];
 
-          if (lpn.quantityBase <= 0) {
-            lpn.status = 'dispatched';
-            // Archive/remove empty LPN from bin
-            store.state.licensePlates[store.state.activeTenantId] = store.tenantLpns.filter(l => l.id !== lpn.id);
-          }
-
-          const newTx = {
-            id: `tx-${Date.now().toString().slice(-4)}`,
-            timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
-            type: reasonLabels[reasonCode] || 'Stock Outbound',
-            lpn: lpn.lpnNumber,
-            sku: item ? item.sku : 'N/A',
-            from: `${fac ? fac.code : ''} / ${loc ? loc.code : ''}`,
-            to: destination || reference || 'Customer Site',
-            qty: `-${conv.baseUnits.toLocaleString()} ${item && item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'} (${conv.fullCases} Cases)`,
-            user: store.activeTenant.adminUser.name,
-            note: `${reference} (${destination || 'Outbound'})`
-          };
-
-          store.state.transactions[store.state.activeTenantId].unshift(newTx);
-          store.save();
-          this.closeModal('adjustStockModal');
-          this.renderAll();
-          this.showToast(`Deducted ${conv.baseUnits.toLocaleString()} units from ${lpn.lpnNumber} for ${reference}`, 'success');
-
-        } else {
-          // Summary Mode Outbound Deduction
-          const item = store.tenantItems.find(i => i.id === itemId);
-          if (!item) return;
-          const conv = UomEngine.convert(item, deductQty, deductUom);
-          const activeFacId = store.state.activeFacilityId;
-          const fac = store.tenantFacilities.find(f => f.id === activeFacId);
-
-          // Deduct from facility LPNs/stock
-          let remainingToDeduct = conv.baseUnits;
-          const facLpns = store.tenantLpns.filter(l => l.itemId === item.id && (activeFacId === 'all' || l.facilityId === activeFacId));
-
-          for (const lpn of facLpns) {
-            if (remainingToDeduct <= 0) break;
-            if (lpn.quantityBase <= remainingToDeduct) {
-              remainingToDeduct -= lpn.quantityBase;
-              lpn.quantityBase = 0;
-            } else {
-              lpn.quantityBase = Number((lpn.quantityBase - remainingToDeduct).toFixed(2));
-              remainingToDeduct = 0;
-            }
-          }
-          store.state.licensePlates[store.state.activeTenantId] = store.tenantLpns.filter(l => l.quantityBase > 0);
-
-          const newTx = {
-            id: `tx-${Date.now().toString().slice(-4)}`,
-            timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
-            type: reasonLabels[reasonCode] || 'Summary Outbound',
-            lpn: 'SUMMARY-OUT',
-            sku: item.sku,
-            from: fac ? `${fac.code} Bulk` : 'Warehouse Stock',
-            to: destination || reference || 'Dispatched',
-            qty: `-${conv.baseUnits.toLocaleString()} ${item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'} (${conv.fullCases} Cases)`,
-            user: store.activeTenant.adminUser.name,
-            note: `${reference} (${destination || 'Outbound'})`
-          };
-
-          store.state.transactions[store.state.activeTenantId].unshift(newTx);
-          store.save();
-          this.closeModal('adjustStockModal');
-          this.renderAll();
-          this.showToast(`Deducted ${conv.baseUnits.toLocaleString()} units of ${item.sku} for ${reference}`, 'success');
+        if (previewText) {
+          previewText.textContent = `Dispatching ${qty} × ${selectedTier ? selectedTier.tierName : 'Unit'} = ${conv.baseUnits.toLocaleString()} ${baseUom?.code || 'Units'}`;
         }
+      };
+
+      document.getElementById('dspItemSelect')?.addEventListener('change', () => {
+        this.populateDspUoms();
+        updateDspPreview();
+      });
+      document.getElementById('dspQuantityInput')?.addEventListener('input', updateDspPreview);
+      document.getElementById('dspUomSelect')?.addEventListener('change', updateDspPreview);
+
+      dspForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const itemId = document.getElementById('dspItemSelect').value;
+        const locationId = document.getElementById('dspLocationSelect').value;
+        const destination = document.getElementById('dspDestinationInput').value.trim();
+        const reference = document.getElementById('dspReferenceInput').value.trim();
+        const inputQty = parseFloat(document.getElementById('dspQuantityInput').value) || 0;
+        const inputUom = document.getElementById('dspUomSelect').value;
+
+        const item = store.tenantItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        const conv = UomEngine.convert(item, inputQty, inputUom);
+        const loc = store.tenantLocations.find(l => l.id === locationId);
+        const fac = loc ? store.tenantFacilities.find(f => f.id === loc.facilityId) : store.tenantFacilities[0];
+
+        // Deduct from item's LPNs/stock in this location or facility
+        let remainingToDeduct = conv.baseUnits;
+        const itemLpns = store.tenantLpns.filter(l => l.itemId === item.id && (!locationId || l.locationId === locationId || l.facilityId === fac?.id));
+
+        for (const lpn of itemLpns) {
+          if (remainingToDeduct <= 0) break;
+          if (lpn.quantityBase <= remainingToDeduct) {
+            remainingToDeduct -= lpn.quantityBase;
+            lpn.quantityBase = 0;
+          } else {
+            lpn.quantityBase = Number((lpn.quantityBase - remainingToDeduct).toFixed(2));
+            remainingToDeduct = 0;
+          }
+        }
+        store.state.licensePlates[store.state.activeTenantId] = store.tenantLpns.filter(l => l.quantityBase > 0);
+
+        // Record Transaction in Inventory History
+        const newTx = {
+          id: `tx-${Date.now().toString().slice(-4)}`,
+          timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          type: 'Dispatch Out',
+          lpn: itemLpns[0]?.lpnNumber || 'DISPATCH',
+          sku: item.sku,
+          from: loc ? `${fac ? fac.code : ''} / ${loc.code}` : 'Warehouse Stock',
+          to: destination || reference || 'Customer Job Site',
+          qty: `-${conv.baseUnits.toLocaleString()} ${item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'} (${conv.fullCases} Cases)`,
+          user: store.activeTenant.adminUser.name,
+          note: `${reference} - ${destination}`
+        };
+
+        store.state.transactions[store.state.activeTenantId].unshift(newTx);
+        store.save();
+        this.closeModal('dispatchStockModal');
+        this.renderAll();
+        this.showToast(`Dispatched ${conv.baseUnits.toLocaleString()} units of ${item.sku} for ${destination}`, 'success');
+      });
+    }
+
+    // 4. Adjust Inventory Form
+    const adjForm = document.getElementById('adjustStockForm');
+    if (adjForm) {
+      document.getElementById('adjInvItemSelect')?.addEventListener('change', () => {
+        this.populateAdjInvUoms();
+      });
+
+      adjForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const itemId = document.getElementById('adjInvItemSelect').value;
+        const locationId = document.getElementById('adjInvLocationSelect').value;
+        const adjType = document.getElementById('adjInvTypeSelect').value; // 'set', 'add', 'deduct'
+        const reasonCode = document.getElementById('adjInvReasonSelect').value;
+        const inputQty = parseFloat(document.getElementById('adjInvQuantityInput').value) || 0;
+        const inputUom = document.getElementById('adjInvUomSelect').value;
+        const notes = document.getElementById('adjInvNotesInput').value.trim();
+
+        const item = store.tenantItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        const conv = UomEngine.convert(item, inputQty, inputUom);
+        const loc = store.tenantLocations.find(l => l.id === locationId);
+        const fac = loc ? store.tenantFacilities.find(f => f.id === loc.facilityId) : store.tenantFacilities[0];
+
+        const reasonLabels = {
+          cycle_count: 'Cycle Count Adjustment',
+          damaged: 'Scrap / Damaged Loss',
+          sample: 'Showroom Sample Pull',
+          found_stock: 'Found Stock Addition',
+          shrinkage: 'Inventory Shrinkage'
+        };
+
+        const existingLpn = store.tenantLpns.find(l => l.itemId === item.id && (locationId ? l.locationId === locationId : true));
+
+        let deltaQty = 0;
+        if (adjType === 'set') {
+          const currentOnHand = store.tenantLpns.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantityBase, 0);
+          deltaQty = conv.baseUnits - currentOnHand;
+          if (existingLpn) {
+            existingLpn.quantityBase = conv.baseUnits;
+          } else {
+            store.state.licensePlates[store.state.activeTenantId].push({
+              id: `lpn-${Date.now()}`,
+              lpnNumber: `LPN-${Math.floor(100000 + Math.random() * 900000)}`,
+              itemId: item.id,
+              facilityId: fac?.id || 'fac-main-dc',
+              locationId: locationId || 'loc-a01-r01-a',
+              quantityBase: conv.baseUnits,
+              status: 'available',
+              receivedAt: new Date().toISOString(),
+              customFields: { dye_lot_run: 'AUDIT-ADJ' }
+            });
+          }
+        } else if (adjType === 'add') {
+          deltaQty = conv.baseUnits;
+          if (existingLpn) {
+            existingLpn.quantityBase += conv.baseUnits;
+          } else {
+            store.state.licensePlates[store.state.activeTenantId].push({
+              id: `lpn-${Date.now()}`,
+              lpnNumber: `LPN-${Math.floor(100000 + Math.random() * 900000)}`,
+              itemId: item.id,
+              facilityId: fac?.id || 'fac-main-dc',
+              locationId: locationId || 'loc-a01-r01-a',
+              quantityBase: conv.baseUnits,
+              status: 'available',
+              receivedAt: new Date().toISOString(),
+              customFields: { dye_lot_run: 'COUNT-FOUND' }
+            });
+          }
+        } else if (adjType === 'deduct') {
+          deltaQty = -conv.baseUnits;
+          if (existingLpn) {
+            existingLpn.quantityBase = Math.max(0, existingLpn.quantityBase - conv.baseUnits);
+          }
+        }
+
+        store.state.licensePlates[store.state.activeTenantId] = store.tenantLpns.filter(l => l.quantityBase > 0);
+
+        // Record Transaction
+        const newTx = {
+          id: `tx-${Date.now().toString().slice(-4)}`,
+          timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          type: reasonLabels[reasonCode] || 'Stock Adjustment',
+          lpn: existingLpn?.lpnNumber || 'ADJUST',
+          sku: item.sku,
+          from: loc ? `${fac ? fac.code : ''} / ${loc.code}` : 'Warehouse Bin',
+          to: 'Audit Ledger',
+          qty: `${deltaQty > 0 ? '+' : ''}${deltaQty.toLocaleString()} ${item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'}`,
+          user: store.activeTenant.adminUser.name,
+          note: notes || 'Physical Inventory Adjustment'
+        };
+
+        store.state.transactions[store.state.activeTenantId].unshift(newTx);
+        store.save();
+        this.closeModal('adjustStockModal');
+        this.renderAll();
+        this.showToast(`Inventory updated for ${item.sku} (${newTx.qty})`, 'success');
+      });
+    }
+
+    // 5. Add Manufacturer Form
+    const addMfrForm = document.getElementById('addManufacturerForm');
+    if (addMfrForm) {
+      addMfrForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newMfrName').value.trim();
+        const repName = document.getElementById('newMfrRep').value.trim();
+        const repPhone = document.getElementById('newMfrPhone').value.trim();
+        const repEmail = document.getElementById('newMfrEmail').value.trim();
+        const leadTimeDays = parseInt(document.getElementById('newMfrLeadTime').value, 10) || 5;
+
+        const newMfr = {
+          id: `mfr-${Date.now()}`,
+          name,
+          repName,
+          repPhone,
+          repEmail,
+          leadTimeDays,
+          brandLines: [name]
+        };
+
+        if (!store.state.manufacturers[store.state.activeTenantId]) {
+          store.state.manufacturers[store.state.activeTenantId] = [];
+        }
+        store.state.manufacturers[store.state.activeTenantId].push(newMfr);
+        store.save();
+        this.closeModal('addManufacturerModal');
+        this.renderAll();
+        this.showToast(`Added manufacturer: ${name}`, 'success');
+      });
+    }
       });
     }
 
@@ -2178,160 +2314,148 @@ class SimpletoryApp {
 
     if (this.filterFacilitySelect) {
       this.filterFacilitySelect.innerHTML = `<option value="all">All Facilities</option>` +
-        store.tenantFacilities.map(f => `<option value="${f.id}">${f.code} - ${f.name} (${f.trackingMode === 'lpn' ? 'LPN' : 'Summary'})</option>`).join('');
+        store.tenantFacilities.map(f => `<option value="${f.id}">${f.code} - ${f.name}</option>`).join('');
       if (facilityFilter !== 'all') this.filterFacilitySelect.value = facilityFilter;
     }
 
-    const udfList = store.tenantCustomFields.map(u => `<strong>${u.label}</strong>`).join(', ');
-    document.getElementById('udfBannerText').innerHTML = `Displaying Tenant Custom Attributes: ${udfList || 'None configured'}`;
+    const tableBody = document.getElementById('inventoryMasterStockTableBody');
+    if (!tableBody) return;
 
-    const filteredLpns = store.tenantLpns.filter(lpn => {
-      const item = store.tenantItems.find(i => i.id === lpn.itemId);
-      const loc = store.tenantLocations.find(l => l.id === lpn.locationId);
+    const items = store.tenantItems;
 
-      if (facilityFilter !== 'all' && lpn.facilityId !== facilityFilter) return false;
-      if (statusFilter !== 'all' && lpn.status !== statusFilter) return false;
-      if (categoryFilter !== 'all' && item && item.category !== categoryFilter) return false;
+    // Filter items
+    const filteredItems = items.filter(item => {
+      if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
+
+      // Check on-hand for this item
+      const itemLpns = store.tenantLpns.filter(l => l.itemId === item.id && (facilityFilter === 'all' || l.facilityId === facilityFilter));
+      const totalOnHand = itemLpns.reduce((sum, l) => sum + (l.quantityBase || 0), 0);
+
+      if (statusFilter === 'in_stock' && totalOnHand <= 0) return false;
+      if (statusFilter === 'low_stock' && (totalOnHand <= 0 || totalOnHand > (item.reorderPoint || 0))) return false;
+      if (statusFilter === 'out_of_stock' && totalOnHand > 0) return false;
 
       if (searchTerm) {
-        const customValues = Object.values(lpn.customFields || {}).join(' ').toLowerCase();
         const matchesSearch =
-          lpn.lpnNumber.toLowerCase().includes(searchTerm) ||
-          (item && item.sku.toLowerCase().includes(searchTerm)) ||
-          (item && item.name.toLowerCase().includes(searchTerm)) ||
-          (loc && loc.code.toLowerCase().includes(searchTerm)) ||
-          customValues.includes(searchTerm);
+          item.sku.toLowerCase().includes(searchTerm) ||
+          item.name.toLowerCase().includes(searchTerm) ||
+          item.category.toLowerCase().includes(searchTerm) ||
+          itemLpns.some(l => {
+            const loc = store.tenantLocations.find(loc => loc.id === l.locationId);
+            return (
+              l.lpnNumber.toLowerCase().includes(searchTerm) ||
+              (loc && loc.code.toLowerCase().includes(searchTerm)) ||
+              (l.customFields?.dye_lot_run && l.customFields.dye_lot_run.toLowerCase().includes(searchTerm))
+            );
+          });
         if (!matchesSearch) return false;
       }
+
       return true;
     });
 
-    // 1. RENDER LPN CARDS GRID
-    const lpnGrid = document.getElementById('lpnCardsGrid');
-    if (filteredLpns.length === 0) {
-      lpnGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
-          <i data-lucide="package-x" style="width: 48px; height: 48px; color: var(--text-dim); margin-bottom: 0.5rem;"></i>
-          <h3 style="font-size: 1.1rem; color: var(--text-main);">No License Plates Found</h3>
-          <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.25rem;">Try adjusting your filters or click 'Receive Inbound Stock' to generate an LPN.</p>
-        </div>
+    if (filteredItems.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-muted" style="text-align:center; padding:3rem;">
+            <i data-lucide="package-search" style="width:36px;height:36px;margin:0 auto 0.5rem;display:block;opacity:0.4;"></i>
+            <strong>No Inventory Records Found</strong>
+            <p style="font-size:0.8rem; margin-top:0.25rem;">Try adjusting your search criteria or click 'Receive New Inventory' above.</p>
+          </td>
+        </tr>
       `;
-    } else {
-      lpnGrid.innerHTML = filteredLpns.map(lpn => {
-        const item = store.tenantItems.find(i => i.id === lpn.itemId) || { sku: 'UNKNOWN', name: 'Unknown SKU', baseUomId: 'uom-sqft', packaging: { caseMultiplier: 1, palletMultiplier: 1 } };
-        const loc = store.tenantLocations.find(l => l.id === lpn.locationId);
-        const fac = store.tenantFacilities.find(f => f.id === lpn.facilityId);
-        const packagingBadge = UomEngine.formatPackagingBadge(item, lpn.quantityBase);
-
-        const customTagsHtml = Object.entries(lpn.customFields || {}).map(([key, val]) => {
-          const udfMeta = store.tenantCustomFields.find(u => u.key === key);
-          const label = udfMeta ? udfMeta.label : key;
-          return `<div class="udf-tag">${label}: <strong>${val}</strong></div>`;
-        }).join('');
-
-        let statusClass = 'badge-success';
-        if (lpn.status === 'reserved') statusClass = 'badge-warning';
-        if (lpn.status === 'damaged') statusClass = 'badge-danger';
-
-        return `
-          <div class="lpn-card">
-            <div class="lpn-card-top">
-              <div class="lpn-barcode-tag">
-                <span class="lpn-tag-number"><i data-lucide="qr-code" style="width:16px;height:16px;"></i> ${lpn.lpnNumber}</span>
-                <span class="lpn-barcode-graphic">||| | |||| | || |||</span>
-              </div>
-              <span class="badge ${statusClass}">${lpn.status.toUpperCase()}</span>
-            </div>
-
-            <div>
-              <h3 class="lpn-item-title">${item.name}</h3>
-              <span class="lpn-sku-pill">${item.sku} &bull; ${item.category}</span>
-            </div>
-
-            <div>
-              <div class="lpn-location-pill">
-                <i data-lucide="map-pin" style="width:14px;height:14px;color:var(--accent-cyan);"></i>
-                <span>${fac ? fac.code : ''} &bull; <strong>${loc ? loc.code : 'Unassigned'}</strong></span>
-              </div>
-            </div>
-
-            ${customTagsHtml ? `<div class="lpn-custom-attributes">${customTagsHtml}</div>` : ''}
-
-            <div class="lpn-quantities-row">
-              <div>
-                <div class="lpn-primary-qty">${lpn.quantityBase.toLocaleString()} <span style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">${item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'}</span></div>
-                <div class="lpn-packaging-calc">${packagingBadge}</div>
-              </div>
-            </div>
-
-            <div class="lpn-card-actions">
-              <button class="btn btn-secondary btn-sm" onclick="app.triggerMoveModal('${lpn.id}')" title="Move to another bin">
-                <i data-lucide="arrow-right-left"></i> Move
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="app.triggerAdjustModal('${lpn.id}')" title="Pick / Adjust stock out of this LPN">
-                <i data-lucide="package-minus"></i> Pick Out
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="app.printBarcodeTag('${lpn.lpnNumber}')" title="Print LPN Label">
-                <i data-lucide="printer"></i>
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
+      this.initIcons();
+      return;
     }
 
-    // 2. RENDER SUMMARY MODE TABLE
-    const summaryBody = document.getElementById('summaryStockTableBody');
-    const items = store.tenantItems;
+    tableBody.innerHTML = filteredItems.map(item => {
+      const itemLpns = store.tenantLpns.filter(l => l.itemId === item.id && (facilityFilter === 'all' || l.facilityId === facilityFilter));
+      const totalOnHand = itemLpns.reduce((sum, l) => sum + (l.quantityBase || 0), 0);
+      const baseUom = store.getItemBaseUom(item.id);
+      const uomCode = baseUom ? baseUom.code : 'SQFT';
 
-    const summaryRows = [];
-    items.forEach(item => {
-      store.tenantFacilities.forEach(fac => {
-        const itemLpns = store.tenantLpns.filter(l => l.itemId === item.id && l.facilityId === fac.id);
-        const totalBase = itemLpns.reduce((sum, l) => sum + l.quantityBase, 0);
+      // Locations breakdown
+      const activeLocs = Array.from(new Set(itemLpns.map(l => {
+        const loc = store.tenantLocations.find(loc => loc.id === l.locationId);
+        const fac = store.tenantFacilities.find(f => f.id === l.facilityId);
+        return loc ? `${fac ? fac.code : ''} ${loc.code}` : 'Bin Staging';
+      })));
 
-        if (totalBase > 0) {
-          summaryRows.push({
-            item,
-            facility: fac,
-            totalBase,
-            lpnCount: itemLpns.length
-          });
-        }
-      });
-    });
+      const locBadgesHtml = activeLocs.length > 0
+        ? activeLocs.map(loc => `<span class="badge badge-subtle" style="font-size:0.75rem; font-weight:600;"><i data-lucide="map-pin" style="width:11px;height:11px;margin-right:2px;"></i>${loc}</span>`).join(' ')
+        : `<span class="text-muted" style="font-size:0.8rem;">Unassigned</span>`;
 
-    if (summaryRows.length === 0) {
-      summaryBody.innerHTML = `<tr><td colspan="8" class="text-muted" style="text-align:center; padding:2rem;">No stock records in summary view.</td></tr>`;
-    } else {
-      summaryBody.innerHTML = summaryRows.map(row => {
-        const packaging = UomEngine.formatPackagingBadge(row.item, row.totalBase);
-        return `
-          <tr>
-            <td>
-              <strong class="font-mono text-primary">${row.item.sku}</strong><br>
-              <span style="font-size:0.8rem;color:var(--text-muted);">${row.item.name}</span>
-            </td>
-            <td><span class="badge badge-subtle">${row.item.category}</span></td>
-            <td><strong>${row.facility.code}</strong> - ${row.facility.name}</td>
-            <td><span class="text-muted">${row.lpnCount} Bin Locations</span></td>
-            <td><strong class="font-mono text-lg">${row.totalBase.toLocaleString()}</strong> <small class="text-muted">${row.item.baseUomId === 'uom-sqft' ? 'Sq Ft' : 'Ea'}</small></td>
-            <td><span class="badge badge-primary">${packaging}</span></td>
-            <td><span class="badge badge-success">IN STOCK</span></td>
-            <td>
-              <div style="display:flex; gap:0.35rem;">
-                <button class="btn btn-xs btn-secondary" onclick="app.triggerReceiveForItem('${row.item.id}')" title="Add Stock">
-                  <i data-lucide="plus"></i> Add
-                </button>
-                <button class="btn btn-xs btn-outline" onclick="app.triggerAdjustModal(null, '${row.item.id}')" title="Adjust / Pick Stock Out">
-                  <i data-lucide="package-minus"></i> Pick
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
+      // Packaging conversion
+      const packagingBadge = UomEngine.formatPackagingBadge(item, totalOnHand);
+
+      // Lots and LPN tags
+      const activeLots = Array.from(new Set(itemLpns.map(l => l.customFields?.dye_lot_run || l.customFields?.batch_lot_tag).filter(Boolean)));
+      const lotHtml = activeLots.length > 0
+        ? `<div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.78rem; font-weight:700; color:var(--text-main);">${activeLots.join(', ')}</span>
+            <span class="text-muted" style="font-size:0.7rem;">${itemLpns.length} Active Pallet / LPN tags</span>
+          </div>`
+        : `<span class="text-muted" style="font-size:0.8rem;">${itemLpns.length > 0 ? `${itemLpns.length} LPN tags` : '-'}</span>`;
+
+      // Total Inventory Asset Value
+      const unitCost = Number(item.costPrice || 0);
+      const totalValue = totalOnHand * unitCost;
+
+      // Status Health
+      let statusBadge = `<span class="badge badge-success">In Stock</span>`;
+      if (totalOnHand === 0) {
+        statusBadge = `<span class="badge badge-danger">Out of Stock</span>`;
+      } else if (totalOnHand <= (item.reorderPoint || 0)) {
+        statusBadge = `<span class="badge badge-warning">Low Stock</span>`;
+      }
+
+      return `
+        <tr>
+          <td><strong class="font-mono text-primary" style="cursor:pointer;" onclick="app.navigateToItemDetail('${item.id}')">${item.sku}</strong></td>
+          <td>
+            <div style="display:flex; flex-direction:column;">
+              <strong style="color:var(--text-main); cursor:pointer;" onclick="app.navigateToItemDetail('${item.id}')">${item.name}</strong>
+              <span class="text-muted" style="font-size:0.75rem;">${item.category}</span>
+            </div>
+          </td>
+          <td><span class="badge badge-subtle">${item.category}</span></td>
+          <td><div style="display:flex; flex-wrap:wrap; gap:4px; max-width:220px;">${locBadgesHtml}</div></td>
+          <td>
+            <span class="font-mono" style="font-size:0.95rem; font-weight:800; color:var(--text-main);">
+              ${totalOnHand.toLocaleString()} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">${uomCode}</span>
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-outline" style="font-size:0.78rem; font-weight:700; color:var(--primary);">
+              ${packagingBadge}
+            </span>
+          </td>
+          <td>${lotHtml}</td>
+          <td>
+            <span class="font-mono" style="font-size:0.85rem; font-weight:700; color:var(--text-main);">
+              $${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="display:flex; gap:0.35rem;">
+              <button class="btn btn-xs btn-primary" onclick="app.triggerReceiveForItem('${item.id}')" title="Receive new inbound stock">
+                <i data-lucide="package-plus"></i> Receive
+              </button>
+              <button class="btn btn-xs btn-secondary" onclick="app.triggerDispatchForItem('${item.id}')" title="Dispatch / Pick stock">
+                <i data-lucide="package-minus"></i> Dispatch
+              </button>
+              <button class="btn btn-xs btn-outline" onclick="app.triggerAdjustForItem('${item.id}')" title="Adjust / Correct inventory count">
+                <i data-lucide="sliders"></i> Adjust
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    this.initIcons();
+  }
   }
 
   // ============================================================================
@@ -2718,51 +2842,50 @@ class SimpletoryApp {
   // MASTER DATA: MANUFACTURERS
   // ============================================================================
   renderManufacturers() {
-    const grid = document.getElementById('manufacturersGrid');
-    const mfrs = store.tenantManufacturers;
+    const tableBody = document.getElementById('manufacturersTableBody');
+    if (!tableBody) return;
 
-    grid.innerHTML = mfrs.map(mfr => {
+    const mfrs = store.tenantManufacturers;
+    if (mfrs.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="8" class="text-muted" style="text-align:center; padding:2rem;">No manufacturers or suppliers recorded yet.</td></tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = mfrs.map(mfr => {
       const itemsCount = store.tenantItems.filter(i => i.manufacturerId === mfr.id).length;
       const initials = mfr.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      const linesHtml = (mfr.brandLines || []).map(line => `<span class="badge badge-subtle" style="font-size:0.7rem;">${line}</span>`).join(' ') || '-';
 
       return `
-        <div class="mfr-card">
-          <div class="mfr-header">
-            <div class="mfr-avatar">${initials}</div>
-            <div>
-              <h3 class="mfr-title">${mfr.name}</h3>
-              <span class="badge badge-subtle">${itemsCount} Active SKUs</span>
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <div class="mfr-avatar" style="width:32px; height:32px; font-size:0.8rem; flex-shrink:0;">${initials}</div>
+              <div>
+                <strong style="color:var(--text-main); font-size:0.9rem;">${mfr.name}</strong>
+              </div>
             </div>
-          </div>
-
-          <div class="mfr-contact-list">
-            <div class="mfr-contact-item">
-              <i data-lucide="user"></i>
-              <span>Rep: <strong>${mfr.repName || 'Account Rep'}</strong></span>
+          </td>
+          <td><span style="font-weight:600; color:var(--text-main);">${mfr.repName || '-'}</span></td>
+          <td><span class="font-mono text-muted" style="font-size:0.8rem;"><i data-lucide="phone" style="width:12px;height:12px;display:inline;"></i> ${mfr.repPhone || '-'}</span></td>
+          <td>
+            ${mfr.repEmail ? `<a href="mailto:${mfr.repEmail}" class="text-primary" style="font-size:0.8rem; text-decoration:none;"><i data-lucide="mail" style="width:12px;height:12px;display:inline;"></i> ${mfr.repEmail}</a>` : '-'}
+          </td>
+          <td><span class="badge badge-subtle">${mfr.leadTimeDays || 5} Days</span></td>
+          <td><div style="display:flex; flex-wrap:wrap; gap:3px;">${linesHtml}</div></td>
+          <td><span class="badge badge-primary">${itemsCount} SKUs</span></td>
+          <td>
+            <div style="display:flex; gap:0.35rem;">
+              <button class="btn btn-xs btn-secondary" onclick="app.showToast('Editing ${mfr.name.replace(/'/g, "\\'")}', 'info')" title="Edit Manufacturer">
+                <i data-lucide="edit-2"></i> Edit
+              </button>
             </div>
-            <div class="mfr-contact-item">
-              <i data-lucide="phone"></i>
-              <span>${mfr.repPhone || 'N/A'}</span>
-            </div>
-            <div class="mfr-contact-item">
-              <i data-lucide="mail"></i>
-              <span>${mfr.repEmail || 'orders@supplier.com'}</span>
-            </div>
-            <div class="mfr-contact-item">
-              <i data-lucide="clock"></i>
-              <span>Average Lead Time: <strong>${mfr.leadTimeDays || 5} Days</strong></span>
-            </div>
-          </div>
-
-          <div class="mt-2" style="border-top:1px solid var(--border-subtle); padding-top:0.6rem;">
-            <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">Associated Lines:</span>
-            <div style="display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.3rem;">
-              ${(mfr.brandLines || []).map(line => `<span class="badge badge-subtle" style="font-size:0.68rem;">${line}</span>`).join('')}
-            </div>
-          </div>
-        </div>
+          </td>
+        </tr>
       `;
     }).join('');
+
+    this.initIcons();
   }
 
   // ============================================================================
@@ -2971,6 +3094,28 @@ class SimpletoryApp {
 
     this.populateRcvUoms();
 
+    // Populate Dispatch Modal
+    const dspItemSel = document.getElementById('dspItemSelect');
+    if (dspItemSel) {
+      dspItemSel.innerHTML = items.map(i => `<option value="${i.id}">${i.sku} - ${i.name}</option>`).join('');
+    }
+    const dspLocSel = document.getElementById('dspLocationSelect');
+    if (dspLocSel) {
+      dspLocSel.innerHTML = locations.map(l => `<option value="${l.id}">${l.code} (${l.name})</option>`).join('');
+    }
+    this.populateDspUoms();
+
+    // Populate Adjust Modal
+    const adjInvItemSel = document.getElementById('adjInvItemSelect');
+    if (adjInvItemSel) {
+      adjInvItemSel.innerHTML = items.map(i => `<option value="${i.id}">${i.sku} - ${i.name}</option>`).join('');
+    }
+    const adjInvLocSel = document.getElementById('adjInvLocationSelect');
+    if (adjInvLocSel) {
+      adjInvLocSel.innerHTML = locations.map(l => `<option value="${l.id}">${l.code} (${l.name})</option>`).join('');
+    }
+    this.populateAdjInvUoms();
+
     const rcvUdfContainer = document.getElementById('rcvCustomFieldsInputs');
     if (rcvUdfContainer) {
       rcvUdfContainer.innerHTML = store.tenantCustomFields.map(udf => `
@@ -3035,7 +3180,6 @@ class SimpletoryApp {
     const baseUom = store.getItemBaseUom(itemId);
 
     uomSel.innerHTML = itemUoms.map(tier => {
-      const uomDef = store.tenantUoms.find(u => u.id === tier.uomId);
       return `<option value="${tier.id}">1 ${tier.tierName} (${tier.multiplier} ${baseUom?.code || 'Units'})</option>`;
     }).join('');
 
@@ -3044,32 +3188,68 @@ class SimpletoryApp {
     }
   }
 
-  populateAdjUoms() {
-    const isLpnMode = this.isCurrentFacilityLpnEnabled();
-    const lpnSel = document.getElementById('adjLpnSelect');
-    const itemSel = document.getElementById('adjItemSelect');
-    const uomSel = document.getElementById('adjUomSelect');
-    if (!uomSel) return;
+  populateDspUoms() {
+    const itemSel = document.getElementById('dspItemSelect');
+    const uomSel = document.getElementById('dspUomSelect');
+    if (!itemSel || !uomSel) return;
+    const itemId = itemSel.value || store.tenantItems[0]?.id;
+    if (!itemId) return;
 
-    let targetItemId = null;
-    if (isLpnMode) {
-      const lpn = store.tenantLpns.find(l => l.id === lpnSel?.value);
-      targetItemId = lpn ? lpn.itemId : store.tenantItems[0]?.id;
-    } else {
-      targetItemId = itemSel?.value || store.tenantItems[0]?.id;
-    }
-
-    if (!targetItemId) return;
-    const itemUoms = store.getItemUoms(targetItemId);
-    const baseUom = store.getItemBaseUom(targetItemId);
+    const itemUoms = store.getItemUoms(itemId);
+    const baseUom = store.getItemBaseUom(itemId);
 
     uomSel.innerHTML = itemUoms.map(tier => {
-      const uomDef = store.tenantUoms.find(u => u.id === tier.uomId);
       return `<option value="${tier.id}">1 ${tier.tierName} (${tier.multiplier} ${baseUom?.code || 'Units'})</option>`;
     }).join('');
 
     if (itemUoms.length > 1) {
       uomSel.value = itemUoms[1].id;
+    }
+  }
+
+  populateAdjInvUoms() {
+    const itemSel = document.getElementById('adjInvItemSelect');
+    const uomSel = document.getElementById('adjInvUomSelect');
+    if (!itemSel || !uomSel) return;
+    const itemId = itemSel.value || store.tenantItems[0]?.id;
+    if (!itemId) return;
+
+    const itemUoms = store.getItemUoms(itemId);
+    const baseUom = store.getItemBaseUom(itemId);
+
+    uomSel.innerHTML = itemUoms.map(tier => {
+      return `<option value="${tier.id}">1 ${tier.tierName} (${tier.multiplier} ${baseUom?.code || 'Units'})</option>`;
+    }).join('');
+
+    if (itemUoms.length > 1) {
+      uomSel.value = itemUoms[0].id;
+    }
+  }
+
+  triggerReceiveForItem(itemId) {
+    this.openModal('receiveStockModal');
+    const itemSel = document.getElementById('rcvItemSelect');
+    if (itemSel && itemId) {
+      itemSel.value = itemId;
+      this.populateRcvUoms();
+    }
+  }
+
+  triggerDispatchForItem(itemId = null) {
+    this.openModal('dispatchStockModal');
+    const itemSel = document.getElementById('dspItemSelect');
+    if (itemSel && itemId) {
+      itemSel.value = itemId;
+      this.populateDspUoms();
+    }
+  }
+
+  triggerAdjustForItem(itemId = null) {
+    this.openModal('adjustStockModal');
+    const itemSel = document.getElementById('adjInvItemSelect');
+    if (itemSel && itemId) {
+      itemSel.value = itemId;
+      this.populateAdjInvUoms();
     }
   }
 
