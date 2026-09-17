@@ -474,18 +474,42 @@ const INITIAL_DB = {
     ]
   },
 
-  // Users & Access Control (Universal Generic Roles)
-  users: {
+  // Manageable Label Configurations & Sizes
+  labelTemplates: {
     'tenant-flooring': [
-      { id: 'usr-1', name: 'Derek Lumpkin', email: 'derek@apexflooring.com', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
-      { id: 'usr-2', name: 'Marcus Vance', email: 'marcus@apexflooring.com', role: 'Warehouse Manager', facilities: 'FAC-01 Main DC', status: 'Active' },
-      { id: 'usr-3', name: 'Carlos Gutierrez', email: 'carlos@apexflooring.com', role: 'Warehouse Operator', facilities: 'FAC-03 Mobile Unit #3', status: 'Active' },
-      { id: 'usr-4', name: 'Jessica Taylor', email: 'jessica@apexflooring.com', role: 'Viewer / Auditor', facilities: 'FAC-02 Showroom', status: 'Active' }
+      { id: 'lbl-4x6-pallet', name: 'Standard 4x6" Pallet LPN Tag', type: 'lpn_pallet', widthIn: 4.0, heightIn: 6.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: true, includeLot: true },
+      { id: 'lbl-2x1-bin', name: 'Rack / Shelf Bin Marker (2x1")', type: 'bin_location', widthIn: 2.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false },
+      { id: 'lbl-3x1-sku', name: 'Item Carton Barcode (3x1")', type: 'item_sku', widthIn: 3.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false },
+      { id: 'lbl-85x11-sheet', name: 'Packing Sheet & Dispatch Slip (8.5x11")', type: 'dispatch_slip', widthIn: 8.5, heightIn: 11.0, unit: 'in', isDefault: false, includeQr: true, includeBarcode: true, includeLot: true }
     ],
     'tenant-general': [
-      { id: 'usr-g-1', name: 'Elena Rostova', email: 'elena@cascadelogistics.com', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
-      { id: 'usr-g-2', name: 'David Chen', email: 'david@cascadelogistics.com', role: 'Warehouse Manager', facilities: 'FAC-GEN-01 West Hub', status: 'Active' }
+      { id: 'lbl-gen-4x6', name: 'Universal Logistics Pallet Tag (4x6")', type: 'lpn_pallet', widthIn: 4.0, heightIn: 6.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: true, includeLot: true },
+      { id: 'lbl-gen-2x1', name: 'Bin Location Marker (2x1")', type: 'bin_location', widthIn: 2.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false }
     ]
+  },
+
+  // Users & Access Control (Universal Generic Roles with Username & Email Dual-Auth)
+  users: {
+    'tenant-flooring': [
+      { id: 'usr-1', username: 'derek', email: 'derek@apexflooring.com', password: 'Simpletory2026!', name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
+      { id: 'usr-2', username: 'marcus_v', email: 'marcus@apexflooring.com', password: 'Simpletory2026!', name: 'Marcus Vance', role: 'Warehouse Manager', facilities: 'FAC-01 Main DC', status: 'Active' },
+      { id: 'usr-3', username: 'carlos_g', email: 'carlos@apexflooring.com', password: 'Simpletory2026!', name: 'Carlos Gutierrez', role: 'Warehouse Operator', facilities: 'FAC-03 Mobile Unit #3', status: 'Active' },
+      { id: 'usr-4', username: 'jessica_t', email: 'jessica@apexflooring.com', password: 'Simpletory2026!', name: 'Jessica Taylor', role: 'Viewer / Auditor', facilities: 'FAC-02 Showroom', status: 'Active' },
+      { id: 'usr-5', username: 'dock_worker_1', email: null, password: 'Simpletory2026!', name: 'Floor Operator Dock 1', role: 'Warehouse Operator', facilities: 'FAC-01 Main DC', status: 'Active' }
+    ],
+    'tenant-general': [
+      { id: 'usr-g-1', username: 'elena', email: 'elena@cascadelogistics.com', password: 'Simpletory2026!', name: 'Elena Rostova', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' },
+      { id: 'usr-g-2', username: 'david_c', email: 'david@cascadelogistics.com', password: 'Simpletory2026!', name: 'David Chen', role: 'Warehouse Manager', facilities: 'FAC-GEN-01 West Hub', status: 'Active' }
+    ]
+  },
+
+  currentAuthUser: {
+    id: 'usr-1',
+    username: 'derek',
+    email: 'derek@apexflooring.com',
+    name: 'Derek Lumpkin',
+    role: 'Company Admin',
+    tenantId: 'tenant-flooring'
   }
 };
 
@@ -501,11 +525,18 @@ class SimpletoryStore {
     try {
       const saved = localStorage.getItem(DEFAULT_STORAGE_KEY);
       if (saved) {
+        const parsed = JSON.parse(saved);
         if (!parsed.itemUoms || Object.keys(parsed.itemUoms).length === 0) {
           parsed.itemUoms = JSON.parse(JSON.stringify(INITIAL_DB.itemUoms));
         }
         if (!parsed.facilityTypes || Object.keys(parsed.facilityTypes).length === 0) {
           parsed.facilityTypes = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes));
+        }
+        if (!parsed.labelTemplates || Object.keys(parsed.labelTemplates).length === 0) {
+          parsed.labelTemplates = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates));
+        }
+        if (!parsed.currentAuthUser) {
+          parsed.currentAuthUser = JSON.parse(JSON.stringify(INITIAL_DB.currentAuthUser));
         }
         return parsed;
       }
@@ -534,8 +565,22 @@ class SimpletoryStore {
     return this.state.tenants.find(t => t.id === this.state.activeTenantId) || this.state.tenants[0];
   }
 
+  get currentUser() {
+    return this.state.currentAuthUser || INITIAL_DB.currentAuthUser;
+  }
+
   get tenantUoms() {
     return this.state.unitsOfMeasure[this.state.activeTenantId] || [];
+  }
+
+  get tenantLabelTemplates() {
+    if (!this.state.labelTemplates) {
+      this.state.labelTemplates = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates));
+    }
+    if (!this.state.labelTemplates[this.state.activeTenantId]) {
+      this.state.labelTemplates[this.state.activeTenantId] = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates[this.state.activeTenantId] || []));
+    }
+    return this.state.labelTemplates[this.state.activeTenantId];
   }
 
   get tenantCustomFields() {
@@ -1106,14 +1151,126 @@ class SimpletoryApp {
     document.getElementById('btnAddManufacturerModalBtn')?.addEventListener('click', () => this.openModal('addManufacturerModal'));
     document.getElementById('btnCreateNewTenantModal')?.addEventListener('click', () => this.openModal('createTenantModal'));
     document.getElementById('btnInviteUserModal')?.addEventListener('click', () => this.openInviteUserModal());
+    document.getElementById('btnAddNewLabelTemplate')?.addEventListener('click', () => this.openModal('addLabelTemplateModal'));
     document.getElementById('btnEditCustomFieldsLink')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
     document.getElementById('btnViewAllMovements')?.addEventListener('click', () => this.navigateTo('operations'));
 
-    // Barcode Scanner Buttons
-    this.quickScanBtn.addEventListener('click', () => this.openScannerModal());
+    // User Profile Pill & Dropdown Menu
+    const userProfBtn = document.getElementById('userProfileBtn');
+    const userDrop = document.getElementById('userMenuDropdown');
+    userProfBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userDrop?.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!userDrop?.contains(e.target) && !userProfBtn?.contains(e.target)) {
+        userDrop?.classList.remove('open');
+      }
+    });
+    document.getElementById('btnUserMenuSwitchAccount')?.addEventListener('click', () => {
+      userDrop?.classList.remove('open');
+      this.openModal('authModal');
+    });
+    document.getElementById('btnUserMenuSettings')?.addEventListener('click', () => {
+      userDrop?.classList.remove('open');
+      this.navigateTo('tenant-settings');
+    });
+    document.getElementById('btnUserMenuSignOut')?.addEventListener('click', () => {
+      userDrop?.classList.remove('open');
+      this.logout();
+    });
+
+    // Invite User Modal Mode Toggle (Email vs Username)
+    const btnEmailMode = document.getElementById('btnModeEmailInvite');
+    const btnUserMode = document.getElementById('btnModeUsernamePass');
+    const emailGrp = document.getElementById('inviteEmailGroup');
+    const userGrp = document.getElementById('inviteUsernameGroup');
+    const emailInp = document.getElementById('inviteUserEmail');
+    const userInp = document.getElementById('inviteUserUsername');
+    const passInp = document.getElementById('inviteUserPassword');
+
+    btnEmailMode?.addEventListener('click', () => {
+      btnEmailMode.classList.add('active');
+      btnUserMode?.classList.remove('active');
+      if (emailGrp) emailGrp.style.display = 'block';
+      if (userGrp) userGrp.style.display = 'none';
+      if (emailInp) emailInp.required = true;
+      if (userInp) userInp.required = false;
+      if (passInp) passInp.required = false;
+    });
+
+    btnUserMode?.addEventListener('click', () => {
+      btnUserMode?.classList.add('active');
+      btnEmailMode?.classList.remove('active');
+      if (emailGrp) emailGrp.style.display = 'none';
+      if (userGrp) userGrp.style.display = 'grid';
+      if (emailInp) emailInp.required = false;
+      if (userInp) userInp.required = true;
+      if (passInp) passInp.required = true;
+    });
+
+    // Barcode Scanner & Quick Scan Buttons
+    this.quickScanBtn?.addEventListener('click', () => this.openScannerModal());
     if (this.mobileScanFab) {
       this.mobileScanFab.addEventListener('click', () => this.openScannerModal());
     }
+    document.getElementById('btnSubmitManualScan')?.addEventListener('click', () => {
+      const val = document.getElementById('manualScanInput')?.value;
+      if (val) this.processBarcodeScan(val);
+    });
+    document.getElementById('manualScanInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = document.getElementById('manualScanInput')?.value;
+        if (val) this.processBarcodeScan(val);
+      }
+    });
+
+    // Printing Actions & Controls
+    document.getElementById('btnPrintPalletLabelsQuick')?.addEventListener('click', () => this.openPrintLabelModal('lpn'));
+    document.getElementById('btnTriggerPrint')?.addEventListener('click', () => this.executePrintLabels());
+    ['printTemplateSelect', 'printTargetSelect', 'printCopiesCount', 'printOptBarcode', 'printOptQr', 'printOptLot', 'printOptThermalMode'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => this.renderLiveLabelPreview());
+      document.getElementById(id)?.addEventListener('input', () => this.renderLiveLabelPreview());
+    });
+
+    // CSV Master Data Importer & Exporter Actions
+    document.getElementById('btnImportInventoryCsv')?.addEventListener('click', () => this.openCsvImportModal('lpns'));
+    document.getElementById('btnExportInventoryCsv')?.addEventListener('click', () => this.exportCsv('lpns'));
+    document.getElementById('btnImportCatalogCsv')?.addEventListener('click', () => this.openCsvImportModal('items'));
+    document.getElementById('btnExportCatalogCsv')?.addEventListener('click', () => this.exportCsv('items'));
+    document.getElementById('btnDownloadSampleCsv')?.addEventListener('click', () => {
+      const target = document.getElementById('csvImportTarget')?.value || 'items';
+      this.downloadSampleCsv(target);
+    });
+    document.getElementById('csvImportTarget')?.addEventListener('change', (e) => {
+      this.clearCsvFile();
+    });
+    document.getElementById('btnExecuteCsvImport')?.addEventListener('click', () => this.executeCsvImport());
+    document.getElementById('btnClearCsvFile')?.addEventListener('click', () => this.clearCsvFile());
+
+    // CSV File Drag & Drop Handlers
+    const csvFileInput = document.getElementById('csvFileInput');
+    const csvDropZone = document.getElementById('csvDropZone');
+    csvFileInput?.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        this.handleCsvFile(e.target.files[0]);
+      }
+    });
+    csvDropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      csvDropZone.classList.add('dragover');
+    });
+    csvDropZone?.addEventListener('dragleave', () => {
+      csvDropZone.classList.remove('dragover');
+    });
+    csvDropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      csvDropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        this.handleCsvFile(e.dataTransfer.files[0]);
+      }
+    });
 
     // Modal Close Buttons
     document.querySelectorAll('[data-close-modal]').forEach(btn => {
@@ -1773,20 +1930,27 @@ class SimpletoryApp {
       });
     }
 
-    // 9. Invite Team Member Form (Modal)
+    // 9. Invite / Create Team Member Form (Dual-Mode: Email vs Username)
     const inviteUserForm = document.getElementById('inviteUserForm');
     if (inviteUserForm) {
       inviteUserForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = document.getElementById('inviteUserName').value.trim();
-        const email = document.getElementById('inviteUserEmail').value.trim();
+        const isEmailMode = document.getElementById('btnModeEmailInvite')?.classList.contains('active');
+        const email = isEmailMode ? document.getElementById('inviteUserEmail').value.trim() : null;
+        const username = isEmailMode 
+          ? (email ? email.split('@')[0].replace(/[^a-z0-9_]/gi, '_').toLowerCase() : `usr_${Date.now().toString().slice(-4)}`)
+          : document.getElementById('inviteUserUsername').value.trim().toLowerCase();
+        const password = isEmailMode ? 'Simpletory2026!' : (document.getElementById('inviteUserPassword').value.trim() || 'Simpletory2026!');
         const role = document.getElementById('inviteUserRole').value;
         const facilities = document.getElementById('inviteUserFacility').value;
 
         const newUser = {
           id: `usr-${Date.now()}`,
-          name,
+          username,
           email,
+          password,
+          name,
           role,
           facilities,
           status: 'Active'
@@ -1797,9 +1961,10 @@ class SimpletoryApp {
         }
         store.state.users[store.state.activeTenantId].push(newUser);
         store.save();
+        inviteUserForm.reset();
         this.closeModal('inviteUserModal');
         this.renderUsers();
-        this.showToast(`Team member '${name}' invited as ${role}`, 'success');
+        this.showToast(`Team member '${name}' (@${username}) added as ${role}`, 'success');
       });
     }
 
@@ -1830,6 +1995,79 @@ class SimpletoryApp {
         this.renderTenantSettings();
         this.populateModalSelects();
         this.showToast(`Added Facility Type '${name}' (${code})`, 'success');
+      });
+    }
+
+    // 11. Add Label Template & Size Form (Modal)
+    const addLblForm = document.getElementById('addLabelTemplateForm');
+    if (addLblForm) {
+      addLblForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newLabelName').value.trim();
+        const type = document.getElementById('newLabelType').value;
+        const unit = document.getElementById('newLabelUnit').value;
+        const widthIn = parseFloat(document.getElementById('newLabelWidth').value) || 4.0;
+        const heightIn = parseFloat(document.getElementById('newLabelHeight').value) || 6.0;
+        const includeBarcode = document.getElementById('newLabelIncludeBarcode').checked;
+        const includeQr = document.getElementById('newLabelIncludeQr').checked;
+        const includeLot = document.getElementById('newLabelIncludeLot').checked;
+
+        const newTemplate = {
+          id: `lbl-${Date.now()}`,
+          name,
+          type,
+          widthIn,
+          heightIn,
+          unit,
+          isDefault: false,
+          includeBarcode,
+          includeQr,
+          includeLot
+        };
+
+        if (!store.state.labelTemplates[store.state.activeTenantId]) {
+          store.state.labelTemplates[store.state.activeTenantId] = [];
+        }
+        store.state.labelTemplates[store.state.activeTenantId].push(newTemplate);
+        store.save();
+        addLblForm.reset();
+        this.closeModal('addLabelTemplateModal');
+        this.renderTenantSettings();
+        this.showToast(`Added label template '${name}' (${widthIn}x${heightIn} ${unit})`, 'success');
+      });
+    }
+
+    // 12. Sign In Form (Dual-Mode: Username or Email)
+    const signInForm = document.getElementById('signInForm');
+    if (signInForm) {
+      signInForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const identifier = document.getElementById('authIdentifier').value.trim();
+        const password = document.getElementById('authPassword').value.trim();
+        this.login(identifier, password);
+      });
+    }
+
+    // 13. Register Organization Form
+    const regOrgForm = document.getElementById('registerOrgForm');
+    if (regOrgForm) {
+      regOrgForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const orgName = document.getElementById('regOrgName').value.trim();
+        const template = document.getElementById('regOrgTemplate').value;
+        const adminName = document.getElementById('regAdminName').value.trim();
+        const adminUsername = document.getElementById('regAdminUsername').value.trim().toLowerCase();
+        const adminEmail = document.getElementById('regAdminEmail').value.trim();
+        const password = document.getElementById('regAdminPassword').value.trim();
+
+        this.registerOrganization({
+          orgName,
+          template,
+          adminName,
+          adminUsername,
+          adminEmail,
+          password
+        });
       });
     }
 
@@ -2970,7 +3208,29 @@ class SimpletoryApp {
       `).join('');
     }
 
-    // 4. Custom Fields List
+    // 4. Configurable Label Templates List
+    const labelTemplates = store.tenantLabelTemplates;
+    const lblListEl = document.getElementById('labelTemplatesEditorList');
+    if (lblListEl) {
+      lblListEl.innerHTML = labelTemplates.map(lbl => `
+        <div class="editor-row-item">
+          <i data-lucide="printer" style="color:var(--accent-cyan);width:16px;height:16px;"></i>
+          <div class="editor-field-name">
+            ${lbl.name}
+            <small class="text-muted" style="display:block;font-size:0.72rem;font-weight:normal;">
+              Type: <strong>${lbl.type.replace('_', ' ').toUpperCase()}</strong> &bull; Size: ${lbl.widthIn}x${lbl.heightIn} ${lbl.unit}
+            </small>
+          </div>
+          <span class="badge badge-primary font-mono">${lbl.widthIn}x${lbl.heightIn}"</span>
+          ${lbl.includeQr ? '<span class="badge badge-subtle">QR</span>' : ''}
+          ${lbl.includeBarcode ? '<span class="badge badge-subtle">1D Barcode</span>' : ''}
+          ${lbl.isDefault ? '<span class="badge badge-success">DEFAULT</span>' : ''}
+          <button class="btn btn-ghost btn-xs text-muted" onclick="app.removeLabelTemplate('${lbl.id}')" title="Delete Label Size" ${lbl.isDefault ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&times;</button>
+        </div>
+      `).join('');
+    }
+
+    // 5. Custom Fields List
     const udfs = store.tenantCustomFields;
     const udfListEl = document.getElementById('customFieldsEditorList');
     if (udfListEl) {
@@ -3017,6 +3277,23 @@ class SimpletoryApp {
     this.showToast('Facility type removed', 'info');
   }
 
+  removeLabelTemplate(templateId) {
+    const templates = store.tenantLabelTemplates;
+    const target = templates.find(l => l.id === templateId);
+    if (target && target.isDefault) {
+      this.showToast('Cannot delete default system label template', 'warning');
+      return;
+    }
+    if (templates.length <= 1) {
+      this.showToast('Cannot delete the only label template for this tenant', 'error');
+      return;
+    }
+    store.state.labelTemplates[store.state.activeTenantId] = templates.filter(l => l.id !== templateId);
+    store.save();
+    this.renderTenantSettings();
+    this.showToast('Label template removed', 'info');
+  }
+
   removeUom(uomId) {
     store.state.unitsOfMeasure[store.state.activeTenantId] = store.tenantUoms.filter(u => u.id !== uomId);
     store.save();
@@ -3050,12 +3327,14 @@ class SimpletoryApp {
     tableBody.innerHTML = users.map(usr => `
       <tr>
         <td><strong>${usr.name}</strong></td>
-        <td><span class="text-muted">${usr.email}</span></td>
+        <td>
+          <span class="text-muted">${usr.email || '-' }</span>
+          ${usr.username ? `<small class="font-mono text-primary" style="display:block;font-size:0.75rem;">@${usr.username}</small>` : ''}
+        </td>
         <td><span class="badge ${roleBadgeClasses[usr.role] || 'badge-primary'}">${usr.role}</span></td>
         <td><span class="badge badge-subtle font-mono">${usr.facilities || 'All Facilities'}</span></td>
         <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
         <td>
-          <button class="btn btn-ghost btn-xs" onclick="app.editUserRole('${usr.id}')" title="Change Role"><i data-lucide="edit-2"></i></button>
           <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
         </td>
       </tr>
@@ -3074,9 +3353,141 @@ class SimpletoryApp {
     }
     const nameInput = document.getElementById('inviteUserName');
     const emailInput = document.getElementById('inviteUserEmail');
+    const userInput = document.getElementById('inviteUserUsername');
+    const passInput = document.getElementById('inviteUserPassword');
     if (nameInput) nameInput.value = '';
     if (emailInput) emailInput.value = '';
+    if (userInput) userInput.value = '';
+    if (passInput) passInput.value = '';
     this.openModal('inviteUserModal');
+  }
+
+  // ============================================================================
+  // DUAL-MODE AUTHENTICATION & SESSION MANAGEMENT
+  // ============================================================================
+  switchAuthTab(tab) {
+    document.getElementById('btnTabSignIn')?.classList.toggle('active', tab === 'signin');
+    document.getElementById('btnTabRegister')?.classList.toggle('active', tab === 'register');
+    document.getElementById('authPaneSignIn')?.classList.toggle('active', tab === 'signin');
+    document.getElementById('authPaneRegister')?.classList.toggle('active', tab === 'register');
+  }
+
+  quickLoginDemo(username, password) {
+    const idInput = document.getElementById('authIdentifier');
+    const passInput = document.getElementById('authPassword');
+    if (idInput) idInput.value = username;
+    if (passInput) passInput.value = password;
+    this.login(username, password);
+  }
+
+  login(identifier, password) {
+    const cleanId = identifier.trim().toLowerCase();
+    let matchedUser = null;
+    let matchedTenantId = null;
+
+    // Search across tenant users
+    for (const [tId, uList] of Object.entries(store.state.users)) {
+      const found = uList.find(u => 
+        (u.username && u.username.toLowerCase() === cleanId) || 
+        (u.email && u.email.toLowerCase() === cleanId)
+      );
+      if (found) {
+        matchedUser = found;
+        matchedTenantId = tId;
+        break;
+      }
+    }
+
+    if (!matchedUser) {
+      const tMatch = store.state.tenants.find(t => 
+        t.adminUser && t.adminUser.email.toLowerCase() === cleanId
+      );
+      if (tMatch) {
+        matchedUser = {
+          id: `admin-${tMatch.id}`,
+          username: cleanId.split('@')[0],
+          email: tMatch.adminUser.email,
+          name: tMatch.adminUser.name,
+          role: tMatch.adminUser.role || 'Company Admin'
+        };
+        matchedTenantId = tMatch.id;
+      }
+    }
+
+    if (!matchedUser) {
+      this.showToast(`User '${identifier}' not found. Try 'derek' or register an organization.`, 'error');
+      return;
+    }
+
+    // Set active session
+    matchedUser.tenantId = matchedTenantId;
+    store.state.currentAuthUser = matchedUser;
+    store.state.activeTenantId = matchedTenantId;
+    const facs = store.tenantFacilities;
+    if (facs.length > 0) store.state.activeFacilityId = facs[0].id;
+    store.save();
+    this.closeModal('authModal');
+    this.renderAll();
+    this.showToast(`Signed in as ${matchedUser.name} (${matchedUser.role})`, 'success');
+  }
+
+  logout() {
+    this.openModal('authModal');
+    this.showToast('Signed out. Please sign in with your username or email.', 'info');
+  }
+
+  registerOrganization(data) {
+    const tenantId = `tenant-${data.orgName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 15)}-${Date.now().toString().slice(-4)}`;
+    const newTenant = {
+      id: tenantId,
+      name: data.orgName,
+      slug: data.orgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      template: data.template,
+      tier: 'Enterprise Free Tier (0$ / mo)',
+      createdAt: new Date().toISOString().split('T')[0],
+      adminUser: {
+        name: data.adminName,
+        email: data.adminEmail,
+        role: 'Company Admin'
+      }
+    };
+
+    const adminUser = {
+      id: `usr-${Date.now()}`,
+      username: data.adminUsername,
+      email: data.adminEmail,
+      password: data.password || 'Simpletory2026!',
+      name: data.adminName,
+      role: 'Company Admin',
+      facilities: 'All Facilities',
+      status: 'Active'
+    };
+
+    // Seed initial tenant collections
+    store.state.tenants.push(newTenant);
+    store.state.users[tenantId] = [adminUser];
+    store.state.facilities[tenantId] = [
+      { id: `fac-${tenantId}-1`, code: 'FAC-01', name: 'Main Distribution Center', type: 'warehouse', address: '100 Industrial Parkway', trackingMode: 'lpn' }
+    ];
+    store.state.facilityTypes[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.facilityTypes['tenant-flooring']));
+    store.state.unitsOfMeasure[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.unitsOfMeasure[data.template === 'flooring' ? 'tenant-flooring' : 'tenant-general']));
+    store.state.labelTemplates[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.labelTemplates['tenant-flooring']));
+    store.state.customFields[tenantId] = JSON.parse(JSON.stringify(INITIAL_DB.customFields[data.template === 'flooring' ? 'tenant-flooring' : 'tenant-general']));
+    store.state.items[tenantId] = [];
+    store.state.licensePlates[tenantId] = [];
+    store.state.transactions[tenantId] = [];
+
+    // Switch to new tenant
+    store.state.activeTenantId = tenantId;
+    store.state.activeFacilityId = `fac-${tenantId}-1`;
+    adminUser.tenantId = tenantId;
+    store.state.currentAuthUser = adminUser;
+    store.save();
+
+    document.getElementById('registerOrgForm')?.reset();
+    this.closeModal('authModal');
+    this.renderAll();
+    this.showToast(`Organization '${data.orgName}' created! Welcome ${data.adminName}!`, 'success');
   }
 
   editUserRole(userId) {
@@ -3408,6 +3819,588 @@ class SimpletoryApp {
   }
 
   // ============================================================================
+  // AUDIO SYNTHESIZER & BARCODE / QR CODE UTILITIES
+  // ============================================================================
+  playScanBeep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // Crisp 880Hz chime
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch (e) {
+      // AudioContext unavailable or blocked
+    }
+  }
+
+  renderBarcode(svgElement, text, height = 46) {
+    if (!svgElement) return;
+    if (typeof JsBarcode === 'function') {
+      try {
+        JsBarcode(svgElement, String(text).toUpperCase(), {
+          format: 'CODE128',
+          lineColor: '#000000',
+          width: 2,
+          height: height,
+          displayValue: true,
+          font: 'JetBrains Mono',
+          fontSize: 13,
+          textMargin: 3,
+          margin: 0
+        });
+        return;
+      } catch (err) {
+        console.warn('JsBarcode render error, falling back to SVG:', err);
+      }
+    }
+    // High-contrast SVG Barcode Fallback
+    svgElement.innerHTML = `
+      <rect width="100%" height="${height}" fill="#ffffff"/>
+      <g fill="#000000">
+        <rect x="5" y="0" width="3" height="${height - 14}"/>
+        <rect x="11" y="0" width="2" height="${height - 14}"/>
+        <rect x="17" y="0" width="4" height="${height - 14}"/>
+        <rect x="25" y="0" width="2" height="${height - 14}"/>
+        <rect x="31" y="0" width="5" height="${height - 14}"/>
+        <rect x="40" y="0" width="2" height="${height - 14}"/>
+        <rect x="46" y="0" width="3" height="${height - 14}"/>
+        <rect x="54" y="0" width="4" height="${height - 14}"/>
+        <rect x="63" y="0" width="2" height="${height - 14}"/>
+        <rect x="69" y="0" width="4" height="${height - 14}"/>
+        <rect x="78" y="0" width="2" height="${height - 14}"/>
+        <rect x="85" y="0" width="5" height="${height - 14}"/>
+        <rect x="95" y="0" width="3" height="${height - 14}"/>
+        <rect x="103" y="0" width="2" height="${height - 14}"/>
+        <rect x="109" y="0" width="4" height="${height - 14}"/>
+        <rect x="117" y="0" width="2" height="${height - 14}"/>
+        <rect x="123" y="0" width="4" height="${height - 14}"/>
+        <rect x="131" y="0" width="3" height="${height - 14}"/>
+        <rect x="139" y="0" width="2" height="${height - 14}"/>
+        <rect x="145" y="0" width="4" height="${height - 14}"/>
+      </g>
+      <text x="50%" y="${height}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="#000000">${text}</text>
+    `;
+  }
+
+  renderQrCode(containerElement, text, size = 64) {
+    if (!containerElement) return;
+    containerElement.innerHTML = '';
+    if (typeof QRCode === 'function') {
+      try {
+        new QRCode(containerElement, {
+          text: String(text),
+          width: size,
+          height: size,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        return;
+      } catch (e) {
+        console.warn('QRCode render error, falling back to SVG:', e);
+      }
+    }
+    // High-contrast SVG QR Code Fallback
+    containerElement.innerHTML = `
+      <svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="#000000" style="display:block;">
+        <rect x="10" y="10" width="30" height="30" fill="none" stroke="#000000" stroke-width="8"/>
+        <rect x="20" y="20" width="10" height="10"/>
+        <rect x="60" y="10" width="30" height="30" fill="none" stroke="#000000" stroke-width="8"/>
+        <rect x="70" y="20" width="10" height="10"/>
+        <rect x="10" y="60" width="30" height="30" fill="none" stroke="#000000" stroke-width="8"/>
+        <rect x="20" y="70" width="10" height="10"/>
+        <rect x="52" y="52" width="12" height="12"/>
+        <rect x="72" y="60" width="16" height="16"/>
+        <rect x="52" y="76" width="12" height="12"/>
+        <rect x="76" y="44" width="12" height="12"/>
+      </svg>
+    `;
+  }
+
+  // ============================================================================
+  // THERMAL & SHEET LABEL PRINT ENGINE
+  // ============================================================================
+  openPrintLabelModal(targetType = 'lpn', entityId = null) {
+    this.printActiveTarget = targetType;
+    this.printActiveEntityId = entityId;
+
+    const targetSel = document.getElementById('printTargetSelect');
+    if (targetSel) targetSel.value = targetType;
+
+    this.populatePrintTemplates();
+    this.openModal('printLabelModal');
+    this.renderLiveLabelPreview();
+  }
+
+  populatePrintTemplates() {
+    const tmplSel = document.getElementById('printTemplateSelect');
+    if (!tmplSel) return;
+    const templates = store.tenantLabelTemplates;
+
+    tmplSel.innerHTML = templates.map(t => {
+      const isDef = t.isDefault ? ' (Default)' : '';
+      return `<option value="${t.id}">${t.name} - ${t.widthIn}" × ${t.heightIn}" (${t.unit})${isDef}</option>`;
+    }).join('');
+
+    const defaultTmpl = templates.find(t => t.isDefault) || templates[0];
+    if (defaultTmpl) tmplSel.value = defaultTmpl.id;
+  }
+
+  getActivePrintTemplate() {
+    const tmplId = document.getElementById('printTemplateSelect')?.value;
+    return store.tenantLabelTemplates.find(t => t.id === tmplId) || store.tenantLabelTemplates[0] || {
+      id: 'default',
+      name: 'Standard 4x6" Pallet LPN Tag',
+      type: 'lpn_pallet',
+      widthIn: 4.0,
+      heightIn: 6.0,
+      unit: 'in',
+      includeQr: true,
+      includeBarcode: true,
+      includeLot: true
+    };
+  }
+
+  renderLiveLabelPreview() {
+    const previewContainer = document.getElementById('printLabelPreview');
+    const dimsBadge = document.getElementById('printActiveDimsBadge');
+    const typeBadge = document.getElementById('printActiveTypeBadge');
+    const ratioBadge = document.getElementById('previewRatioIndicator');
+    if (!previewContainer) return;
+
+    const tmpl = this.getActivePrintTemplate();
+    const targetType = document.getElementById('printTargetSelect')?.value || 'lpn';
+    const showBarcode = document.getElementById('printOptBarcode')?.checked ?? true;
+    const showQr = document.getElementById('printOptQr')?.checked ?? true;
+    const showLot = document.getElementById('printOptLot')?.checked ?? true;
+
+    // Update dimensions metadata badge
+    const wMm = (tmpl.widthIn * 25.4).toFixed(1);
+    const hMm = (tmpl.heightIn * 25.4).toFixed(1);
+    if (dimsBadge) dimsBadge.textContent = `${tmpl.widthIn}" × ${tmpl.heightIn}" (${wMm} × ${hMm} mm)`;
+    if (typeBadge) typeBadge.textContent = `${tmpl.name} • ${tmpl.unit === 'mm' ? 'Metric' : 'Imperial'}`;
+    if (ratioBadge) ratioBadge.textContent = `${tmpl.widthIn}×${tmpl.heightIn}"`;
+
+    // Apply aspect ratio class
+    previewContainer.className = 'thermal-label-canvas';
+    if (tmpl.widthIn === 2 && tmpl.heightIn === 1) {
+      previewContainer.classList.add('landscape-bin');
+    } else if (tmpl.widthIn === 3 && tmpl.heightIn === 1) {
+      previewContainer.classList.add('landscape-sku');
+    } else if (tmpl.widthIn === 8.5 && tmpl.heightIn === 11) {
+      previewContainer.classList.add('full-sheet');
+    }
+
+    // Resolve active entity data
+    let labelData = {};
+    if (targetType === 'lpn') {
+      const lpn = store.tenantLpns.find(l => l.id === this.printActiveEntityId) || store.tenantLpns[0];
+      const item = lpn ? store.tenantItems.find(i => i.id === lpn.itemId) : store.tenantItems[0];
+      const loc = lpn ? store.tenantLocations.find(l => l.id === lpn.locationId) : store.tenantLocations[0];
+      const fac = lpn ? store.tenantFacilities.find(f => f.id === lpn.facilityId) : store.tenantFacilities[0];
+      const baseUom = item ? store.getItemBaseUom(item.id) : null;
+
+      labelData = {
+        title: store.activeTenant.name,
+        tagType: 'LPN PALLET',
+        primaryCode: lpn ? lpn.lpnNumber : 'LPN-849201',
+        itemSku: item ? item.sku : 'SKU-OAK-01',
+        itemName: item ? item.name : 'Engineered Hardwood 7.5in',
+        location: loc ? `${fac ? fac.code : ''} • ${loc.code}` : 'A01-R01-A',
+        qty: lpn ? `${lpn.quantityBase.toLocaleString()} ${baseUom?.code || 'SQFT'}` : '1,470 SQFT',
+        lot: lpn?.customFields?.dye_lot_run || lpn?.customFields?.batch_lot_tag || 'LOT-2026-A1',
+        barcodeValue: lpn ? lpn.lpnNumber : 'LPN-849201',
+        qrValue: JSON.stringify({ t: 'lpn', id: lpn?.lpnNumber || 'LPN-849201', sku: item?.sku, org: store.activeTenant.slug }),
+        timestamp: new Date().toLocaleDateString()
+      };
+    } else if (targetType === 'location') {
+      const loc = store.tenantLocations.find(l => l.id === this.printActiveEntityId) || store.tenantLocations[0];
+      const fac = loc ? store.tenantFacilities.find(f => f.id === loc.facilityId) : store.tenantFacilities[0];
+      labelData = {
+        title: store.activeTenant.name,
+        tagType: 'BIN LOCATION',
+        primaryCode: loc ? loc.code : 'LOC-A01-R01-A',
+        itemSku: `Zone: ${loc ? loc.zone.toUpperCase() : 'RACKING'}`,
+        itemName: loc ? loc.name : 'Aisle 1, Rack 1, Floor Bay',
+        location: fac ? fac.name : 'Main DC',
+        qty: `Cap: ${loc ? loc.capacity : 4} Pallets`,
+        lot: 'RACKING BIN',
+        barcodeValue: loc ? loc.barcode : 'LOC-A01-R01-A',
+        qrValue: JSON.stringify({ t: 'loc', code: loc?.code, fac: fac?.code }),
+        timestamp: new Date().toLocaleDateString()
+      };
+    } else if (targetType === 'sku') {
+      const item = store.tenantItems.find(i => i.id === this.printActiveEntityId) || store.tenantItems[0];
+      const baseUom = item ? store.getItemBaseUom(item.id) : null;
+      labelData = {
+        title: store.activeTenant.name,
+        tagType: 'ITEM SKU',
+        primaryCode: item ? item.sku : 'SKU-OAK-01',
+        itemSku: item ? item.category : 'Hardwood',
+        itemName: item ? item.name : 'White Oak 7.5in',
+        location: 'Base: ' + (baseUom?.name || 'Square Feet'),
+        qty: `Cost: $${Number(item?.costPrice || 0).toFixed(2)}`,
+        lot: item?.customFields?.color_stain || 'Standard',
+        barcodeValue: item ? (item.barcode || item.sku) : 'SKU-OAK-01',
+        qrValue: JSON.stringify({ t: 'sku', sku: item?.sku, uom: baseUom?.code }),
+        timestamp: new Date().toLocaleDateString()
+      };
+    }
+
+    // Render HTML inside preview
+    previewContainer.innerHTML = `
+      <div class="label-header">
+        <span class="label-tenant-title">${labelData.title}</span>
+        <span class="label-type-tag">${labelData.tagType}</span>
+      </div>
+
+      <div class="label-lpn-hero">${labelData.primaryCode}</div>
+
+      ${showBarcode ? `
+        <div class="label-barcode-wrapper">
+          <svg id="previewBarcodeSvg" class="label-barcode-svg"></svg>
+        </div>
+      ` : ''}
+
+      <div class="label-info-grid">
+        <div class="label-info-row-full">
+          <div class="label-field-label">Product / Description:</div>
+          <div class="label-field-val">${labelData.itemName}</div>
+        </div>
+        <div>
+          <div class="label-field-label">SKU / Code:</div>
+          <div class="label-field-val font-mono">${labelData.itemSku}</div>
+        </div>
+        <div>
+          <div class="label-field-label">Location / Bin:</div>
+          <div class="label-field-val">${labelData.location}</div>
+        </div>
+        <div>
+          <div class="label-field-label">Quantity:</div>
+          <div class="label-field-val font-mono">${labelData.qty}</div>
+        </div>
+        ${showLot ? `
+          <div>
+            <div class="label-field-label">Batch / Lot #:</div>
+            <div class="label-field-val font-mono">${labelData.lot}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="label-qr-row">
+        ${showQr ? `<div id="previewQrContainer" class="label-qr-canvas"></div>` : ''}
+        <div class="label-footer-meta">
+          <div><strong>Simpletory WMS</strong> &bull; Verified Pallet</div>
+          <div>Printed: ${labelData.timestamp}</div>
+          <div style="font-family:var(--font-mono); font-size:0.55rem;">UID: ${Math.random().toString(36).substring(2, 9).toUpperCase()}</div>
+        </div>
+      </div>
+    `;
+
+    // Render Barcode & QR Code
+    if (showBarcode) {
+      const barcodeEl = document.getElementById('previewBarcodeSvg');
+      this.renderBarcode(barcodeEl, labelData.barcodeValue, tmpl.heightIn <= 2 ? 30 : 45);
+    }
+    if (showQr) {
+      const qrEl = document.getElementById('previewQrContainer');
+      this.renderQrCode(qrEl, labelData.qrValue, 64);
+    }
+  }
+
+  executePrintLabels() {
+    const printRoot = document.getElementById('printLabelContainer');
+    const previewContent = document.getElementById('printLabelPreview');
+    const copies = parseInt(document.getElementById('printCopiesCount')?.value || '1', 10);
+    if (!printRoot || !previewContent) return;
+
+    // Clone preview HTML into print pages
+    printRoot.innerHTML = '';
+    for (let i = 0; i < copies; i++) {
+      const page = document.createElement('div');
+      page.className = 'printable-label-page';
+      page.innerHTML = previewContent.outerHTML;
+      printRoot.appendChild(page);
+    }
+
+    this.showToast(`Dispatching ${copies} label(s) to thermal printer...`, 'info');
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  }
+
+  // ============================================================================
+  // CSV BULK MASTER DATA IMPORTER & EXPORTER
+  // ============================================================================
+  openCsvImportModal(target = 'items') {
+    const targetSel = document.getElementById('csvImportTarget');
+    if (targetSel) targetSel.value = target;
+    this.clearCsvFile();
+    this.openModal('csvImportModal');
+  }
+
+  clearCsvFile() {
+    const fileInp = document.getElementById('csvFileInput');
+    if (fileInp) fileInp.value = '';
+    this.parsedCsvData = null;
+    document.getElementById('csvPreviewSection')?.classList.add('hidden');
+    const importBtn = document.getElementById('btnExecuteCsvImport');
+    if (importBtn) {
+      importBtn.disabled = true;
+      importBtn.innerHTML = `<i data-lucide="check-circle-2"></i> Import 0 Records to Database`;
+      this.initIcons();
+    }
+  }
+
+  handleCsvFile(file) {
+    if (!file || !file.name.endsWith('.csv')) {
+      this.showToast('Please upload a valid .csv spreadsheet file', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const parsed = this.parseCsv(text);
+      if (!parsed || parsed.rows.length === 0) {
+        this.showToast('CSV file is empty or missing data rows', 'warning');
+        return;
+      }
+
+      this.parsedCsvData = parsed;
+      this.renderCsvPreview(file.name, parsed);
+    };
+    reader.readAsText(file);
+  }
+
+  parseCsv(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return null;
+
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const parseRow = (rowStr) => {
+      const regex = new RegExp(`(?:${delimiter}|\\r?\\n|^)(?:"([^"]*(?:""[^"]*)*)"|([^"${delimiter}\\r\\n]*))`, 'gi');
+      const matches = [];
+      let match;
+      while ((match = regex.exec(rowStr)) !== null) {
+        if (match.index === regex.lastIndex) regex.lastIndex++;
+        let val = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
+        if (val !== undefined) matches.push(val.trim());
+      }
+      return matches;
+    };
+
+    const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const values = parseRow(lines[i]);
+      if (values.length === 0) continue;
+      const rowObj = {};
+      headers.forEach((h, idx) => {
+        rowObj[h] = values[idx] !== undefined ? values[idx] : '';
+      });
+      rows.push(rowObj);
+    }
+    return { headers, rows };
+  }
+
+  renderCsvPreview(fileName, parsed) {
+    const previewSection = document.getElementById('csvPreviewSection');
+    const thead = document.getElementById('csvPreviewThead');
+    const tbody = document.getElementById('csvPreviewTbody');
+    const validBadge = document.getElementById('csvValidRowsBadge');
+    const totalBadge = document.getElementById('csvTotalRowsBadge');
+    const fileNameDisplay = document.getElementById('csvFileNameDisplay');
+    const importBtn = document.getElementById('btnExecuteCsvImport');
+    if (!previewSection || !thead || !tbody) return;
+
+    fileNameDisplay.textContent = fileName;
+    validBadge.textContent = `${parsed.rows.length} Valid Records`;
+    totalBadge.textContent = `${parsed.rows.length} Total`;
+
+    // Render table headers
+    thead.innerHTML = `<tr>${parsed.headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+    // Render first 5 sample rows
+    tbody.innerHTML = parsed.rows.slice(0, 6).map(r => `
+      <tr>${parsed.headers.map(h => `<td>${r[h] || '-'}</td>`).join('')}</tr>
+    `).join('');
+
+    previewSection.classList.remove('hidden');
+    if (importBtn) {
+      importBtn.disabled = false;
+      importBtn.innerHTML = `<i data-lucide="check-circle-2"></i> Import ${parsed.rows.length} Records to Database`;
+      this.initIcons();
+    }
+  }
+
+  executeCsvImport() {
+    if (!this.parsedCsvData || this.parsedCsvData.rows.length === 0) return;
+    const target = document.getElementById('csvImportTarget')?.value || 'items';
+    const rows = this.parsedCsvData.rows;
+    const tenantId = store.state.activeTenantId;
+    let importedCount = 0;
+
+    if (target === 'items') {
+      rows.forEach(r => {
+        const sku = (r.sku || r.item_sku || r.item_code || `SKU-${Date.now().toString().slice(-4)}`).toUpperCase();
+        const name = r.name || r.item_name || r.description || 'Imported SKU Product';
+        const category = r.category || 'General Inventory';
+        const baseUomId = r.base_uom || r.uom || 'uom-sqft';
+        const costPrice = parseFloat(r.cost_price || r.cost || 0) || 0;
+        const sellPrice = parseFloat(r.sell_price || r.price || 0) || 0;
+        const reorderPt = parseFloat(r.reorder_point || r.reorder || 100) || 100;
+
+        // Avoid duplicate SKU
+        const existing = (store.state.items[tenantId] || []).find(i => i.sku === sku);
+        if (existing) {
+          existing.name = name;
+          existing.category = category;
+          existing.costPrice = costPrice;
+          existing.sellPrice = sellPrice;
+        } else {
+          store.state.items[tenantId].push({
+            id: `item-${sku.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+            tenantId,
+            sku,
+            name,
+            category,
+            baseUomId,
+            costPrice,
+            sellPrice,
+            reorderPoint: reorderPt,
+            minSafetyStock: Math.floor(reorderPt / 2),
+            barcode: r.barcode || sku,
+            customFields: {}
+          });
+        }
+        importedCount++;
+      });
+    } else if (target === 'lpns') {
+      const activeFac = store.activeFacility?.id || store.tenantFacilities[0]?.id;
+      const defaultLoc = store.tenantLocations[0]?.id || 'loc-a01-r01-a';
+
+      rows.forEach(r => {
+        const lpnNum = (r.lpn || r.lpn_number || r.pallet_id || `LPN-${Date.now().toString().slice(-6)}`).toUpperCase();
+        const sku = (r.sku || r.item_sku || '').toUpperCase();
+        const item = (store.state.items[tenantId] || []).find(i => i.sku === sku) || store.tenantItems[0];
+        const qty = parseFloat(r.quantity || r.qty || 100) || 100;
+        const lot = r.lot || r.lot_number || r.dye_lot || 'LOT-CSV-INIT';
+
+        store.state.licensePlates[tenantId].push({
+          id: `lpn-${lpnNum.toLowerCase()}`,
+          tenantId,
+          facilityId: activeFac,
+          locationId: defaultLoc,
+          lpnNumber: lpnNum,
+          itemId: item ? item.id : 'item-oak-white',
+          quantityBase: qty,
+          palletStatus: 'available',
+          customFields: { dye_lot_run: lot, batch_lot_tag: lot }
+        });
+
+        // Add audit transaction
+        store.state.transactions[tenantId].unshift({
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          tenantId,
+          facilityId: activeFac,
+          type: 'inbound_receipt',
+          lpnId: lpnNum,
+          sku: item ? item.sku : 'SKU-CSV',
+          qtyChange: qty,
+          uom: 'Units',
+          fromLocationId: 'CSV Import',
+          toLocationId: defaultLoc,
+          referenceDoc: 'BULK-CSV-IMPORT',
+          userName: store.currentUser?.name || 'Admin',
+          timestamp: new Date().toISOString()
+        });
+
+        importedCount++;
+      });
+    }
+
+    store.save();
+    this.closeModal('csvImportModal');
+    this.renderAll();
+    this.showToast(`Successfully imported ${importedCount} records to ${target.toUpperCase()}!`, 'success');
+  }
+
+  downloadSampleCsv(target = 'items') {
+    let csvContent = '';
+    let fileName = '';
+
+    if (target === 'items') {
+      csvContent = 'sku,name,category,base_uom,cost_price,sell_price,reorder_point,barcode\n' +
+        'SKU-TILE-90,Venetian White Carrara Tile 12x24,Tile & Stone,uom-sqft,3.20,7.50,500,08912899090\n' +
+        'SKU-WD-88,Hickory Distressed Plank 5in,Hardwood,uom-sqft,4.10,8.25,800,07412891288\n' +
+        'SKU-CPT-12,Plush Velvet Nylon Broadloom 12ft,Carpet & Rugs,uom-sqft,2.15,4.80,1200,09912488112\n';
+      fileName = 'simpletory_items_sample.csv';
+    } else if (target === 'lpns') {
+      csvContent = 'lpn_number,sku,quantity,lot_number,location_code\n' +
+        'LPN-900101,SKU-OAK-01,1470,LOT-2026-X1,A01-R01-A\n' +
+        'LPN-900102,SKU-TILE-02,512,LOT-CAL-88,A01-R02-B\n' +
+        'LPN-900103,SKU-LVP-03,1100,LOT-LVP-99,A02-R04-A\n';
+      fileName = 'simpletory_opening_stock_sample.csv';
+    } else {
+      csvContent = 'code,name,zone,capacity,barcode\n' +
+        'A03-R01-A,Aisle 3 Rack 1 Floor Bay,racking,4,LOC-A03-R01-A\n' +
+        'A03-R01-B,Aisle 3 Rack 1 Level 2,racking,2,LOC-A03-R01-B\n';
+      fileName = 'simpletory_locations_sample.csv';
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast(`Downloaded sample template '${fileName}'`, 'success');
+  }
+
+  exportCsv(datasetType = 'items') {
+    const tenantId = store.state.activeTenantId;
+    let csvContent = '';
+    let fileName = `simpletory_${datasetType}_${new Date().toISOString().split('T')[0]}.csv`;
+
+    if (datasetType === 'items') {
+      const items = store.tenantItems;
+      const headers = ['sku', 'name', 'category', 'base_uom', 'cost_price', 'sell_price', 'reorder_point', 'barcode'];
+      csvContent = headers.join(',') + '\n';
+      items.forEach(i => {
+        csvContent += `"${i.sku}","${i.name.replace(/"/g, '""')}","${i.category}","${i.baseUomId}",${i.costPrice || 0},${i.sellPrice || 0},${i.reorderPoint || 0},"${i.barcode || ''}"\n`;
+      });
+    } else if (datasetType === 'lpns') {
+      const lpns = store.tenantLpns;
+      const headers = ['lpn_number', 'sku', 'item_name', 'quantity', 'facility', 'location', 'lot_number', 'status'];
+      csvContent = headers.join(',') + '\n';
+      lpns.forEach(l => {
+        const item = store.tenantItems.find(i => i.id === l.itemId);
+        const loc = store.tenantLocations.find(loc => loc.id === l.locationId);
+        const fac = store.tenantFacilities.find(f => f.id === l.facilityId);
+        csvContent += `"${l.lpnNumber}","${item?.sku || ''}","${(item?.name || '').replace(/"/g, '""')}",${l.quantityBase},"${fac?.code || ''}","${loc?.code || ''}","${l.customFields?.dye_lot_run || l.customFields?.batch_lot_tag || ''}","${l.palletStatus}"\n`;
+      });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast(`Exported ${datasetType.toUpperCase()} dataset to CSV`, 'success');
+  }
+
+  // ============================================================================
   // INTERACTIVE BARCODE SCANNER LOGIC
   // ============================================================================
   openScannerModal() {
@@ -3420,7 +4413,7 @@ class SimpletoryApp {
     const testCodes = [
       ...lpns.map(l => ({ code: l.lpnNumber, label: `LPN Pallet (${l.lpnNumber})` })),
       ...locs.map(loc => ({ code: loc.barcode, label: `Bin (${loc.code})` })),
-      ...items.map(i => ({ code: i.barcode, label: `SKU (${i.sku})` }))
+      ...items.map(i => ({ code: i.barcode || i.sku, label: `SKU (${i.sku})` }))
     ];
 
     chipsContainer.innerHTML = testCodes.map(c => `
@@ -3438,6 +4431,9 @@ class SimpletoryApp {
     const resultTitle = document.getElementById('scanResultTitle');
     const resultContent = document.getElementById('scanResultContent');
     const resultActions = document.getElementById('scanResultActions');
+
+    // Play instant audio chime
+    this.playScanBeep();
 
     // 1. Check if LPN
     const lpnMatch = store.tenantLpns.find(l => l.lpnNumber.toLowerCase() === cleanCode.toLowerCase());
@@ -3460,6 +4456,9 @@ class SimpletoryApp {
         <button class="btn btn-primary btn-sm" onclick="app.closeModal('scannerModal'); app.triggerAdjustModal('${lpnMatch.id}');">
           <i data-lucide="package-minus"></i> Pick Out
         </button>
+        <button class="btn btn-outline btn-sm" onclick="app.closeModal('scannerModal'); app.openPrintLabelModal('lpn', '${lpnMatch.id}');">
+          <i data-lucide="printer"></i> Print LPN Tag
+        </button>
       `;
       resultCard.classList.remove('hidden');
       this.initIcons();
@@ -3481,6 +4480,9 @@ class SimpletoryApp {
         <button class="btn btn-primary btn-sm" onclick="app.closeModal('scannerModal'); app.navigateTo('facilities');">
           <i data-lucide="eye"></i> View Bin in Warehouse
         </button>
+        <button class="btn btn-outline btn-sm" onclick="app.closeModal('scannerModal'); app.openPrintLabelModal('location', '${locMatch.id}');">
+          <i data-lucide="printer"></i> Print Bin Marker
+        </button>
       `;
       resultCard.classList.remove('hidden');
       this.initIcons();
@@ -3488,7 +4490,7 @@ class SimpletoryApp {
     }
 
     // 3. Check if Item SKU
-    const itemMatch = store.tenantItems.find(i => i.sku.toLowerCase() === cleanCode.toLowerCase() || i.barcode.toLowerCase() === cleanCode.toLowerCase());
+    const itemMatch = store.tenantItems.find(i => i.sku.toLowerCase() === cleanCode.toLowerCase() || (i.barcode && i.barcode.toLowerCase() === cleanCode.toLowerCase()));
     if (itemMatch) {
       const itemLpns = store.tenantLpns.filter(l => l.itemId === itemMatch.id);
       const totalUnits = itemLpns.reduce((sum, l) => sum + l.quantityBase, 0);
@@ -3507,6 +4509,9 @@ class SimpletoryApp {
         <button class="btn btn-outline btn-sm" onclick="app.closeModal('scannerModal'); app.triggerAdjustModal(null, '${itemMatch.id}');">
           <i data-lucide="package-minus"></i> Pick Out
         </button>
+        <button class="btn btn-secondary btn-sm" onclick="app.closeModal('scannerModal'); app.openPrintLabelModal('sku', '${itemMatch.id}');">
+          <i data-lucide="printer"></i> Print SKU Sticker
+        </button>
       `;
       resultCard.classList.remove('hidden');
       this.initIcons();
@@ -3521,7 +4526,7 @@ class SimpletoryApp {
   }
 
   printBarcodeTag(tag) {
-    this.showToast(`Thermal Label Print Command sent for ${tag} (Zebra/Brother 4x6 format)`, 'info');
+    this.openPrintLabelModal('lpn');
   }
 
   // ============================================================================

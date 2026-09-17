@@ -86,6 +86,9 @@ class SupabaseService {
         lpnsRes,
         uomsRes,
         customFieldsRes,
+        labelTemplatesRes,
+        facilityTypesRes,
+        userProfilesRes,
         txRes
       ] = await Promise.all([
         this.client.from('tenants').select('*'),
@@ -95,6 +98,9 @@ class SupabaseService {
         this.client.from('lpns').select('*').eq('tenant_id', tenantId),
         this.client.from('units_of_measure').select('*').eq('tenant_id', tenantId),
         this.client.from('custom_fields').select('*').eq('tenant_id', tenantId),
+        this.client.from('label_templates').select('*').eq('tenant_id', tenantId),
+        this.client.from('facility_types').select('*').eq('tenant_id', tenantId),
+        this.client.from('user_profiles').select('*').eq('tenant_id', tenantId),
         this.client.from('inventory_transactions').select('*').eq('tenant_id', tenantId).order('timestamp', { ascending: false }).limit(50)
       ]);
 
@@ -151,6 +157,34 @@ class SupabaseService {
           code: u.code,
           category: u.category,
           isBaseDefault: u.is_base_default
+        })),
+        labelTemplates: (labelTemplatesRes?.data || []).map(t => ({
+          id: t.id,
+          name: t.name,
+          type: t.type,
+          widthIn: Number(t.width_in || 4.0),
+          heightIn: Number(t.height_in || 6.0),
+          unit: t.unit || 'in',
+          isDefault: t.is_default,
+          includeQr: t.include_qr,
+          includeBarcode: t.include_barcode,
+          includeLot: t.include_lot
+        })),
+        facilityTypes: (facilityTypesRes?.data || []).map(ft => ({
+          id: ft.id,
+          code: ft.code,
+          name: ft.name,
+          description: ft.description,
+          isDefault: ft.is_default
+        })),
+        users: (userProfilesRes?.data || []).map(u => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          facilities: u.all_facilities_access ? 'All Facilities' : (u.facility_id || 'Assigned Facility'),
+          status: u.status
         })),
         customFields: (customFieldsRes.data || []).map(c => ({
           id: c.id,
@@ -252,6 +286,24 @@ class SupabaseService {
           uom: 'SQFT',
           pallet_status: l.status || 'available',
           custom_attributes: l.customFields || {}
+        });
+      }
+
+      // 5. Sync Label Templates
+      const templates = store.tenantLabelTemplates;
+      for (const t of templates) {
+        await this.client.from('label_templates').upsert({
+          id: t.id,
+          tenant_id: tenantId,
+          name: t.name,
+          type: t.type || 'lpn_pallet',
+          width_in: t.widthIn,
+          height_in: t.heightIn,
+          unit: t.unit || 'in',
+          is_default: t.isDefault || false,
+          include_qr: t.includeQr ?? true,
+          include_barcode: t.includeBarcode ?? true,
+          include_lot: t.includeLot ?? true
         });
       }
 

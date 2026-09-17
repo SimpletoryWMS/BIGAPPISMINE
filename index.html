@@ -14,6 +14,10 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
+  <!-- Barcode & QR Code Rendering Engines -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
   <!-- Supabase JS Client & Config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
@@ -82,13 +86,33 @@
           <i data-lucide="sun" id="themeIcon"></i>
         </button>
 
-        <!-- User Profile Pill -->
-        <div class="user-pill" id="userProfileBtn" title="Current Role & User Settings">
+        <!-- User Profile Pill & Dropdown -->
+        <div class="user-pill" id="userProfileBtn" title="Account & Session">
           <div class="avatar" id="userAvatar">DA</div>
           <div class="user-info desktop-only">
             <span class="user-name" id="userName">Derek L.</span>
             <span class="user-role" id="userRoleBadge">Company Admin</span>
           </div>
+        </div>
+
+        <div class="user-menu-dropdown" id="userMenuDropdown">
+          <div style="padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--border-subtle); margin-bottom: 0.4rem;">
+            <div style="font-weight: 700; font-size: 0.85rem;" id="dropdownUserFullName">Derek Lumpkin</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);" id="dropdownUserRole">Company Admin</div>
+          </div>
+          <button class="user-menu-item" id="btnUserMenuSwitchAccount">
+            <i data-lucide="user-check" style="width:16px;height:16px;color:var(--accent-cyan);"></i>
+            <span>Switch User / Login</span>
+          </button>
+          <button class="user-menu-item" id="btnUserMenuSettings">
+            <i data-lucide="settings" style="width:16px;height:16px;color:var(--accent-purple);"></i>
+            <span>Tenant Settings</span>
+          </button>
+          <div class="user-menu-divider"></div>
+          <button class="user-menu-item text-danger" id="btnUserMenuSignOut">
+            <i data-lucide="log-out" style="width:16px;height:16px;color:var(--accent-rose);"></i>
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     </header>
@@ -334,6 +358,15 @@
               </button>
               <button class="btn btn-outline" id="btnAdjustInventory">
                 <i data-lucide="sliders"></i> Adjust Inventory
+              </button>
+              <button class="btn btn-outline" id="btnPrintPalletLabelsQuick">
+                <i data-lucide="printer"></i> Print Labels
+              </button>
+              <button class="btn btn-secondary" id="btnImportInventoryCsv">
+                <i data-lucide="upload-cloud"></i> Import CSV
+              </button>
+              <button class="btn btn-outline" id="btnExportInventoryCsv">
+                <i data-lucide="download"></i> Export CSV
               </button>
             </div>
           </div>
@@ -587,6 +620,12 @@
               <p class="view-subtitle">SKU definitions, UOM packaging hierarchies, and tenant custom properties.</p>
             </div>
             <div class="view-actions">
+              <button class="btn btn-secondary" id="btnImportCatalogCsv">
+                <i data-lucide="upload-cloud"></i> Import SKUs CSV
+              </button>
+              <button class="btn btn-outline" id="btnExportCatalogCsv">
+                <i data-lucide="download"></i> Export SKUs CSV
+              </button>
               <button class="btn btn-primary" id="btnAddNewItem">
                 <i data-lucide="plus"></i> Add New Item
               </button>
@@ -780,7 +819,7 @@
             </div>
           </div>
 
-          <div class="grid-3-col">
+          <div class="grid-2-col">
             <!-- Section 2: Units of Measure (UOM) Configuration -->
             <div class="card">
               <div class="card-header">
@@ -825,7 +864,29 @@
               </div>
             </div>
 
-            <!-- Section 4: User Defined Fields (UDF) Configuration -->
+            <!-- Section 4: Configurable Label Templates & Sizes -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-left">
+                  <i data-lucide="printer" class="text-primary"></i>
+                  <h3 class="card-title">Label Configurations & Sizes</h3>
+                </div>
+                <button class="btn btn-sm btn-primary" id="btnAddNewLabelTemplate">
+                  <i data-lucide="plus"></i> Add Label Size
+                </button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-4">
+                  Configure thermal label dimensions & barcodes for Pallets (LPN), Bins, and SKUs.
+                </p>
+
+                <div class="label-templates-editor-list" id="labelTemplatesEditorList">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 5: User Defined Fields (UDF) Configuration -->
             <div class="card">
               <div class="card-header">
                 <div class="card-header-left">
@@ -1612,26 +1673,49 @@
     </div>
   </div>
 
-  <!-- MODAL 9: INVITE TEAM MEMBER (USER MANAGEMENT) -->
+  <!-- MODAL 9: INVITE / CREATE TEAM MEMBER (USER MANAGEMENT) -->
   <div class="modal-backdrop" id="inviteUserModal">
     <div class="modal-dialog modal-md">
       <div class="modal-header">
         <div class="modal-title-group">
           <i data-lucide="user-plus" class="text-primary"></i>
-          <h3 class="modal-title">Invite Team Member</h3>
+          <h3 class="modal-title">Add / Invite Team Member</h3>
         </div>
         <button class="modal-close-btn" data-close-modal="inviteUserModal">&times;</button>
       </div>
       <div class="modal-body">
         <form id="inviteUserForm">
           <div class="form-group">
+            <label class="form-label">Account Setup Method: *</label>
+            <div class="facility-mode-toggle-group" style="margin:0; width:100%; display:flex;">
+              <button type="button" class="facility-mode-btn active" id="btnModeEmailInvite" style="flex:1;">
+                <i data-lucide="mail"></i> Email Invite (Admins)
+              </button>
+              <button type="button" class="facility-mode-btn" id="btnModeUsernamePass" style="flex:1;">
+                <i data-lucide="user"></i> Floor Operator (Username)
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
             <label for="inviteUserName" class="form-label">Full Name: *</label>
             <input type="text" id="inviteUserName" class="form-input" placeholder="e.g. Alex Morgan" required />
           </div>
 
-          <div class="form-group mt-3">
+          <div class="form-group mt-3" id="inviteEmailGroup">
             <label for="inviteUserEmail" class="form-label">Work Email: *</label>
             <input type="email" id="inviteUserEmail" class="form-input" placeholder="e.g. alex@company.com" required />
+          </div>
+
+          <div class="grid-2-col mt-3" id="inviteUsernameGroup" style="display:none;">
+            <div class="form-group">
+              <label for="inviteUserUsername" class="form-label">Username / User ID: *</label>
+              <input type="text" id="inviteUserUsername" class="form-input font-mono" placeholder="e.g. alex_m, dock_01" />
+            </div>
+            <div class="form-group">
+              <label for="inviteUserPassword" class="form-label">Initial Password: *</label>
+              <input type="password" id="inviteUserPassword" class="form-input font-mono" placeholder="e.g. Secret2026!" />
+            </div>
           </div>
 
           <div class="grid-2-col mt-3">
@@ -1656,7 +1740,7 @@
 
           <div class="modal-footer mt-4">
             <button type="button" class="btn btn-secondary" data-close-modal="inviteUserModal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-glow">Send Invitation & Save</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitUserCreate">Create & Save User</button>
           </div>
         </form>
       </div>
@@ -1752,10 +1836,351 @@
     </div>
   </div>
 
+  <!-- MODAL 13: ADD LABEL CONFIGURATION & SIZE (SETTINGS) -->
+  <div class="modal-backdrop" id="addLabelTemplateModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="printer" class="text-primary"></i>
+          <h3 class="modal-title">Add Label Template & Size</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="addLabelTemplateModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addLabelTemplateForm">
+          <div class="form-group">
+            <label for="newLabelName" class="form-label">Template / Label Name: *</label>
+            <input type="text" id="newLabelName" class="form-input" placeholder="e.g. Compact Bin Tag (2x1 in)" required />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newLabelType" class="form-label">Target Entity / Use Case: *</label>
+              <select id="newLabelType" class="form-select" required>
+                <option value="lpn_pallet">Pallet LPN Tag (Inbound & Storage)</option>
+                <option value="bin_location">Rack / Shelf Bin Marker</option>
+                <option value="item_sku">Item Master / Carton Barcode</option>
+                <option value="dispatch_slip">Packing / Job Dispatch Sheet</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="newLabelUnit" class="form-label">Dimension Unit:</label>
+              <select id="newLabelUnit" class="form-select">
+                <option value="in" selected>Inches (in)</option>
+                <option value="mm">Millimeters (mm)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="newLabelWidth" class="form-label">Label Width: *</label>
+              <input type="number" step="0.1" id="newLabelWidth" class="form-input" placeholder="e.g. 4.0" required value="4.0" />
+            </div>
+
+            <div class="form-group">
+              <label for="newLabelHeight" class="form-label">Label Height: *</label>
+              <input type="number" step="0.1" id="newLabelHeight" class="form-input" placeholder="e.g. 6.0" required value="6.0" />
+            </div>
+          </div>
+
+          <div class="form-group mt-3" style="display:flex; flex-direction:column; gap:0.4rem;">
+            <label class="checkbox-container">
+              <input type="checkbox" id="newLabelIncludeBarcode" checked />
+              <span>Include 1D Barcode (Code 128)</span>
+            </label>
+            <label class="checkbox-container">
+              <input type="checkbox" id="newLabelIncludeQr" checked />
+              <span>Include 2D QR Code</span>
+            </label>
+            <label class="checkbox-container">
+              <input type="checkbox" id="newLabelIncludeLot" checked />
+              <span>Include Batch / Lot # and Expiry</span>
+            </label>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="addLabelTemplateModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Label Size</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 14: AUTHENTICATION & LOGIN / SIGNUP SCREEN -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="shield-check" class="text-primary"></i>
+          <h3 class="modal-title">Simpletory WMS Authentication</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="authModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="auth-tab-group">
+          <button type="button" class="auth-tab-btn active" id="btnTabSignIn" onclick="app.switchAuthTab('signin')">
+            <i data-lucide="log-in" style="width:14px;height:14px;margin-right:4px;"></i> Sign In
+          </button>
+          <button type="button" class="auth-tab-btn" id="btnTabRegister" onclick="app.switchAuthTab('register')">
+            <i data-lucide="building" style="width:14px;height:14px;margin-right:4px;"></i> Register Organization
+          </button>
+        </div>
+
+        <!-- Tab 1: Dual-Mode Sign In (Email or Username) -->
+        <div id="authPaneSignIn" class="auth-tab-pane active">
+          <form id="signInForm">
+            <div class="form-group">
+              <label for="authIdentifier" class="form-label">Username or Work Email: *</label>
+              <input type="text" id="authIdentifier" class="form-input" placeholder="e.g. derek or dock_worker_1" required />
+            </div>
+
+            <div class="form-group mt-3">
+              <label for="authPassword" class="form-label">Password: *</label>
+              <input type="password" id="authPassword" class="form-input font-mono" placeholder="••••••••" required />
+            </div>
+
+            <div class="modal-footer mt-4">
+              <button type="button" class="btn btn-secondary" data-close-modal="authModal">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-glow" style="flex:1;">
+                <i data-lucide="log-in"></i> Sign In to Account
+              </button>
+            </div>
+          </form>
+
+          <!-- Quick Switch Demo Users -->
+          <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-subtle);">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.6rem; font-weight:600;">⚡ Quick Demo Floor & Admin Switch:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('derek', 'Simpletory2026!')">👑 Admin (derek)</button>
+              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('marcus_v', 'Simpletory2026!')">📋 Manager (marcus_v)</button>
+              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('carlos_g', 'Simpletory2026!')">📦 Operator (carlos_g)</button>
+              <button class="btn btn-xs btn-outline" onclick="app.quickLoginDemo('dock_worker_1', 'Simpletory2026!')">🚚 Floor (dock_worker_1)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Register New Organization -->
+        <div id="authPaneRegister" class="auth-tab-pane">
+          <form id="registerOrgForm">
+            <div class="form-group">
+              <label for="regOrgName" class="form-label">Company / Organization Name: *</label>
+              <input type="text" id="regOrgName" class="form-input" placeholder="e.g. Pacific Logistics & Freight" required />
+            </div>
+
+            <div class="form-group mt-3">
+              <label for="regOrgTemplate" class="form-label">Industry Starter Template: *</label>
+              <select id="regOrgTemplate" class="form-select" required>
+                <option value="flooring">Flooring & Tile Specialist (SqFt, Dye Lots, Rolls)</option>
+                <option value="general_wms" selected>General Logistics & Distribution (Pallet, Case, EA)</option>
+              </select>
+            </div>
+
+            <div class="grid-2-col mt-3">
+              <div class="form-group">
+                <label for="regAdminName" class="form-label">Admin Full Name: *</label>
+                <input type="text" id="regAdminName" class="form-input" placeholder="e.g. John Doe" required />
+              </div>
+              <div class="form-group">
+                <label for="regAdminUsername" class="form-label">Admin Username: *</label>
+                <input type="text" id="regAdminUsername" class="form-input font-mono" placeholder="e.g. jdoe" required />
+              </div>
+            </div>
+
+            <div class="grid-2-col mt-3">
+              <div class="form-group">
+                <label for="regAdminEmail" class="form-label">Admin Work Email: *</label>
+                <input type="email" id="regAdminEmail" class="form-input" placeholder="e.g. john@pacificlogistics.com" required />
+              </div>
+              <div class="form-group">
+                <label for="regAdminPassword" class="form-label">Password: *</label>
+                <input type="password" id="regAdminPassword" class="form-input font-mono" placeholder="••••••••" required />
+              </div>
+            </div>
+
+            <div class="modal-footer mt-4">
+              <button type="button" class="btn btn-secondary" onclick="app.switchAuthTab('signin')">Back to Login</button>
+              <button type="submit" class="btn btn-primary btn-glow" style="flex:1;">
+                <i data-lucide="plus-circle"></i> Create Organization & Admin
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 15: THERMAL & SHEET LABEL PRINT ENGINE -->
+  <div class="modal-backdrop" id="printLabelModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="printer" class="text-primary"></i>
+          <h3 class="modal-title">Print Warehouse Labels & Tags</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="printLabelModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="print-modal-layout">
+          <!-- Left Column: Settings & Configuration -->
+          <div class="print-controls-pane">
+            <div class="form-group">
+              <label for="printTemplateSelect" class="form-label">Select Label Template / Size: *</label>
+              <select id="printTemplateSelect" class="form-select">
+                <!-- Dynamically populated from tenant's label_templates -->
+              </select>
+            </div>
+
+            <div class="print-dimensions-card mt-2">
+              <div class="print-dims-header">
+                <span class="print-dims-label">Active Dimensions:</span>
+                <span class="badge badge-accent" id="printActiveDimsBadge">4.0" × 6.0" (101.6 × 152.4 mm)</span>
+              </div>
+              <div class="print-dims-type" id="printActiveTypeBadge">Pallet LPN Tag • Thermal Roll</div>
+            </div>
+
+            <div class="grid-2-col mt-3">
+              <div class="form-group">
+                <label for="printCopiesCount" class="form-label">Copies: *</label>
+                <input type="number" id="printCopiesCount" class="form-input" min="1" max="100" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="printTargetSelect" class="form-label">Target Entity:</label>
+                <select id="printTargetSelect" class="form-select">
+                  <option value="lpn">Pallet / LPN Tag</option>
+                  <option value="location">Bin / Location Marker</option>
+                  <option value="sku">Item / SKU Barcode</option>
+                  <option value="dispatch">Dispatch / Packing Slip</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group mt-3" style="display:flex; flex-direction:column; gap:0.4rem;">
+              <label class="form-label" style="margin-bottom:0.2rem;">Print Elements:</label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="printOptBarcode" checked />
+                <span>1D Barcode (Code 128)</span>
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="printOptQr" checked />
+                <span>2D QR Code (LPN Deep Link)</span>
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="printOptLot" checked />
+                <span>Lot / Batch & Expiry Tag</span>
+              </label>
+              <label class="checkbox-container">
+                <input type="checkbox" id="printOptThermalMode" checked />
+                <span>High-Contrast Thermal Print Optimizer</span>
+              </label>
+            </div>
+
+            <div class="modal-footer mt-4" style="padding:0; border:none; display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-secondary" data-close-modal="printLabelModal">Close</button>
+              <button type="button" class="btn btn-primary btn-glow" id="btnTriggerPrint" style="flex:1;">
+                <i data-lucide="printer"></i> Send to Printer
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Vector Label Preview -->
+          <div class="print-preview-pane">
+            <div class="preview-pane-header">
+              <span><i data-lucide="eye"></i> Live Thermal Label Preview</span>
+              <span class="preview-ratio-indicator" id="previewRatioIndicator">4x6"</span>
+            </div>
+            <div class="preview-canvas-wrapper" id="printPreviewCanvasWrapper">
+              <!-- Rendered dynamically by app.js -->
+              <div id="printLabelPreview" class="thermal-label-canvas">
+                <!-- Injected label HTML -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 16: CSV BULK MASTER DATA IMPORTER -->
+  <div class="modal-backdrop" id="csvImportModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="upload-cloud" class="text-primary"></i>
+          <h3 class="modal-title">Bulk Master Data CSV Importer</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="csvImportModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="csv-wizard-step">
+          <div class="grid-2-col">
+            <div class="form-group">
+              <label for="csvImportTarget" class="form-label">Select Dataset to Import: *</label>
+              <select id="csvImportTarget" class="form-select">
+                <option value="items" selected>Catalog Products & SKUs (Name, Category, UOM, Pricing)</option>
+                <option value="lpns">Opening Stock & LPNs (SKU, Lot #, Quantity, Location)</option>
+                <option value="locations">Warehouse Locations & Bins (Code, Zone, Capacity)</option>
+              </select>
+            </div>
+            <div class="form-group" style="display:flex; align-items:flex-end;">
+              <button type="button" class="btn btn-outline" id="btnDownloadSampleCsv" style="width:100%;">
+                <i data-lucide="download"></i> Download Sample CSV Template
+              </button>
+            </div>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div class="csv-drop-zone mt-3" id="csvDropZone">
+            <i data-lucide="file-spreadsheet" class="drop-icon"></i>
+            <h4 class="drop-title">Drag & drop your CSV file here</h4>
+            <p class="drop-subtitle">or browse from your local computer (UTF-8 formatted .csv)</p>
+            <input type="file" id="csvFileInput" accept=".csv" class="hidden-file-input" />
+            <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="document.getElementById('csvFileInput').click()">
+              <i data-lucide="folder-open"></i> Browse Files
+            </button>
+          </div>
+
+          <!-- Preview & Validation Container -->
+          <div id="csvPreviewSection" class="csv-preview-section hidden mt-4">
+            <div class="csv-preview-header">
+              <div class="preview-stats">
+                <span class="badge badge-success" id="csvValidRowsBadge">0 Valid Rows</span>
+                <span class="badge badge-subtle" id="csvTotalRowsBadge">0 Total</span>
+                <span class="csv-filename" id="csvFileNameDisplay">products.csv</span>
+              </div>
+              <button type="button" class="btn btn-ghost btn-xs text-danger" id="btnClearCsvFile">
+                <i data-lucide="trash-2"></i> Clear
+              </button>
+            </div>
+
+            <div class="table-container mt-2" style="max-height:220px; overflow-y:auto;">
+              <table class="data-table" id="csvPreviewTable">
+                <thead id="csvPreviewThead"></thead>
+                <tbody id="csvPreviewTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="csvImportModal">Cancel</button>
+            <button type="button" class="btn btn-primary btn-glow" id="btnExecuteCsvImport" disabled>
+              <i data-lucide="check-circle-2"></i> Import 0 Records to Database
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Print Container (Hidden on screen, populated dynamically for window.print()) -->
+  <div id="printLabelContainer" class="printable-label-root"></div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=3.1"></script>
+  <script src="app.js?v=3.3"></script>
 </body>
 </html>

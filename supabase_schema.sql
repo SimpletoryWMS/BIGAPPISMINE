@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    email TEXT NOT NULL,
+    username TEXT UNIQUE,
+    email TEXT,
+    password_hash TEXT,
     name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'Warehouse Operator', -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
     all_facilities_access BOOLEAN NOT NULL DEFAULT TRUE,
@@ -43,6 +45,17 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing user_profiles table has all columns and constraints
+ALTER TABLE public.user_profiles ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Warehouse Operator';
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS all_facilities_access BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS facility_id TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Active';
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Granular per-facility user access grants
 CREATE TABLE IF NOT EXISTS public.user_facility_access (
@@ -67,6 +80,10 @@ CREATE TABLE IF NOT EXISTS public.units_of_measure (
     is_base_default BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing units_of_measure table has is_base_default
+ALTER TABLE public.units_of_measure ADD COLUMN IF NOT EXISTS is_base_default BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.units_of_measure ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'count';
 
 -- ----------------------------------------------------------------------------
 -- 4. CUSTOM FIELDS / USER-DEFINED FIELDS (UDF Engine)
@@ -111,6 +128,9 @@ CREATE TABLE IF NOT EXISTS public.facilities (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure existing facilities table has tracking_mode
+ALTER TABLE public.facilities ADD COLUMN IF NOT EXISTS tracking_mode TEXT NOT NULL DEFAULT 'lpn';
+
 -- ----------------------------------------------------------------------------
 -- 6. LOCATIONS / BINS (Aisle, Rack, Shelf, Bay)
 -- ----------------------------------------------------------------------------
@@ -148,6 +168,16 @@ CREATE TABLE IF NOT EXISTS public.items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure existing items table has all JSONB & pricing columns
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS packaging_hierarchy JSONB NOT NULL DEFAULT '[]'::JSONB;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS custom_attributes JSONB NOT NULL DEFAULT '{}'::JSONB;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS min_safety_stock NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS reorder_point NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS cost_price NUMERIC NOT NULL DEFAULT 0.00;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS sell_price NUMERIC NOT NULL DEFAULT 0.00;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS barcode TEXT;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS image_url TEXT;
+
 -- ----------------------------------------------------------------------------
 -- 8. LPNS (License Plate Numbers - Pallets, Bins, Rolls, Lots)
 -- ----------------------------------------------------------------------------
@@ -166,6 +196,11 @@ CREATE TABLE IF NOT EXISTS public.lpns (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing lpns table has all columns
+ALTER TABLE public.lpns ADD COLUMN IF NOT EXISTS lot_number TEXT;
+ALTER TABLE public.lpns ADD COLUMN IF NOT EXISTS pallet_status TEXT NOT NULL DEFAULT 'available';
+ALTER TABLE public.lpns ADD COLUMN IF NOT EXISTS custom_attributes JSONB NOT NULL DEFAULT '{}'::JSONB;
 
 -- ----------------------------------------------------------------------------
 -- 9. INVENTORY TRANSACTIONS (Audit Ledger)
@@ -188,7 +223,34 @@ CREATE TABLE IF NOT EXISTS public.inventory_transactions (
 );
 
 -- ----------------------------------------------------------------------------
--- 10. ROW LEVEL SECURITY (RLS) POLICIES & ACCESS CONTROL
+-- 10. LABEL TEMPLATES & SIZES (Pallet, Bin, SKU, Dispatch)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.label_templates (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, -- 'Standard Pallet Thermal Label', 'Bin Shelf Tag'
+    type TEXT NOT NULL DEFAULT 'lpn_pallet', -- 'lpn_pallet', 'bin_location', 'item_sku', 'dispatch_slip'
+    width_in NUMERIC NOT NULL DEFAULT 4.0,
+    height_in NUMERIC NOT NULL DEFAULT 6.0,
+    unit TEXT NOT NULL DEFAULT 'in', -- 'in' or 'mm'
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    include_qr BOOLEAN NOT NULL DEFAULT TRUE,
+    include_barcode BOOLEAN NOT NULL DEFAULT TRUE,
+    include_lot BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure existing label_templates table has all columns
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS width_in NUMERIC NOT NULL DEFAULT 4.0;
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS height_in NUMERIC NOT NULL DEFAULT 6.0;
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS unit TEXT NOT NULL DEFAULT 'in';
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS include_qr BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS include_barcode BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.label_templates ADD COLUMN IF NOT EXISTS include_lot BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- ----------------------------------------------------------------------------
+-- 11. ROW LEVEL SECURITY (RLS) POLICIES & ACCESS CONTROL
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
@@ -202,21 +264,48 @@ ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lpns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.label_templates ENABLE ROW LEVEL SECURITY;
 
 -- Allow public / anon read and write for the interactive application
 -- (In production, replace with tenant-scoped auth JWT policies)
+DROP POLICY IF EXISTS "Allow public read-write for tenants" ON public.tenants;
 CREATE POLICY "Allow public read-write for tenants" ON public.tenants FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for role_permissions" ON public.role_permissions;
 CREATE POLICY "Allow public read-write for role_permissions" ON public.role_permissions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for user_profiles" ON public.user_profiles;
 CREATE POLICY "Allow public read-write for user_profiles" ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for user_facility_access" ON public.user_facility_access;
 CREATE POLICY "Allow public read-write for user_facility_access" ON public.user_facility_access FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for facility_types" ON public.facility_types;
 CREATE POLICY "Allow public read-write for facility_types" ON public.facility_types FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for units_of_measure" ON public.units_of_measure;
 CREATE POLICY "Allow public read-write for units_of_measure" ON public.units_of_measure FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for custom_fields" ON public.custom_fields;
 CREATE POLICY "Allow public read-write for custom_fields" ON public.custom_fields FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for facilities" ON public.facilities;
 CREATE POLICY "Allow public read-write for facilities" ON public.facilities FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for locations" ON public.locations;
 CREATE POLICY "Allow public read-write for locations" ON public.locations FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for items" ON public.items;
 CREATE POLICY "Allow public read-write for items" ON public.items FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for lpns" ON public.lpns;
 CREATE POLICY "Allow public read-write for lpns" ON public.lpns FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for inventory_transactions" ON public.inventory_transactions;
 CREATE POLICY "Allow public read-write for inventory_transactions" ON public.inventory_transactions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for label_templates" ON public.label_templates;
+CREATE POLICY "Allow public read-write for label_templates" ON public.label_templates FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed Canonical Role Permissions Matrix
 INSERT INTO public.role_permissions (role, permission_key, description)
@@ -404,13 +493,25 @@ VALUES
   ('tenant-flooring', 'fac-main-dc', 'inbound_receipt', 'LPN-849203', 'SKU-TILE-02', 512, 'SQFT', 'loc-rcv-01', 'loc-a01-r02-b', 'PO-2026-0882', 'Derek Lumpkin', 'Italian porcelain crate putaway')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed User Profiles (Universal Generic Roles)
-INSERT INTO public.user_profiles (id, tenant_id, email, name, role, all_facilities_access, facility_id, status)
+-- Seed User Profiles (Universal Generic Roles with Username & Email Dual-Auth)
+INSERT INTO public.user_profiles (id, tenant_id, username, email, password_hash, name, role, all_facilities_access, facility_id, status)
 VALUES
-  ('c0a80121-0001-4000-8000-000000000001', 'tenant-flooring', 'derek@apexflooring.com', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active'),
-  ('c0a80121-0002-4000-8000-000000000002', 'tenant-flooring', 'marcus@apexflooring.com', 'Marcus Vance', 'Warehouse Manager', FALSE, 'fac-main-dc', 'Active'),
-  ('c0a80121-0003-4000-8000-000000000003', 'tenant-flooring', 'carlos@apexflooring.com', 'Carlos Gutierrez', 'Warehouse Operator', FALSE, 'fac-mobile-03', 'Active'),
-  ('c0a80121-0004-4000-8000-000000000004', 'tenant-flooring', 'jessica@apexflooring.com', 'Jessica Taylor', 'Viewer / Auditor', FALSE, 'fac-showroom-02', 'Active'),
-  ('c0a80121-0005-4000-8000-000000000005', 'tenant-general', 'elena@cascadelogistics.com', 'Elena Rostova', 'Company Admin', TRUE, 'fac-gen-hub', 'Active')
+  ('c0a80121-0001-4000-8000-000000000001', 'tenant-flooring', 'derek', 'derek@apexflooring.com', 'Simpletory2026!', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active'),
+  ('c0a80121-0002-4000-8000-000000000002', 'tenant-flooring', 'marcus_v', 'marcus@apexflooring.com', 'Simpletory2026!', 'Marcus Vance', 'Warehouse Manager', FALSE, 'fac-main-dc', 'Active'),
+  ('c0a80121-0003-4000-8000-000000000003', 'tenant-flooring', 'carlos_g', 'carlos@apexflooring.com', 'Simpletory2026!', 'Carlos Gutierrez', 'Warehouse Operator', FALSE, 'fac-van-3', 'Active'),
+  ('c0a80121-0004-4000-8000-000000000004', 'tenant-flooring', 'jessica_t', 'jessica@apexflooring.com', 'Simpletory2026!', 'Jessica Taylor', 'Viewer / Auditor', FALSE, 'fac-showroom', 'Active'),
+  ('c0a80121-0005-4000-8000-000000000005', 'tenant-general', 'elena', 'elena@cascadelogistics.com', 'Simpletory2026!', 'Elena Rostova', 'Company Admin', TRUE, 'fac-gen-wh', 'Active'),
+  ('c0a80121-0006-4000-8000-000000000006', 'tenant-flooring', 'dock_worker_1', NULL, 'Simpletory2026!', 'Floor Operator Dock 1', 'Warehouse Operator', FALSE, 'fac-main-dc', 'Active')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Default Configurable Label Templates
+INSERT INTO public.label_templates (id, tenant_id, name, type, width_in, height_in, unit, is_default, include_qr, include_barcode, include_lot)
+VALUES
+  ('lbl-4x6-pallet', 'tenant-flooring', 'Standard 4x6" Pallet LPN Tag', 'lpn_pallet', 4.0, 6.0, 'in', TRUE, TRUE, TRUE, TRUE),
+  ('lbl-2x1-bin', 'tenant-flooring', 'Rack / Shelf Bin Marker (2x1")', 'bin_location', 2.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
+  ('lbl-3x1-sku', 'tenant-flooring', 'Item Carton Barcode (3x1")', 'item_sku', 3.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE),
+  ('lbl-85x11-sheet', 'tenant-flooring', 'Packing Sheet & Dispatch Slip (8.5x11")', 'dispatch_slip', 8.5, 11.0, 'in', FALSE, TRUE, TRUE, TRUE),
+  ('lbl-gen-4x6', 'tenant-general', 'Universal Logistics Pallet Tag (4x6")', 'lpn_pallet', 4.0, 6.0, 'in', TRUE, TRUE, TRUE, TRUE),
+  ('lbl-gen-2x1', 'tenant-general', 'Bin Location Marker (2x1")', 'bin_location', 2.0, 1.0, 'in', TRUE, FALSE, TRUE, FALSE)
 ON CONFLICT (id) DO NOTHING;
 
