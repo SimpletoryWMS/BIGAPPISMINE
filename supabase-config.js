@@ -350,6 +350,24 @@ class SupabaseService {
       };
       await this.client.from('user_profiles').insert(payload);
       console.log('☁️ User profile saved to Supabase:', user.name);
+
+      if (user.email && user.email.includes('@')) {
+        try {
+          const redirectUrl = window.location.origin.includes('localhost') 
+            ? 'https://bigappismine.vercel.app' 
+            : window.location.origin;
+
+          await this.client.auth.signInWithOtp({
+            email: user.email,
+            options: {
+              emailRedirectTo: redirectUrl
+            }
+          });
+          console.log('✉️ Supabase Auth invitation email triggered for:', user.email);
+        } catch (authErr) {
+          console.warn('Auth email trigger notice:', authErr);
+        }
+      }
     } catch (e) {
       console.warn('Failed to insert user profile to Supabase:', e);
     }
@@ -472,6 +490,29 @@ class SupabaseService {
         status: 'Active'
       });
       if (userErr) console.warn('User profile insert notice:', userErr);
+
+      // 7. Trigger Automated Email Invitation via Supabase Auth
+      if (adminEmail && adminEmail.includes('@')) {
+        try {
+          const redirectUrl = window.location.origin.includes('localhost') 
+            ? 'https://bigappismine.vercel.app' 
+            : window.location.origin;
+            
+          const { error: authErr } = await this.client.auth.signInWithOtp({
+            email: adminEmail,
+            options: {
+              emailRedirectTo: redirectUrl
+            }
+          });
+          if (authErr) {
+            console.warn('Supabase Auth invite notice:', authErr.message);
+          } else {
+            console.log('✉️ Supabase Auth invitation email sent to:', adminEmail);
+          }
+        } catch (authEx) {
+          console.warn('Auth email trigger exception:', authEx);
+        }
+      }
 
       console.log(`🎉 Tenant ${name} (${tenantId}) successfully provisioned in Supabase PostgreSQL!`);
       return { success: true, tenantId, name, defaultFacId };
