@@ -562,8 +562,54 @@ class SimpletoryApp {
   async syncWithCloud(force = false) {
     if (!window.supabaseService || !window.supabaseService.isConnected) return;
     try {
+      // If Master Admin, sync all tenants and user profiles platform-wide
+      if (this.isMasterAdmin()) {
+        const [allTenantsSummary, allProfiles] = await Promise.all([
+          window.supabaseService.fetchAllTenantsSummary(),
+          window.supabaseService.fetchAllUserProfiles()
+        ]);
+
+        if (allTenantsSummary && allTenantsSummary.length > 0) {
+          allTenantsSummary.forEach(rt => {
+            const existing = store.state.tenants.find(t => t.id === rt.id);
+            if (existing) {
+              existing.name = rt.name;
+              existing.slug = rt.slug;
+              existing.template = rt.template;
+              existing.tier = rt.tier;
+            } else {
+              store.state.tenants.push({
+                id: rt.id,
+                name: rt.name,
+                slug: rt.slug,
+                template: rt.template,
+                tier: rt.tier,
+                adminUser: {
+                  name: rt.adminName,
+                  email: rt.adminEmail,
+                  role: 'Company Admin'
+                }
+              });
+            }
+          });
+        }
+
+        if (allProfiles && allProfiles.length > 0) {
+          allProfiles.forEach(u => {
+            const tId = u.tenantId || 'tenant-primary';
+            if (!store.state.users[tId]) store.state.users[tId] = [];
+            const idx = store.state.users[tId].findIndex(ex => ex.id === u.id || (ex.email && ex.email === u.email) || (ex.username && ex.username === u.username));
+            if (idx >= 0) {
+              store.state.users[tId][idx] = { ...store.state.users[tId][idx], ...u };
+            } else {
+              store.state.users[tId].push(u);
+            }
+          });
+        }
+      }
+
       const remoteData = await window.supabaseService.fetchTenantData(store.state.activeTenantId);
-      if (remoteData && (remoteData.facilities.length > 0 || remoteData.items.length > 0)) {
+      if (remoteData && (remoteData.facilities.length > 0 || remoteData.items.length > 0 || (remoteData.users && remoteData.users.length > 0))) {
         if (remoteData.facilities.length > 0) store.state.facilities[store.state.activeTenantId] = remoteData.facilities;
         if (remoteData.locations.length > 0) store.state.locations[store.state.activeTenantId] = remoteData.locations;
         if (remoteData.items.length > 0) store.state.items[store.state.activeTenantId] = remoteData.items;
@@ -571,6 +617,7 @@ class SimpletoryApp {
         if (remoteData.unitsOfMeasure.length > 0) store.state.unitsOfMeasure[store.state.activeTenantId] = remoteData.unitsOfMeasure;
         if (remoteData.customFields.length > 0) store.state.customFields[store.state.activeTenantId] = remoteData.customFields;
         if (remoteData.transactions.length > 0) store.state.transactions[store.state.activeTenantId] = remoteData.transactions;
+        if (remoteData.users && remoteData.users.length > 0) store.state.users[store.state.activeTenantId] = remoteData.users;
         store.save();
         this.renderAll();
         if (force) this.showToast('✅ Supabase data refreshed and synced!', 'success');
@@ -784,6 +831,7 @@ class SimpletoryApp {
     document.getElementById('btnAddLocationModalBtn')?.addEventListener('click', () => this.openModal('addLocationModal'));
     document.getElementById('btnAddManufacturerModalBtn')?.addEventListener('click', () => this.openModal('addManufacturerModal'));
     document.getElementById('btnInviteUserModal')?.addEventListener('click', () => this.openInviteUserModal());
+    document.getElementById('userOrgFilterSelect')?.addEventListener('change', () => this.renderUsers());
     document.getElementById('btnAddNewLabelTemplate')?.addEventListener('click', () => this.openModal('addLabelTemplateModal'));
     document.getElementById('btnEditCustomFieldsLink')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
     document.getElementById('btnViewAllMovements')?.addEventListener('click', () => this.navigateTo('operations'));
@@ -1512,6 +1560,11 @@ class SimpletoryApp {
     if (inviteUserForm) {
       inviteUserForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const isMaster = this.isMasterAdmin();
+        const selectedTenantId = isMaster && document.getElementById('inviteUserOrgSelect')?.value 
+          ? document.getElementById('inviteUserOrgSelect').value 
+          : store.state.activeTenantId;
+
         const name = document.getElementById('inviteUserName').value.trim();
         const isEmailMode = document.getElementById('btnModeEmailInvite')?.classList.contains('active');
         const email = isEmailMode ? document.getElementById('inviteUserEmail').value.trim() : null;
@@ -1531,13 +1584,13 @@ class SimpletoryApp {
           role,
           facilities,
           status: 'Active',
-          tenantId: store.state.activeTenantId
+          tenantId: selectedTenantId
         };
 
-        if (!store.state.users[store.state.activeTenantId]) {
-          store.state.users[store.state.activeTenantId] = [];
+        if (!store.state.users[selectedTenantId]) {
+          store.state.users[selectedTenantId] = [];
         }
-        store.state.users[store.state.activeTenantId].push(newUser);
+        store.state.users[selectedTenantId].push(newUser);
         store.save();
 
         if (window.supabaseService && window.supabaseService.isConnected) {
@@ -3013,7 +3066,66 @@ class SimpletoryApp {
   renderUsers() {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
-    const users = store.tenantUsers;
+
+    const isMaster = this.isMasterAdmin();
+    const orgFilterWrapper = document.getElementById('userOrgFilterWrapper');
+    const orgFilterSelect = document.getElementById('userOrgFilterSelect');
+    const thOrg = document.getElementById('thUserOrgColumn');
+
+    let selectedOrg = 'all';
+    if (isMaster) {
+      if (orgFilterWrapper) orgFilterWrapper.style.display = 'flex';
+      if (thOrg) thOrg.style.display = 'table-cell';
+      
+      if (orgFilterSelect) {
+        const prevVal = orgFilterSelect.value || 'all';
+        orgFilterSelect.innerHTML = `
+          <option value="all" ${prevVal === 'all' ? 'selected' : ''}>🌐 All Organizations (Global)</option>
+          ${store.state.tenants.map(t => `<option value="${t.id}" ${prevVal === t.id ? 'selected' : ''}>🏢 ${t.name}</option>`).join('')}
+        `;
+        selectedOrg = orgFilterSelect.value;
+      }
+    } else {
+      if (orgFilterWrapper) orgFilterWrapper.style.display = 'none';
+      if (thOrg) thOrg.style.display = 'none';
+      selectedOrg = store.state.activeTenantId;
+    }
+
+    let usersToRender = [];
+    if (isMaster && selectedOrg === 'all') {
+      // Gather all users from all tenants in memory
+      for (const [tId, uList] of Object.entries(store.state.users || {})) {
+        (uList || []).forEach(u => {
+          if (!usersToRender.some(existing => existing.id === u.id || (u.email && existing.email === u.email) || (u.username && existing.username === u.username))) {
+            usersToRender.push({
+              ...u,
+              tenantId: u.tenantId || tId
+            });
+          }
+        });
+      }
+      // Also include tenant admin accounts
+      store.state.tenants.forEach(t => {
+        if (t.adminUser && t.adminUser.email) {
+          const exists = usersToRender.some(u => (u.email && u.email.toLowerCase() === t.adminUser.email.toLowerCase()) || (u.username && u.username.toLowerCase() === (t.adminUser.username || '').toLowerCase()));
+          if (!exists) {
+            usersToRender.push({
+              id: `admin-${t.id}`,
+              name: t.adminUser.name,
+              email: t.adminUser.email,
+              username: t.adminUser.username || t.adminUser.email.split('@')[0],
+              role: t.adminUser.role || 'Company Admin',
+              facilities: 'All Facilities',
+              status: 'Active',
+              tenantId: t.id
+            });
+          }
+        }
+      });
+    } else {
+      const targetTenantId = (isMaster && selectedOrg !== 'all') ? selectedOrg : store.state.activeTenantId;
+      usersToRender = (store.state.users[targetTenantId] || []).map(u => ({ ...u, tenantId: targetTenantId }));
+    }
 
     const roleBadgeClasses = {
       'Master Admin': 'badge-master-admin',
@@ -3023,26 +3135,45 @@ class SimpletoryApp {
       'Viewer / Auditor': 'badge-subtle'
     };
 
-    tableBody.innerHTML = users.map(usr => `
-      <tr>
-        <td><strong>${usr.name}</strong></td>
-        <td>
-          <span class="text-muted">${usr.email || '-' }</span>
-          ${usr.username ? `<small class="font-mono text-primary" style="display:block;font-size:0.75rem;">@${usr.username}</small>` : ''}
-        </td>
-        <td><span class="badge ${roleBadgeClasses[usr.role] || 'badge-primary'}">${usr.role}</span></td>
-        <td><span class="badge badge-subtle font-mono">${usr.facilities || 'All Facilities'}</span></td>
-        <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
-        <td>
-          <div style="display:flex; gap:0.25rem; align-items:center;">
-            <button class="btn btn-ghost btn-xs text-muted" onclick="app.openChangePasswordModal('${usr.id}')" title="Reset User Password">
-              <i data-lucide="key" style="width:14px;height:14px;"></i>
-            </button>
-            <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    if (usersToRender.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="${isMaster ? 7 : 6}" style="text-align:center; padding:2rem; color:var(--text-muted);">
+            <i data-lucide="users" style="width:32px;height:32px;margin-bottom:0.5rem;display:inline-block;opacity:0.5;"></i>
+            <p>No team members found for this scope. Click <strong>Invite Team Member</strong> to add users.</p>
+          </td>
+        </tr>
+      `;
+      this.initIcons();
+      return;
+    }
+
+    tableBody.innerHTML = usersToRender.map(usr => {
+      const tenantObj = store.state.tenants.find(t => t.id === usr.tenantId);
+      const tenantName = tenantObj ? tenantObj.name : usr.tenantId || 'Primary Org';
+
+      return `
+        <tr>
+          <td><strong>${usr.name}</strong></td>
+          <td>
+            <span class="text-muted">${usr.email || '-' }</span>
+            ${usr.username ? `<small class="font-mono text-primary" style="display:block;font-size:0.75rem;">@${usr.username}</small>` : ''}
+          </td>
+          ${isMaster ? `<td><span class="badge badge-subtle font-mono" style="font-size:0.75rem;"><i data-lucide="building" style="width:11px;height:11px;margin-right:3px;"></i>${tenantName}</span></td>` : ''}
+          <td><span class="badge ${roleBadgeClasses[usr.role] || 'badge-primary'}">${usr.role}</span></td>
+          <td><span class="badge badge-subtle font-mono">${usr.facilities || 'All Facilities'}</span></td>
+          <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
+          <td>
+            <div style="display:flex; gap:0.25rem; align-items:center;">
+              <button class="btn btn-ghost btn-xs text-muted" onclick="app.openChangePasswordModal('${usr.id}')" title="Reset User Password">
+                <i data-lucide="key" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="btn btn-ghost btn-xs text-danger" onclick="app.removeUser('${usr.id}')" title="Remove User">&times;</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     this.initIcons();
   }
@@ -3365,13 +3496,34 @@ class SimpletoryApp {
   }
 
   openInviteUserModal() {
+    const isMaster = this.isMasterAdmin();
+    const orgGroup = document.getElementById('inviteUserOrgGroup');
+    const orgSelect = document.getElementById('inviteUserOrgSelect');
     const facSelect = document.getElementById('inviteUserFacility');
-    if (facSelect) {
+
+    const updateFacilitiesForTenant = (tId) => {
+      if (!facSelect) return;
+      const targetFacs = store.state.facilities[tId] || [];
       facSelect.innerHTML = `
         <option value="All Facilities">All Facilities (Global Scope)</option>
-        ${store.tenantFacilities.map(f => `<option value="${f.code} ${f.name}">${f.code} - ${f.name}</option>`).join('')}
+        ${targetFacs.map(f => `<option value="${f.code} ${f.name}">${f.code} - ${f.name}</option>`).join('')}
       `;
+    };
+
+    if (isMaster) {
+      if (orgGroup) orgGroup.style.display = 'block';
+      if (orgSelect) {
+        orgSelect.innerHTML = store.state.tenants.map(t => `
+          <option value="${t.id}" ${t.id === store.state.activeTenantId ? 'selected' : ''}>🏢 ${t.name}</option>
+        `).join('');
+        orgSelect.onchange = (e) => updateFacilitiesForTenant(e.target.value);
+        updateFacilitiesForTenant(orgSelect.value || store.state.activeTenantId);
+      }
+    } else {
+      if (orgGroup) orgGroup.style.display = 'none';
+      updateFacilitiesForTenant(store.state.activeTenantId);
     }
+
     const nameInput = document.getElementById('inviteUserName');
     const emailInput = document.getElementById('inviteUserEmail');
     const userInput = document.getElementById('inviteUserUsername');

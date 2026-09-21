@@ -564,6 +564,35 @@ class SupabaseService {
     }
   }
 
+  // Fetch all user profiles across all tenants for Master Admin
+  async fetchAllUserProfiles() {
+    if (!this.client || !this.isConnected) return [];
+    try {
+      const { data, error } = await this.client
+        .from('user_profiles')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) {
+        console.warn('Error fetching all user profiles:', error);
+        return [];
+      }
+      return (data || []).map(u => ({
+        id: u.id,
+        tenantId: u.tenant_id,
+        username: u.username,
+        email: u.email,
+        name: u.name || u.username || u.email,
+        role: u.role || 'Warehouse Operator',
+        facilities: u.all_facilities_access ? 'All Facilities' : (u.facility_id || 'Assigned Facility'),
+        status: u.status || 'Active',
+        password: u.password_hash || null
+      }));
+    } catch (err) {
+      console.warn('Exception in fetchAllUserProfiles:', err);
+      return [];
+    }
+  }
+
   // Subscribe to Realtime Updates
   subscribeRealtime(tenantId, onUpdateCallback) {
     if (!this.client) return;

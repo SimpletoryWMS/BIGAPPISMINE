@@ -392,4 +392,45 @@ VALUES
   ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', NULL, 'Derek Lumpkin', 'Master Admin', TRUE, 'fac-main-dc', 'Active')
 ON CONFLICT (id) DO UPDATE SET role = 'Master Admin';
 
+-- ----------------------------------------------------------------------------
+-- 13. AUTOMATED AUTH.USERS TO PUBLIC.USER_PROFILES SYNC TRIGGER
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (
+    id,
+    auth_user_id,
+    tenant_id,
+    email,
+    username,
+    name,
+    role,
+    all_facilities_access,
+    status
+  )
+  VALUES (
+    NEW.id,
+    NEW.id,
+    COALESCE((NEW.raw_user_meta_data->>'tenant_id'), 'tenant-primary'),
+    NEW.email,
+    COALESCE((NEW.raw_user_meta_data->>'username'), split_part(NEW.email, '@', 1)),
+    COALESCE((NEW.raw_user_meta_data->>'name'), split_part(NEW.email, '@', 1)),
+    COALESCE((NEW.raw_user_meta_data->>'role'), 'Warehouse Operator'),
+    TRUE,
+    'Active'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+
+
 

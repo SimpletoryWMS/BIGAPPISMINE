@@ -941,7 +941,15 @@
               <h1 class="view-title">User Management & Access Control</h1>
               <p class="view-subtitle">Manage company team members, assign universal roles (Admin, Manager, Operator, Viewer), and scope facility-level permissions.</p>
             </div>
-            <div class="view-actions">
+            <div class="view-actions" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+              <div id="userOrgFilterWrapper" style="display:none; align-items:center; gap:0.5rem;">
+                <label for="userOrgFilterSelect" class="form-label text-muted" style="margin:0; font-size:0.8rem; white-space:nowrap;">
+                  <i data-lucide="filter" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:2px;"></i> Scope:
+                </label>
+                <select id="userOrgFilterSelect" class="form-select" style="min-width:210px; font-size:0.85rem; padding:0.4rem 0.65rem;">
+                  <option value="all">🌐 All Organizations (Global)</option>
+                </select>
+              </div>
               <button class="btn btn-primary" id="btnInviteUserModal">
                 <i data-lucide="user-plus"></i> Invite Team Member
               </button>
@@ -955,7 +963,8 @@
                   <thead>
                     <tr>
                       <th>Team Member</th>
-                      <th>Email</th>
+                      <th>Email / Username</th>
+                      <th id="thUserOrgColumn" style="display:none;">Organization</th>
                       <th>Assigned Role</th>
                       <th>Facility Access</th>
                       <th>Status</th>
@@ -1751,6 +1760,13 @@
                 <i data-lucide="user"></i> Floor Operator (Username)
               </button>
             </div>
+          </div>
+
+          <div class="form-group mt-3" id="inviteUserOrgGroup" style="display:none;">
+            <label for="inviteUserOrgSelect" class="form-label">Client Organization / Tenant: *</label>
+            <select id="inviteUserOrgSelect" class="form-select">
+              <!-- Populated dynamically for Master Admin -->
+            </select>
           </div>
 
           <div class="form-group mt-3">
