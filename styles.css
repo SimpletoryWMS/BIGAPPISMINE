@@ -2675,4 +2675,55 @@ body {
   }
 }
 
+/* Master Admin Platform Styles */
+.badge-master-admin {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(168, 85, 247, 0.25)) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.badge-master-admin i {
+  width: 12px;
+  height: 12px;
+}
+
+.bg-emerald-glow {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.text-emerald {
+  color: #10b981 !important;
+}
+
+.form-section-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.form-section-title i {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+}
+
+
 

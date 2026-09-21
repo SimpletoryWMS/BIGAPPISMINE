@@ -102,11 +102,15 @@
         <div class="user-menu-dropdown" id="userMenuDropdown">
           <div style="padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--border-subtle); margin-bottom: 0.4rem;">
             <div style="font-weight: 700; font-size: 0.85rem;" id="dropdownUserFullName">Derek Lumpkin</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted);" id="dropdownUserRole">Company Admin</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);" id="dropdownUserRole">Master Admin</div>
           </div>
           <button class="user-menu-item" id="btnUserMenuSwitchAccount">
             <i data-lucide="user-check" style="width:16px;height:16px;color:var(--accent-cyan);"></i>
             <span>Switch User / Login</span>
+          </button>
+          <button class="user-menu-item" id="btnUserMenuPlatformAdmin" style="display: none;">
+            <i data-lucide="crown" style="width:16px;height:16px;color:var(--accent-amber);"></i>
+            <span>Platform Admin Console</span>
           </button>
           <button class="user-menu-item" id="btnUserMenuSettings">
             <i data-lucide="settings" style="width:16px;height:16px;color:var(--accent-purple);"></i>
@@ -128,6 +132,20 @@
     <div class="main-container">
       <!-- Left Sidebar Navigation -->
       <aside class="sidebar" id="sidebar">
+        <!-- Platform Admin Section (Master Admin Only) -->
+        <div class="sidebar-section" id="sidebarMasterSection" style="display: none;">
+          <span class="sidebar-heading" style="color: #fbbf24; display: flex; align-items: center; gap: 0.35rem;">
+            <i data-lucide="crown" style="width: 13px; height: 13px;"></i> Platform Admin
+          </span>
+          <nav class="sidebar-nav">
+            <a href="#master-tenants" class="nav-item" data-view="master-tenants" id="navItemMasterTenants">
+              <i data-lucide="building"></i>
+              <span>Client Organizations</span>
+              <span class="nav-badge badge-primary" id="totalTenantsBadge">1</span>
+            </a>
+          </nav>
+        </div>
+
         <div class="sidebar-section">
           <span class="sidebar-heading">Operations</span>
           <nav class="sidebar-nav">
@@ -945,6 +963,117 @@
                     </tr>
                   </thead>
                   <tbody id="usersTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- VIEW 10: MASTER ADMIN - CLIENT ORGANIZATIONS HUB -->
+        <!-- ============================================================ -->
+        <section id="view-master-tenants" class="app-view">
+          <div class="view-header">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span class="badge badge-master-admin"><i data-lucide="crown"></i> Master Admin Console</span>
+              </div>
+              <h1 class="view-title">Client Organizations & Multi-Tenant Management</h1>
+              <p class="view-subtitle">Provision, configure, and manage isolated client tenant workspaces across Simpletory.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary btn-glow" id="btnOpenProvisionTenantModal">
+                <i data-lucide="plus-circle"></i> Provision New Client Tenant
+              </button>
+            </div>
+          </div>
+
+          <!-- Master Admin Metrics Grid -->
+          <div class="stats-grid mb-4">
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Active Organizations</span>
+                <div class="stat-icon-wrapper bg-blue-glow">
+                  <i data-lucide="building" class="stat-icon text-primary"></i>
+                </div>
+              </div>
+              <div class="stat-value" id="statMasterTotalTenants">1</div>
+              <div class="stat-footer">
+                <span class="text-success"><i data-lucide="check-circle" style="width:12px;height:12px;display:inline;"></i> Isolated Workspaces</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Total Client Facilities</span>
+                <div class="stat-icon-wrapper bg-purple-glow">
+                  <i data-lucide="warehouse" class="stat-icon text-accent"></i>
+                </div>
+              </div>
+              <div class="stat-value" id="statMasterTotalFacilities">1</div>
+              <div class="stat-footer">
+                <span class="text-muted">Across all client tenants</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Provisioned Team Users</span>
+                <div class="stat-icon-wrapper bg-amber-glow">
+                  <i data-lucide="users" class="stat-icon text-amber"></i>
+                </div>
+              </div>
+              <div class="stat-value" id="statMasterTotalUsers">1</div>
+              <div class="stat-footer">
+                <span class="text-muted">Platform-wide user accounts</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Cloud DB Synchronization</span>
+                <div class="stat-icon-wrapper bg-emerald-glow">
+                  <i data-lucide="database" class="stat-icon text-emerald"></i>
+                </div>
+              </div>
+              <div class="stat-value" style="font-size: 1.25rem; color: #10b981;" id="statMasterCloudStatus">Supabase Active</div>
+              <div class="stat-footer">
+                <span class="text-success">Multi-tenant RLS Enabled</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Organizations Data Table -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-header-left">
+                <i data-lucide="layers" class="text-primary"></i>
+                <h3 class="card-title">Provisioned Client Tenants</h3>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-secondary" id="btnRefreshMasterTenants">
+                  <i data-lucide="refresh-cw"></i> Refresh List
+                </button>
+              </div>
+            </div>
+            <div class="card-body no-padding">
+              <div class="table-container">
+                <table class="data-table" id="masterTenantsTable">
+                  <thead>
+                    <tr>
+                      <th>Organization Name</th>
+                      <th>Tenant Identifier / Slug</th>
+                      <th>Subscription Tier</th>
+                      <th>Facilities</th>
+                      <th>Users</th>
+                      <th>Primary Admin Contact</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="masterTenantsTableBody">
                     <!-- Populated dynamically -->
                   </tbody>
                 </table>
@@ -2073,6 +2202,142 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: PROVISION NEW CLIENT TENANT (MASTER ADMIN) -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="provisionTenantModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="badge badge-master-admin"><i data-lucide="crown"></i> Master Admin</span>
+          <h3 class="modal-title">Provision New Client Tenant</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="provisionTenantModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-4">
+          Instantly provision a brand new, fully isolated client organization in Supabase PostgreSQL complete with default facilities, units of measure, facility types, label templates, and company administrator.
+        </p>
+
+        <form id="provisionTenantForm" class="form-grid">
+          <!-- Step 1: Organization Details -->
+          <div class="form-section-title span-2">
+            <i data-lucide="building"></i> 1. Organization Profile
+          </div>
+
+          <div class="form-group span-2">
+            <label for="provisionTenantName">Client Company Name <span class="text-danger">*</span></label>
+            <input type="text" id="provisionTenantName" class="form-input" placeholder="e.g. Acme Logistics Supply" required>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionTenantId">Tenant ID (Unique Handle) <span class="text-danger">*</span></label>
+            <input type="text" id="provisionTenantId" class="form-input" placeholder="e.g. tenant-acme-logistics" required>
+            <small class="form-helper">System identifier used for database partition.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionTenantSlug">URL Slug / Short Code <span class="text-danger">*</span></label>
+            <input type="text" id="provisionTenantSlug" class="form-input" placeholder="e.g. acme-logistics" required>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionTenantTier">Subscription Tier</label>
+            <select id="provisionTenantTier" class="form-select">
+              <option value="Enterprise Tier" selected>Enterprise Tier</option>
+              <option value="Professional Tier">Professional Tier</option>
+              <option value="Standard Tier">Standard Tier</option>
+              <option value="Starter Tier">Starter Tier</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionTenantTemplate">Industry / Workflow Template</label>
+            <select id="provisionTenantTemplate" class="form-select">
+              <option value="general_wms" selected>General Distribution & Warehouse (WMS)</option>
+              <option value="flooring">Flooring & Roll Cut Tracking</option>
+            </select>
+          </div>
+
+          <!-- Step 2: Primary Warehouse Facility -->
+          <div class="form-section-title span-2 mt-4">
+            <i data-lucide="warehouse"></i> 2. Initial Primary Warehouse Facility
+          </div>
+
+          <div class="form-group">
+            <label for="provisionFacilityName">Facility Name <span class="text-danger">*</span></label>
+            <input type="text" id="provisionFacilityName" class="form-input" value="Main Distribution Center" required>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionFacilityCode">Facility Code <span class="text-danger">*</span></label>
+            <input type="text" id="provisionFacilityCode" class="form-input" value="DC-01" required>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionFacilityAddress">Physical Address</label>
+            <input type="text" id="provisionFacilityAddress" class="form-input" placeholder="e.g. 100 Logistics Blvd, Atlanta, GA">
+          </div>
+
+          <div class="form-group">
+            <label for="provisionTrackingMode">Tracking Mode</label>
+            <select id="provisionTrackingMode" class="form-select">
+              <option value="lpn" selected>Full LPN Pallet & Carton Tracking (Recommended)</option>
+              <option value="summary">Summary SKU Bin Totals Only</option>
+            </select>
+          </div>
+
+          <!-- Step 3: Client Administrator -->
+          <div class="form-section-title span-2 mt-4">
+            <i data-lucide="user-check"></i> 3. Client Company Administrator
+          </div>
+
+          <div class="form-group">
+            <label for="provisionAdminName">Administrator Full Name <span class="text-danger">*</span></label>
+            <input type="text" id="provisionAdminName" class="form-input" placeholder="e.g. Jane Doe" required>
+          </div>
+
+          <div class="form-group">
+            <label for="provisionAdminEmail">Work Email (For Supabase Auth Invite)</label>
+            <input type="email" id="provisionAdminEmail" class="form-input" placeholder="e.g. jane@acmelogistics.com">
+          </div>
+
+          <div class="form-group span-2">
+            <label for="provisionAdminUsername">Username <span class="text-danger">*</span></label>
+            <input type="text" id="provisionAdminUsername" class="form-input" placeholder="e.g. jdoe" required>
+          </div>
+
+          <!-- Step 4: Automated Foundation Seeding -->
+          <div class="form-section-title span-2 mt-4">
+            <i data-lucide="check-square"></i> 4. Automated Warehouse Foundation Seeding
+          </div>
+
+          <div class="span-2" style="background: var(--bg-card-hover); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="provisionSeedUoms" checked>
+              <span><strong>Auto-seed Units of Measure:</strong> Each (EA), Case (CS), Pallet (PLT), Pounds (LBS), SqFt</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="provisionSeedFacTypes" checked>
+              <span><strong>Auto-seed Facility Types:</strong> Distribution Center, Standard Warehouse, Cold Storage</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="provisionSeedLabels" checked>
+              <span><strong>Auto-seed Label Templates:</strong> 4x6 Pallet LPN, 2x1 Bin Marker, 3x1 Item SKU, 8.5x11 Dispatch Slip</span>
+            </label>
+          </div>
+
+          <div class="modal-footer span-2 mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="provisionTenantModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitProvisionTenant">
+              <i data-lucide="rocket"></i> Create & Provision Client
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

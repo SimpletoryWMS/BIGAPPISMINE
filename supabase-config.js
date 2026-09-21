@@ -375,6 +375,154 @@ class SupabaseService {
     }
   }
 
+  // 1-Click Provisioning of a New Client Tenant in Supabase PostgreSQL
+  async provisionNewTenant(tenantPayload) {
+    if (!this.client || !this.isConnected) {
+      return { success: false, error: 'Database is not connected.' };
+    }
+
+    try {
+      const {
+        tenantId,
+        name,
+        slug,
+        tier = 'Enterprise Tier',
+        template = 'general_wms',
+        facilityName = 'Main Distribution Center',
+        facilityCode = 'DC-01',
+        facilityAddress = '100 Industrial Pkwy',
+        trackingMode = 'lpn',
+        adminName = 'Tenant Admin',
+        adminEmail = null,
+        adminUsername = 'admin',
+        seedUoms = true,
+        seedFacilityTypes = true,
+        seedLabelTemplates = true
+      } = tenantPayload;
+
+      // 1. Insert Tenant Record
+      const { error: tenantErr } = await this.client.from('tenants').insert({
+        id: tenantId,
+        name,
+        slug,
+        template,
+        tier
+      });
+
+      if (tenantErr) {
+        throw new Error(`Failed to create tenant: ${tenantErr.message}`);
+      }
+
+      // 2. Insert Facility Types (if requested)
+      if (seedFacilityTypes) {
+        const facilityTypes = [
+          { id: `ftype-${tenantId}-wh`, tenant_id: tenantId, code: 'warehouse', name: 'Main Warehouse / DC', description: 'Central distribution hub with racking & docks', is_default: true },
+          { id: `ftype-${tenantId}-dock`, tenant_id: tenantId, code: 'cross_dock', name: 'Cross-Dock Terminal', description: 'Fast-turnaround transit facility', is_default: false },
+          { id: `ftype-${tenantId}-cold`, tenant_id: tenantId, code: 'cold_storage', name: 'Cold Storage', description: 'Temperature-controlled refrigerated storage', is_default: false }
+        ];
+        await this.client.from('facility_types').insert(facilityTypes);
+      }
+
+      // 3. Insert Primary Facility
+      const defaultFacId = `fac-${tenantId}-main`;
+      const { error: facErr } = await this.client.from('facilities').insert({
+        id: defaultFacId,
+        tenant_id: tenantId,
+        code: facilityCode,
+        name: facilityName,
+        type: 'warehouse',
+        address: facilityAddress,
+        tracking_mode: trackingMode
+      });
+      if (facErr) console.warn('Facility insert notice:', facErr);
+
+      // 4. Insert Units of Measure (if requested)
+      if (seedUoms) {
+        const uoms = [
+          { id: `uom-${tenantId}-ea`, tenant_id: tenantId, name: 'Each / Unit', code: 'EA', category: 'count', is_base_default: true },
+          { id: `uom-${tenantId}-cs`, tenant_id: tenantId, name: 'Case / Box', code: 'CS', category: 'count', is_base_default: false },
+          { id: `uom-${tenantId}-plt`, tenant_id: tenantId, name: 'Pallet (PLT)', code: 'PLT', category: 'count', is_base_default: false },
+          { id: `uom-${tenantId}-lbs`, tenant_id: tenantId, name: 'Pounds (Lbs)', code: 'LBS', category: 'weight', is_base_default: false },
+          { id: `uom-${tenantId}-sqft`, tenant_id: tenantId, name: 'Square Feet', code: 'SQFT', category: 'area', is_base_default: false }
+        ];
+        await this.client.from('units_of_measure').insert(uoms);
+      }
+
+      // 5. Insert Label Templates (if requested)
+      if (seedLabelTemplates) {
+        const labels = [
+          { id: `lbl-${tenantId}-4x6-pallet`, tenant_id: tenantId, name: 'Standard 4x6" Pallet LPN Tag', type: 'lpn_pallet', width_in: 4.0, height_in: 6.0, unit: 'in', is_default: true, include_qr: true, include_barcode: true, include_lot: true },
+          { id: `lbl-${tenantId}-2x1-bin`, tenant_id: tenantId, name: 'Rack / Shelf Bin Marker (2x1")', type: 'bin_location', width_in: 2.0, height_in: 1.0, unit: 'in', is_default: true, include_qr: true, include_barcode: false, include_lot: false },
+          { id: `lbl-${tenantId}-3x1-sku`, tenant_id: tenantId, name: 'Item Carton Barcode (3x1")', type: 'item_sku', width_in: 3.0, height_in: 1.0, unit: 'in', is_default: true, include_qr: false, include_barcode: true, include_lot: false },
+          { id: `lbl-${tenantId}-85x11-slip`, tenant_id: tenantId, name: 'Packing Sheet & Dispatch Slip (8.5x11")', type: 'dispatch_slip', width_in: 8.5, height_in: 11.0, unit: 'in', is_default: false, include_qr: true, include_barcode: true, include_lot: true }
+        ];
+        await this.client.from('label_templates').insert(labels);
+      }
+
+      // 6. Insert Client Administrator Profile
+      const { error: userErr } = await this.client.from('user_profiles').insert({
+        tenant_id: tenantId,
+        username: adminUsername,
+        email: adminEmail,
+        password_hash: null,
+        name: adminName,
+        role: 'Company Admin',
+        all_facilities_access: true,
+        facility_id: defaultFacId,
+        status: 'Active'
+      });
+      if (userErr) console.warn('User profile insert notice:', userErr);
+
+      console.log(`🎉 Tenant ${name} (${tenantId}) successfully provisioned in Supabase PostgreSQL!`);
+      return { success: true, tenantId, name, defaultFacId };
+    } catch (e) {
+      console.error('Failed to provision new tenant:', e);
+      return { success: false, error: e.message || e };
+    }
+  }
+
+  // Fetch all tenants with summary counts for Master Admin
+  async fetchAllTenantsSummary() {
+    if (!this.client || !this.isConnected) return [];
+    try {
+      const [tenantsRes, facsRes, usersRes, lpnsRes] = await Promise.all([
+        this.client.from('tenants').select('*'),
+        this.client.from('facilities').select('id, tenant_id'),
+        this.client.from('user_profiles').select('id, tenant_id, role, email, name, username, status'),
+        this.client.from('lpns').select('id, tenant_id')
+      ]);
+
+      const tenants = tenantsRes.data || [];
+      const facs = facsRes.data || [];
+      const users = usersRes.data || [];
+      const lpns = lpnsRes.data || [];
+
+      return tenants.map(t => {
+        const tenantFacs = facs.filter(f => f.tenant_id === t.id);
+        const tenantUsers = users.filter(u => u.tenant_id === t.id);
+        const tenantLpns = lpns.filter(l => l.tenant_id === t.id);
+        const adminUser = tenantUsers.find(u => u.role === 'Company Admin' || u.role === 'Master Admin') || tenantUsers[0];
+
+        return {
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          template: t.template,
+          tier: t.tier,
+          facilitiesCount: tenantFacs.length,
+          usersCount: tenantUsers.length,
+          lpnsCount: tenantLpns.length,
+          adminEmail: adminUser?.email || adminUser?.username || 'None',
+          adminName: adminUser?.name || 'Not Configured',
+          status: 'Active'
+        };
+      });
+    } catch (e) {
+      console.warn('Failed to fetch all tenants summary:', e);
+      return [];
+    }
+  }
+
   // Subscribe to Realtime Updates
   subscribeRealtime(tenantId, onUpdateCallback) {
     if (!this.client) return;

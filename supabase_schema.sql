@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS public.tenants (
 -- 2. USER PROFILES & ROLE-BASED ACCESS CONTROL (RBAC)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.role_permissions (
-    role TEXT NOT NULL, -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
-    permission_key TEXT NOT NULL, -- 'inventory.read', 'inventory.adjust', 'catalog.manage', 'settings.manage', 'users.manage'
+    role TEXT NOT NULL, -- 'Master Admin', 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
+    permission_key TEXT NOT NULL, -- 'platform.manage', 'tenants.provision', 'inventory.read', 'inventory.adjust', 'catalog.manage', 'settings.manage', 'users.manage'
     description TEXT,
     PRIMARY KEY (role, permission_key)
 );
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     email TEXT,
     password_hash TEXT,
     name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'Warehouse Operator', -- 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
+    role TEXT NOT NULL DEFAULT 'Warehouse Operator', -- 'Master Admin', 'Company Admin', 'Warehouse Manager', 'Warehouse Operator', 'Viewer / Auditor'
     all_facilities_access BOOLEAN NOT NULL DEFAULT TRUE,
     facility_id TEXT, -- Primary default facility
     status TEXT NOT NULL DEFAULT 'Active',
@@ -389,7 +389,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Seed Initial Super Administrator Profile
 INSERT INTO public.user_profiles (id, tenant_id, username, email, password_hash, name, role, all_facilities_access, facility_id, status)
 VALUES
-  ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', NULL, 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active')
-ON CONFLICT (id) DO NOTHING;
+  ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', NULL, 'Derek Lumpkin', 'Master Admin', TRUE, 'fac-main-dc', 'Active')
+ON CONFLICT (id) DO UPDATE SET role = 'Master Admin';
 
 

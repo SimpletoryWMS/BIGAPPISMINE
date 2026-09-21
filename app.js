@@ -111,7 +111,7 @@ const INITIAL_DB = {
   // Users & Access Control (Universal Generic Roles with Username & Email Dual-Auth)
   users: {
     'tenant-primary': [
-      { id: 'usr-1', username: 'derek', email: 'derek@simpletory.com', password: null, name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
+      { id: 'usr-1', username: 'derek', email: 'derek@simpletory.com', password: null, name: 'Derek Lumpkin', role: 'Master Admin', facilities: 'All Facilities', status: 'Active' }
     ]
   },
 
@@ -590,6 +590,15 @@ class SimpletoryApp {
     return currentFac ? currentFac.trackingMode === 'lpn' : true;
   }
 
+  isMasterAdmin() {
+    const activeUser = store.currentUser || store.activeTenant?.adminUser;
+    if (!activeUser) return false;
+    const role = (activeUser.role || '').toLowerCase();
+    const email = (activeUser.email || '').toLowerCase();
+    const username = (activeUser.username || '').toLowerCase();
+    return role === 'master admin' || role === 'super admin' || role === 'global admin' || email === 'derek@simpletory.com' || username === 'derek';
+  }
+
   bindEvents() {
     // Navigation routing
     this.navItems.forEach(item => {
@@ -624,7 +633,13 @@ class SimpletoryApp {
 
     // Tenant Switcher
     this.tenantSelect.addEventListener('change', async (e) => {
-      store.state.activeTenantId = e.target.value;
+      const selected = e.target.value;
+      if (selected === '__NEW_TENANT__') {
+        this.tenantSelect.value = store.state.activeTenantId;
+        this.openModal('provisionTenantModal');
+        return;
+      }
+      store.state.activeTenantId = selected;
       const facilities = store.tenantFacilities;
       if (facilities.length > 0) {
         store.state.activeFacilityId = facilities[0].id;
@@ -769,6 +784,11 @@ class SimpletoryApp {
     document.getElementById('btnAddNewLabelTemplate')?.addEventListener('click', () => this.openModal('addLabelTemplateModal'));
     document.getElementById('btnEditCustomFieldsLink')?.addEventListener('click', () => this.navigateTo('tenant-settings'));
     document.getElementById('btnViewAllMovements')?.addEventListener('click', () => this.navigateTo('operations'));
+    document.getElementById('btnOpenProvisionTenantModal')?.addEventListener('click', () => this.openModal('provisionTenantModal'));
+    document.getElementById('btnRefreshMasterTenants')?.addEventListener('click', () => {
+      this.renderMasterTenants();
+      this.showToast('Client organizations refreshed.', 'info');
+    });
 
     // User Profile Pill & Dropdown Menu
     const userProfBtn = document.getElementById('userProfileBtn');
@@ -785,6 +805,10 @@ class SimpletoryApp {
     document.getElementById('btnUserMenuSwitchAccount')?.addEventListener('click', () => {
       userDrop?.classList.remove('open');
       this.openModal('authModal');
+    });
+    document.getElementById('btnUserMenuPlatformAdmin')?.addEventListener('click', () => {
+      userDrop?.classList.remove('open');
+      this.navigateTo('master-tenants');
     });
     document.getElementById('btnUserMenuSettings')?.addEventListener('click', () => {
       userDrop?.classList.remove('open');
@@ -1671,6 +1695,32 @@ class SimpletoryApp {
       const barcode = document.getElementById('manualScanInput').value.trim();
       if (barcode) this.processBarcodeScan(barcode);
     });
+
+    // Provision New Client Tenant Form & Auto-slugifier
+    const provNameInp = document.getElementById('provisionTenantName');
+    const provIdInp = document.getElementById('provisionTenantId');
+    const provSlugInp = document.getElementById('provisionTenantSlug');
+    if (provNameInp && provIdInp && provSlugInp) {
+      provNameInp.addEventListener('input', (e) => {
+        const raw = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (!provIdInp.dataset.manual) {
+          provIdInp.value = raw ? `tenant-${raw}` : '';
+        }
+        if (!provSlugInp.dataset.manual) {
+          provSlugInp.value = raw || '';
+        }
+      });
+      provIdInp.addEventListener('input', () => { provIdInp.dataset.manual = 'true'; });
+      provSlugInp.addEventListener('input', () => { provSlugInp.dataset.manual = 'true'; });
+    }
+
+    const provForm = document.getElementById('provisionTenantForm');
+    if (provForm) {
+      provForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleProvisionTenantSubmit();
+      });
+    }
   }
 
   // ============================================================================
@@ -1710,6 +1760,7 @@ class SimpletoryApp {
     this.renderOperations();
     this.renderTenantSettings();
     this.renderUsers();
+    this.renderMasterTenants();
     this.populateModalSelects();
     this.initIcons();
   }
@@ -1718,9 +1769,17 @@ class SimpletoryApp {
   // HEADER RENDERING
   // ============================================================================
   renderHeader() {
-    this.tenantSelect.innerHTML = store.state.tenants.map(t => `
+    const isMaster = this.isMasterAdmin();
+
+    // Tenant Switcher dropdown
+    let tenantOptions = store.state.tenants.map(t => `
       <option value="${t.id}" ${t.id === store.state.activeTenantId ? 'selected' : ''}>${t.name}</option>
     `).join('');
+
+    if (isMaster) {
+      tenantOptions += `<option value="__NEW_TENANT__">+ Provision New Client...</option>`;
+    }
+    this.tenantSelect.innerHTML = tenantOptions;
 
     this.globalFacilitySelect.innerHTML = `
       <option value="all">All Facilities</option>
@@ -1733,19 +1792,38 @@ class SimpletoryApp {
     document.getElementById('sidebarTenantName').textContent = store.activeTenant.name;
     document.getElementById('totalLpnBadge').textContent = store.tenantLpns.length;
 
+    // Toggle Platform Admin section in sidebar and user menu
+    const sidebarMaster = document.getElementById('sidebarMasterSection');
+    if (sidebarMaster) {
+      sidebarMaster.style.display = isMaster ? 'block' : 'none';
+    }
+
+    const btnPlatformAdmin = document.getElementById('btnUserMenuPlatformAdmin');
+    if (btnPlatformAdmin) {
+      btnPlatformAdmin.style.display = isMaster ? 'flex' : 'none';
+    }
+
     const activeUser = store.currentUser || store.activeTenant.adminUser;
     if (activeUser) {
       const userNameEl = document.getElementById('userName');
       if (userNameEl) userNameEl.textContent = activeUser.name || 'Admin';
 
       const userRoleBadge = document.getElementById('userRoleBadge');
-      if (userRoleBadge) userRoleBadge.textContent = activeUser.role || 'Company Admin';
+      if (userRoleBadge) {
+        if (isMaster) {
+          userRoleBadge.className = 'badge badge-master-admin';
+          userRoleBadge.innerHTML = '<i data-lucide="crown"></i> Master Admin';
+        } else {
+          userRoleBadge.className = 'user-role';
+          userRoleBadge.textContent = activeUser.role || 'Company Admin';
+        }
+      }
 
       const dropFullName = document.getElementById('dropdownUserFullName');
       if (dropFullName) dropFullName.textContent = activeUser.name || 'Admin';
 
       const dropRole = document.getElementById('dropdownUserRole');
-      if (dropRole) dropRole.textContent = activeUser.role || 'Company Admin';
+      if (dropRole) dropRole.textContent = isMaster ? 'Master Admin (Platform Owner)' : (activeUser.role || 'Company Admin');
 
       const avatarEl = document.getElementById('userAvatar');
       if (avatarEl && activeUser.name) {
@@ -2918,6 +2996,7 @@ class SimpletoryApp {
     const users = store.tenantUsers;
 
     const roleBadgeClasses = {
+      'Master Admin': 'badge-master-admin',
       'Company Admin': 'badge-primary',
       'Warehouse Manager': 'badge-accent',
       'Warehouse Operator': 'badge-warning',
@@ -2946,6 +3025,273 @@ class SimpletoryApp {
     `).join('');
 
     this.initIcons();
+  }
+
+  // ============================================================================
+  // MASTER ADMIN - CLIENT ORGANIZATIONS MANAGEMENT
+  // ============================================================================
+  renderMasterTenants() {
+    const tableBody = document.getElementById('masterTenantsTableBody');
+    if (!tableBody) return;
+
+    const tenants = store.state.tenants || [];
+    const totalTenantsEl = document.getElementById('statMasterTotalTenants');
+    const totalFacsEl = document.getElementById('statMasterTotalFacilities');
+    const totalUsersEl = document.getElementById('statMasterTotalUsers');
+    const totalTenantsBadge = document.getElementById('totalTenantsBadge');
+    const cloudStatusEl = document.getElementById('statMasterCloudStatus');
+
+    // Calculate aggregated platform metrics
+    let totalFacs = 0;
+    let totalUsers = 0;
+    Object.values(store.state.facilities || {}).forEach(list => { totalFacs += (list?.length || 0); });
+    Object.values(store.state.users || {}).forEach(list => { totalUsers += (list?.length || 0); });
+
+    if (totalTenantsEl) totalTenantsEl.textContent = tenants.length;
+    if (totalTenantsBadge) totalTenantsBadge.textContent = tenants.length;
+    if (totalFacsEl) totalFacsEl.textContent = totalFacs;
+    if (totalUsersEl) totalUsersEl.textContent = totalUsers;
+    if (cloudStatusEl) {
+      cloudStatusEl.textContent = window.supabaseService?.isConnected ? 'Supabase Live Connected' : 'Local Storage Mode';
+    }
+
+    tableBody.innerHTML = tenants.map(t => {
+      const facCount = (store.state.facilities?.[t.id] || []).length;
+      const userCount = (store.state.users?.[t.id] || []).length;
+      const adminEmail = t.adminUser?.email || t.adminUser?.username || 'Not set';
+      const isCurrent = t.id === store.state.activeTenantId;
+
+      return `
+        <tr style="${isCurrent ? 'background: rgba(37, 99, 235, 0.08);' : ''}">
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="building" style="width: 16px; height: 16px; color: var(--accent-primary);"></i>
+              <div>
+                <strong>${t.name}</strong>
+                ${isCurrent ? '<span class="badge badge-primary badge-xs" style="margin-left: 0.35rem;">Active Workspace</span>' : ''}
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-subtle font-mono">${t.id}</span>
+            <small class="text-muted" style="display: block; font-size: 0.72rem;">/${t.slug || t.id}</small>
+          </td>
+          <td><span class="badge badge-accent">${t.tier || 'Enterprise Tier'}</span></td>
+          <td><span class="badge badge-subtle">${facCount} Facilities</span></td>
+          <td><span class="badge badge-subtle">${userCount} Users</span></td>
+          <td>
+            <span class="text-muted" style="font-size: 0.85rem;">${t.adminUser?.name || 'Administrator'}</span>
+            <small class="text-primary font-mono" style="display: block; font-size: 0.72rem;">${adminEmail}</small>
+          </td>
+          <td><span class="badge badge-success">Active</span></td>
+          <td>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              ${isCurrent ? `
+                <button class="btn btn-xs btn-secondary" disabled>
+                  <i data-lucide="check"></i> Active
+                </button>
+              ` : `
+                <button class="btn btn-xs btn-primary btn-glow" onclick="app.switchToTenant('${t.id}')">
+                  <i data-lucide="log-in"></i> Switch
+                </button>
+              `}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    this.initIcons();
+  }
+
+  async switchToTenant(tenantId) {
+    const targetTenant = store.state.tenants.find(t => t.id === tenantId);
+    if (!targetTenant) return;
+
+    store.state.activeTenantId = tenantId;
+    const facilities = store.tenantFacilities;
+    if (facilities.length > 0) {
+      store.state.activeFacilityId = facilities[0].id;
+    }
+    store.save();
+    this.renderAll();
+    this.navigateTo('dashboard');
+    this.showToast(`Switched to workspace: ${targetTenant.name}`, 'success');
+
+    if (window.supabaseService && window.supabaseService.isConnected) {
+      await this.syncWithCloud();
+      window.supabaseService.subscribeRealtime(store.state.activeTenantId, (table, payload) => {
+        this.renderAll();
+      });
+    }
+  }
+
+  async handleProvisionTenantSubmit() {
+    const name = document.getElementById('provisionTenantName').value.trim();
+    const tenantId = document.getElementById('provisionTenantId').value.trim().toLowerCase();
+    const slug = document.getElementById('provisionTenantSlug').value.trim().toLowerCase();
+    const tier = document.getElementById('provisionTenantTier').value;
+    const template = document.getElementById('provisionTenantTemplate').value;
+
+    const facilityName = document.getElementById('provisionFacilityName').value.trim();
+    const facilityCode = document.getElementById('provisionFacilityCode').value.trim().toUpperCase();
+    const facilityAddress = document.getElementById('provisionFacilityAddress').value.trim();
+    const trackingMode = document.getElementById('provisionTrackingMode').value;
+
+    const adminName = document.getElementById('provisionAdminName').value.trim();
+    const adminEmail = document.getElementById('provisionAdminEmail').value.trim();
+    const adminUsername = document.getElementById('provisionAdminUsername').value.trim().toLowerCase();
+
+    const seedUoms = document.getElementById('provisionSeedUoms').checked;
+    const seedFacTypes = document.getElementById('provisionSeedFacTypes').checked;
+    const seedLabels = document.getElementById('provisionSeedLabels').checked;
+
+    if (!name || !tenantId || !slug || !facilityName || !adminName || !adminUsername) {
+      this.showToast('Please fill in all required fields.', 'warning');
+      return;
+    }
+
+    if (store.state.tenants.some(t => t.id === tenantId)) {
+      this.showToast(`Tenant ID "${tenantId}" already exists. Please choose a unique identifier.`, 'error');
+      return;
+    }
+
+    const submitBtn = document.getElementById('btnSubmitProvisionTenant');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Provisioning Client...';
+    }
+
+    try {
+      // 1. Provision in Supabase if connected
+      if (window.supabaseService && window.supabaseService.isConnected) {
+        const res = await window.supabaseService.provisionNewTenant({
+          tenantId,
+          name,
+          slug,
+          tier,
+          template,
+          facilityName,
+          facilityCode,
+          facilityAddress,
+          trackingMode,
+          adminName,
+          adminEmail,
+          adminUsername,
+          seedUoms,
+          seedFacilityTypes: seedFacTypes,
+          seedLabelTemplates: seedLabels
+        });
+
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to provision tenant in Supabase.');
+        }
+      }
+
+      // 2. Provision locally in store.state
+      const newTenantObj = {
+        id: tenantId,
+        name,
+        slug,
+        tier,
+        template,
+        code: slug.toUpperCase().slice(0, 4),
+        adminUser: {
+          username: adminUsername,
+          email: adminEmail,
+          name: adminName,
+          role: 'Company Admin',
+          password: null
+        }
+      };
+
+      store.state.tenants.push(newTenantObj);
+
+      const defaultFacId = `fac-${tenantId}-main`;
+      store.state.facilities[tenantId] = [
+        {
+          id: defaultFacId,
+          code: facilityCode,
+          name: facilityName,
+          type: 'warehouse',
+          address: facilityAddress,
+          trackingMode: trackingMode
+        }
+      ];
+
+      store.state.locations[tenantId] = [
+        { id: `loc-${tenantId}-dock`, facilityId: defaultFacId, code: 'RECEIVING-01', name: 'Inbound Dock 1', zone: 'DOCK', capacity: 50, barcode: 'LOC-DOCK-01' },
+        { id: `loc-${tenantId}-rack1`, facilityId: defaultFacId, code: 'A-01-01', name: 'Aisle A Rack 1 Tier 1', zone: 'BULK', capacity: 20, barcode: 'LOC-A0101' }
+      ];
+
+      store.state.items[tenantId] = [];
+      store.state.licensePlates[tenantId] = [];
+      store.state.transactions[tenantId] = [];
+
+      if (seedUoms) {
+        store.state.unitsOfMeasure[tenantId] = [
+          { id: `uom-${tenantId}-ea`, name: 'Each / Unit', code: 'EA', category: 'count', isBaseDefault: true },
+          { id: `uom-${tenantId}-cs`, name: 'Case / Box', code: 'CS', category: 'count', isBaseDefault: false },
+          { id: `uom-${tenantId}-plt`, name: 'Pallet (PLT)', code: 'PLT', category: 'count', isBaseDefault: false },
+          { id: `uom-${tenantId}-lbs`, name: 'Pounds (Lbs)', code: 'LBS', category: 'weight', isBaseDefault: false },
+          { id: `uom-${tenantId}-sqft`, name: 'Square Feet', code: 'SQFT', category: 'area', isBaseDefault: false }
+        ];
+      }
+
+      if (seedFacTypes) {
+        store.state.facilityTypes[tenantId] = [
+          { id: `ftype-${tenantId}-wh`, code: 'warehouse', name: 'Main Warehouse / DC', description: 'Central distribution hub', isDefault: true },
+          { id: `ftype-${tenantId}-dock`, code: 'cross_dock', name: 'Cross-Dock Terminal', description: 'Fast transit facility', isDefault: false },
+          { id: `ftype-${tenantId}-cold`, code: 'cold_storage', name: 'Cold Storage', description: 'Temperature-controlled', isDefault: false }
+        ];
+      }
+
+      if (seedLabels) {
+        store.state.labelTemplates[tenantId] = [
+          { id: `lbl-${tenantId}-4x6-pallet`, name: 'Standard 4x6" Pallet LPN Tag', type: 'lpn_pallet', widthIn: 4.0, heightIn: 6.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: true, includeLot: true },
+          { id: `lbl-${tenantId}-2x1-bin`, name: 'Rack / Shelf Bin Marker (2x1")', type: 'bin_location', widthIn: 2.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: true, includeBarcode: false, includeLot: false },
+          { id: `lbl-${tenantId}-3x1-sku`, name: 'Item Carton Barcode (3x1")', type: 'item_sku', widthIn: 3.0, heightIn: 1.0, unit: 'in', isDefault: true, includeQr: false, includeBarcode: true, includeLot: false },
+          { id: `lbl-${tenantId}-85x11-slip`, name: 'Packing Sheet & Dispatch Slip (8.5x11")', type: 'dispatch_slip', widthIn: 8.5, heightIn: 11.0, unit: 'in', isDefault: false, includeQr: true, includeBarcode: true, includeLot: true }
+        ];
+      }
+
+      store.state.users[tenantId] = [
+        {
+          id: `usr-${tenantId}-admin`,
+          username: adminUsername,
+          email: adminEmail,
+          password: null,
+          name: adminName,
+          role: 'Company Admin',
+          facilities: 'All Facilities',
+          status: 'Active'
+        }
+      ];
+
+      // 3. Switch into new tenant
+      store.state.activeTenantId = tenantId;
+      store.state.activeFacilityId = defaultFacId;
+      store.save();
+
+      this.closeModal('provisionTenantModal');
+      document.getElementById('provisionTenantForm').reset();
+      delete document.getElementById('provisionTenantId').dataset.manual;
+      delete document.getElementById('provisionTenantSlug').dataset.manual;
+
+      this.renderAll();
+      this.navigateTo('dashboard');
+      this.showToast(`🎉 Successfully provisioned ${name}! Switched to new workspace.`, 'success');
+
+    } catch (err) {
+      console.error('Provisioning error:', err);
+      this.showToast(`Provisioning failed: ${err.message || err}`, 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="rocket"></i> Create & Provision Client';
+        this.initIcons();
+      }
+    }
   }
 
   openChangePasswordModal(targetUserId = null) {
