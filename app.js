@@ -11,7 +11,7 @@
 // ============================================================================
 // INITIAL MOCK DATABASE & DEFAULT SEED DATA (CLEAN PRODUCTION FOUNDATION)
 // ============================================================================
-const DEFAULT_STORAGE_KEY = 'simpletory_wms_db_v3';
+const DEFAULT_STORAGE_KEY = 'simpletory_wms_db_v4';
 
 const INITIAL_DB = {
   activeTenantId: 'tenant-primary',
@@ -128,11 +128,16 @@ class SimpletoryStore {
 
   load() {
     try {
+      // Clear legacy storage keys from previous demo iterations
+      ['simpletory_wms_db', 'simpletory_wms_db_v1', 'simpletory_wms_db_v2', 'simpletory_wms_db_v3', 'simpletory_db'].forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+
       const saved = localStorage.getItem(DEFAULT_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         // Clean out legacy demo tenants if present
-        if (parsed.tenants && parsed.tenants.some(t => t.id === 'tenant-flooring' || t.id === 'tenant-general')) {
+        if (parsed.tenants && parsed.tenants.some(t => t.id === 'tenant-flooring' || t.id === 'tenant-general' || t.name?.includes('Apex') || t.name?.includes('Cascade'))) {
           localStorage.removeItem(DEFAULT_STORAGE_KEY);
           return JSON.parse(JSON.stringify(INITIAL_DB));
         }

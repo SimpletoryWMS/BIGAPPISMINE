@@ -34,12 +34,11 @@ Simpletory supports two login methods tailored for real-world warehouse operatio
 
 ![User Profile Menu](docs/images/settings_user_menu_1789665241914.png)
 
-### Quick User Profile Switcher:
-Click your profile badge in the top right corner to switch demo accounts instantly between:
-- 👑 **Company Admin** (`derek`)
-- 📋 **Warehouse Manager** (`marcus_v`)
-- 📦 **Warehouse Operator** (`carlos_g`)
-- 🚚 **Floor Operator Dock 1** (`dock_worker_1`)
+### User Profile & Account Management:
+Click your profile badge in the top right corner to:
+- 👑 Access **Tenant Settings**
+- 🔑 **Change Password** (Self-Service or Admin Reset)
+- 🚪 **Sign Out** to secure the workspace
 
 ---
 
