@@ -111,7 +111,7 @@ const INITIAL_DB = {
   // Users & Access Control (Universal Generic Roles with Username & Email Dual-Auth)
   users: {
     'tenant-primary': [
-      { id: 'usr-1', username: 'derek', email: 'derek@simpletory.com', password: 'Simpletory2026!', name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
+      { id: 'usr-1', username: 'derek', email: 'derek@simpletory.com', password: null, name: 'Derek Lumpkin', role: 'Company Admin', facilities: 'All Facilities', status: 'Active' }
     ]
   },
 
@@ -1491,7 +1491,7 @@ class SimpletoryApp {
         const username = isEmailMode 
           ? (email ? email.split('@')[0].replace(/[^a-z0-9_]/gi, '_').toLowerCase() : `usr_${Date.now().toString().slice(-4)}`)
           : document.getElementById('inviteUserUsername').value.trim().toLowerCase();
-        const password = isEmailMode ? 'Simpletory2026!' : (document.getElementById('inviteUserPassword').value.trim() || 'Simpletory2026!');
+        const password = isEmailMode ? null : (document.getElementById('inviteUserPassword').value.trim() || null);
         const role = document.getElementById('inviteUserRole').value;
         const facilities = document.getElementById('inviteUserFacility').value;
 
@@ -1624,8 +1624,8 @@ class SimpletoryApp {
 
         // If self, verify current password
         if (isSelf) {
-          const userPass = activeUser?.password || 'Simpletory2026!';
-          if (currentPass !== userPass && currentPass !== 'Simpletory2026!') {
+          const userPass = activeUser?.password;
+          if (userPass && currentPass !== userPass) {
             this.showToast('Incorrect current password.', 'error');
             return;
           }
@@ -3019,7 +3019,7 @@ class SimpletoryApp {
         if (!error && data && data.length > 0) {
           const u = data[0];
           // Check password if configured
-          if (!u.password_hash || cleanPass === u.password_hash || cleanPass === 'Simpletory2026!') {
+          if (!u.password_hash || cleanPass === u.password_hash) {
             matchedUser = {
               id: u.id,
               username: u.username || cleanId,

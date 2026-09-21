@@ -389,7 +389,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Seed Initial Super Administrator Profile
 INSERT INTO public.user_profiles (id, tenant_id, username, email, password_hash, name, role, all_facilities_access, facility_id, status)
 VALUES
-  ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', 'Simpletory2026!', 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active')
+  ('c0a80121-0001-4000-8000-000000000001', 'tenant-primary', 'derek', 'derek@simpletory.com', NULL, 'Derek Lumpkin', 'Company Admin', TRUE, 'fac-main-dc', 'Active')
 ON CONFLICT (id) DO NOTHING;
 
 

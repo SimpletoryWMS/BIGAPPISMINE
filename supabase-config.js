@@ -346,7 +346,7 @@ class SupabaseService {
         all_facilities_access: user.facilities === 'All Facilities' || !user.facilities,
         facility_id: user.facilities !== 'All Facilities' ? user.facilities : null,
         status: user.status || 'Active',
-        password_hash: user.password || 'Simpletory2026!'
+        password_hash: user.password || null
       };
       await this.client.from('user_profiles').insert(payload);
       console.log('☁️ User profile saved to Supabase:', user.name);
