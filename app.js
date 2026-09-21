@@ -465,6 +465,9 @@ class SimpletoryApp {
   checkAuthSession() {
     if (!store.state.currentAuthUser) {
       this.openModal('authModal');
+    } else if (!store.state.currentAuthUser.password) {
+      this.openChangePasswordModal(store.state.currentAuthUser.id, true);
+      this.showToast(`Welcome, ${store.state.currentAuthUser.name}! Please set your account password to continue.`, 'info');
     }
   }
 
@@ -1646,8 +1649,8 @@ class SimpletoryApp {
         const isSelf = !targetUserId || (store.currentUser && store.currentUser.id === targetUserId);
         const activeUser = store.currentUser;
 
-        // If self, verify current password
-        if (isSelf) {
+        // If self and not first-time mandatory, verify current password
+        if (isSelf && !this.isMandatoryPasswordSetup) {
           const userPass = activeUser?.password;
           if (userPass && currentPass !== userPass) {
             this.showToast('Incorrect current password.', 'error');
@@ -1667,6 +1670,10 @@ class SimpletoryApp {
           userToUpdate.password = newPass;
         }
 
+        if (store.state.currentAuthUser) {
+          store.state.currentAuthUser.password = newPass;
+        }
+
         // Update in active tenant adminUser if admin
         if (isSelf && store.activeTenant && store.activeTenant.adminUser) {
           store.activeTenant.adminUser.password = newPass;
@@ -1680,9 +1687,22 @@ class SimpletoryApp {
           await window.supabaseService.updateUserPassword(lookupKey, newPass);
         }
 
+        const wasMandatory = this.isMandatoryPasswordSetup;
+        this.isMandatoryPasswordSetup = false;
+
+        const closeBtn = document.getElementById('changePasswordModalCloseBtn');
+        const cancelBtn = document.getElementById('btnCancelChangePassword');
+        if (closeBtn) closeBtn.style.display = 'block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
         changePassForm.reset();
         this.closeModal('changePasswordModal');
-        this.showToast('Password successfully updated and synced!', 'success');
+
+        if (wasMandatory) {
+          this.showToast('🎉 Password set successfully! Welcome to your workspace.', 'success');
+        } else {
+          this.showToast('Password successfully updated and synced!', 'success');
+        }
       });
     }
 
@@ -3294,11 +3314,17 @@ class SimpletoryApp {
     }
   }
 
-  openChangePasswordModal(targetUserId = null) {
+  openChangePasswordModal(targetUserId = null, isMandatoryFirstTime = false) {
+    this.isMandatoryPasswordSetup = isMandatoryFirstTime;
+
     const hiddenId = document.getElementById('changePasswordUserId');
     const groupCurrent = document.getElementById('groupCurrentPassword');
     const currentInput = document.getElementById('currentPasswordInput');
     const titleEl = document.getElementById('changePasswordModalTitle');
+    const helperText = document.getElementById('changePasswordHelperText');
+    const closeBtn = document.getElementById('changePasswordModalCloseBtn');
+    const cancelBtn = document.getElementById('btnCancelChangePassword');
+    const submitBtn = document.getElementById('btnSubmitChangePassword');
     const form = document.getElementById('changePasswordForm');
     if (form) form.reset();
 
@@ -3306,15 +3332,33 @@ class SimpletoryApp {
 
     if (hiddenId) hiddenId.value = targetUserId || '';
 
-    if (isSelf) {
-      if (titleEl) titleEl.textContent = 'Change Your Password';
-      if (groupCurrent) groupCurrent.style.display = 'block';
-      if (currentInput) currentInput.required = true;
-    } else {
-      const targetUser = store.tenantUsers.find(u => u.id === targetUserId);
-      if (titleEl) titleEl.textContent = `Reset Password for ${targetUser ? targetUser.name : 'User'}`;
+    if (isMandatoryFirstTime) {
+      if (titleEl) titleEl.textContent = '🔒 Set Your Permanent Password';
+      if (helperText) {
+        helperText.style.display = 'block';
+        helperText.textContent = 'Welcome to Simpletory! Please create a secure permanent password for your account to complete setup.';
+      }
       if (groupCurrent) groupCurrent.style.display = 'none';
       if (currentInput) currentInput.required = false;
+      if (closeBtn) closeBtn.style.display = 'none';
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      if (submitBtn) submitBtn.textContent = 'Set Password & Enter Workspace';
+    } else {
+      if (helperText) helperText.style.display = 'none';
+      if (closeBtn) closeBtn.style.display = 'block';
+      if (cancelBtn) cancelBtn.style.display = 'inline-block';
+      if (submitBtn) submitBtn.textContent = 'Update Password';
+
+      if (isSelf) {
+        if (titleEl) titleEl.textContent = 'Change Your Password';
+        if (groupCurrent) groupCurrent.style.display = 'block';
+        if (currentInput) currentInput.required = true;
+      } else {
+        const targetUser = store.tenantUsers.find(u => u.id === targetUserId);
+        if (titleEl) titleEl.textContent = `Reset Password for ${targetUser ? targetUser.name : 'User'}`;
+        if (groupCurrent) groupCurrent.style.display = 'none';
+        if (currentInput) currentInput.required = false;
+      }
     }
 
     this.openModal('changePasswordModal');
@@ -3340,7 +3384,7 @@ class SimpletoryApp {
   }
 
   // ============================================================================
-  // DUAL-MODE AUTHENTICATION & SESSION MANAGEMENT
+  // AUTHENTICATION & ACCESS CONTROL
   // ============================================================================
   async login(identifier, password) {
     if (!identifier) {
@@ -3352,6 +3396,7 @@ class SimpletoryApp {
     const cleanPass = (password || '').trim();
     let matchedUser = null;
     let matchedTenantId = null;
+    let needsFirstTimePassword = false;
 
     // 1. First check Supabase PostgreSQL if connected
     if (window.supabaseService && window.supabaseService.isConnected && window.supabaseService.client) {
@@ -3364,12 +3409,16 @@ class SimpletoryApp {
 
         if (!error && data && data.length > 0) {
           const u = data[0];
-          // Check password if configured
-          if (!u.password_hash || cleanPass === u.password_hash) {
+          if (!u.password_hash) {
+            needsFirstTimePassword = true;
+          }
+          // Check password if configured, or allow first-time setup if null
+          if (!u.password_hash || (cleanPass && cleanPass === u.password_hash)) {
             matchedUser = {
               id: u.id,
               username: u.username || cleanId,
               email: u.email,
+              password: u.password_hash || null,
               name: u.name || cleanId,
               role: u.role || 'Warehouse Operator',
               facilities: u.all_facilities_access ? 'All Facilities' : (u.facility_id || 'Assigned Facility'),
@@ -3377,6 +3426,9 @@ class SimpletoryApp {
               tenantId: u.tenant_id
             };
             matchedTenantId = u.tenant_id;
+          } else {
+            this.showToast('Invalid password. Please check your credentials.', 'error');
+            return;
           }
         }
       } catch (err) {
@@ -3392,9 +3444,17 @@ class SimpletoryApp {
           (u.email && u.email.toLowerCase() === cleanId)
         );
         if (found) {
-          matchedUser = found;
-          matchedTenantId = tId;
-          break;
+          if (!found.password) {
+            needsFirstTimePassword = true;
+          }
+          if (!found.password || (cleanPass && cleanPass === found.password)) {
+            matchedUser = found;
+            matchedTenantId = tId;
+            break;
+          } else {
+            this.showToast('Invalid password. Please check your credentials.', 'error');
+            return;
+          }
         }
       }
     }
@@ -3406,14 +3466,23 @@ class SimpletoryApp {
         (t.adminUser && t.adminUser.username && t.adminUser.username.toLowerCase() === cleanId)
       );
       if (tMatch) {
-        matchedUser = {
-          id: `admin-${tMatch.id}`,
-          username: cleanId.includes('@') ? cleanId.split('@')[0] : cleanId,
-          email: tMatch.adminUser.email,
-          name: tMatch.adminUser.name,
-          role: tMatch.adminUser.role || 'Company Admin'
-        };
-        matchedTenantId = tMatch.id;
+        if (!tMatch.adminUser.password) {
+          needsFirstTimePassword = true;
+        }
+        if (!tMatch.adminUser.password || (cleanPass && cleanPass === tMatch.adminUser.password)) {
+          matchedUser = {
+            id: `admin-${tMatch.id}`,
+            username: cleanId.includes('@') ? cleanId.split('@')[0] : cleanId,
+            email: tMatch.adminUser.email,
+            name: tMatch.adminUser.name,
+            role: tMatch.adminUser.role || 'Company Admin',
+            password: tMatch.adminUser.password || null
+          };
+          matchedTenantId = tMatch.id;
+        } else {
+          this.showToast('Invalid password. Please check your credentials.', 'error');
+          return;
+        }
       }
     }
 
@@ -3437,11 +3506,18 @@ class SimpletoryApp {
     if (authModalEl) authModalEl.classList.remove('open');
 
     this.renderAll();
-    this.showToast(`Welcome back, ${matchedUser.name}! (${matchedUser.role})`, 'success');
 
     // Sync tenant data from Supabase if connected
     if (window.supabaseService && window.supabaseService.isConnected) {
       await this.syncWithCloud();
+    }
+
+    // Mandatory first-time password creation check
+    if (needsFirstTimePassword || !matchedUser.password) {
+      this.openChangePasswordModal(matchedUser.id, true);
+      this.showToast(`Welcome, ${matchedUser.name}! Please set your account password to continue.`, 'info');
+    } else {
+      this.showToast(`Welcome back, ${matchedUser.name}! (${matchedUser.role})`, 'success');
     }
   }
 
@@ -3687,6 +3763,10 @@ class SimpletoryApp {
   closeModal(modalId) {
     if (modalId === 'authModal' && !store.state.currentAuthUser) {
       return; // Enterprise authentication gate is mandatory
+    }
+    if (modalId === 'changePasswordModal' && this.isMandatoryPasswordSetup) {
+      this.showToast('Setting an account password is required before accessing the workspace.', 'warning');
+      return; // Mandatory first-time password creation
     }
     const modal = document.getElementById(modalId);
     if (modal) {

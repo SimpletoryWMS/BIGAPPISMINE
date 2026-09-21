@@ -1992,8 +1992,8 @@
           </div>
 
           <div class="form-group mt-3">
-            <label for="authPassword" class="form-label">Password: *</label>
-            <input type="password" id="authPassword" class="form-input font-mono" placeholder="••••••••" required autocomplete="current-password" />
+            <label for="authPassword" class="form-label">Password: <span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(First-time users can leave blank)</span></label>
+            <input type="password" id="authPassword" class="form-input font-mono" placeholder="••••••••" autocomplete="current-password" />
           </div>
 
           <div class="modal-footer mt-4" style="padding:0; border:none;">
@@ -2014,9 +2014,10 @@
           <i data-lucide="key" class="text-primary"></i>
           <h3 class="modal-title" id="changePasswordModalTitle">Change Password</h3>
         </div>
-        <button class="modal-close-btn" data-close-modal="changePasswordModal">&times;</button>
+        <button class="modal-close-btn" id="changePasswordModalCloseBtn" data-close-modal="changePasswordModal">&times;</button>
       </div>
       <div class="modal-body">
+        <p id="changePasswordHelperText" class="text-muted mb-3" style="display:none; font-size:0.85rem; line-height:1.4;"></p>
         <form id="changePasswordForm">
           <input type="hidden" id="changePasswordUserId" />
 
@@ -2036,8 +2037,8 @@
           </div>
 
           <div class="modal-footer mt-4">
-            <button type="button" class="btn btn-secondary" data-close-modal="changePasswordModal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-glow">Update Password</button>
+            <button type="button" class="btn btn-secondary" id="btnCancelChangePassword" data-close-modal="changePasswordModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitChangePassword">Update Password</button>
           </div>
         </form>
       </div>
