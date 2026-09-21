@@ -393,6 +393,41 @@ class SupabaseService {
     }
   }
 
+  // Update Full User Profile & Permissions in Supabase PostgreSQL
+  async updateUserProfile(user) {
+    if (!this.client || !this.isConnected) return;
+    try {
+      const isUuid = user.id && user.id.length === 36;
+      const payload = {
+        name: user.name,
+        email: user.email || null,
+        username: user.username,
+        role: user.role,
+        tenant_id: user.tenantId,
+        all_facilities_access: user.facilities === 'All Facilities',
+        facility_id: user.facilities === 'All Facilities' ? null : user.facilities,
+        status: user.status || 'Active',
+        updated_at: new Date().toISOString()
+      };
+
+      let query = this.client.from('user_profiles').update(payload);
+      if (isUuid) {
+        query = query.eq('id', user.id);
+      } else {
+        query = query.or(`id.eq.${user.id},username.ilike.${user.username},email.ilike.${user.email || user.username}`);
+      }
+
+      const { error } = await query;
+      if (error) {
+        console.warn('Failed to update user profile in Supabase:', error);
+      } else {
+        console.log('☁️ User profile updated in Supabase PostgreSQL for:', user.name);
+      }
+    } catch (e) {
+      console.warn('Exception updating user profile in Supabase:', e);
+    }
+  }
+
   // 1-Click Provisioning of a New Client Tenant in Supabase PostgreSQL
   async provisionNewTenant(tenantPayload) {
     if (!this.client || !this.isConnected) {

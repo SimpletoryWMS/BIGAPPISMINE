@@ -1819,6 +1819,84 @@
     </div>
   </div>
 
+  <!-- MODAL: EDIT USER & ACCESS CONTROL -->
+  <div class="modal-backdrop" id="editUserModal">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="user-cog" class="text-primary"></i>
+          <h3 class="modal-title">Edit User Access & Permissions</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="editUserModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editUserForm">
+          <input type="hidden" id="editUserId" />
+          <input type="hidden" id="editUserOriginalTenantId" />
+
+          <div class="form-group" id="editUserOrgGroup" style="display:none;">
+            <label for="editUserOrgSelect" class="form-label">Client Organization / Tenant: *</label>
+            <select id="editUserOrgSelect" class="form-select">
+              <!-- Populated dynamically for Master Admin -->
+            </select>
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="editUserName" class="form-label">Full Name: *</label>
+              <input type="text" id="editUserName" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="editUserUsername" class="form-label">Username / User ID: *</label>
+              <input type="text" id="editUserUsername" class="form-input font-mono" required />
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="editUserEmail" class="form-label">Work Email:</label>
+            <input type="email" id="editUserEmail" class="form-input" placeholder="e.g. user@company.com" />
+          </div>
+
+          <div class="grid-2-col mt-3">
+            <div class="form-group">
+              <label for="editUserRole" class="form-label">Assigned Role: *</label>
+              <select id="editUserRole" class="form-select" required>
+                <!-- Populated dynamically based on permissions -->
+                <option value="Company Admin">Company Admin (Full Org Access)</option>
+                <option value="Warehouse Manager">Warehouse Manager (Operations Lead)</option>
+                <option value="Warehouse Operator">Warehouse Operator (Floor Worker)</option>
+                <option value="Viewer / Auditor">Viewer / Auditor (Read-Only)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="editUserStatus" class="form-label">Account Status: *</label>
+              <select id="editUserStatus" class="form-select" required>
+                <option value="Active">🟢 Active (Full Login Access)</option>
+                <option value="Suspended">🔴 Suspended (Access Revoked)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="editUserFacility" class="form-label">Facility Scope: *</label>
+            <select id="editUserFacility" class="form-select" required>
+              <option value="All Facilities">All Facilities (Global Scope)</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn btn-secondary" data-close-modal="editUserModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitEditUser">
+              <i data-lucide="check"></i> Save User Access Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 11: ADD UNIT OF MEASURE (SETTINGS) -->
   <div class="modal-backdrop" id="addUomModal">
     <div class="modal-dialog modal-md">

@@ -1604,6 +1604,81 @@ class SimpletoryApp {
       });
     }
 
+    // Edit User Access & Permissions Form (Modal)
+    const editUserForm = document.getElementById('editUserForm');
+    if (editUserForm) {
+      editUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('editUserId').value;
+        const origTenantId = document.getElementById('editUserOriginalTenantId').value || store.state.activeTenantId;
+        const isMaster = this.isMasterAdmin();
+        const newTenantId = isMaster && document.getElementById('editUserOrgSelect')
+          ? document.getElementById('editUserOrgSelect').value
+          : origTenantId;
+
+        const name = document.getElementById('editUserName').value.trim();
+        const username = document.getElementById('editUserUsername').value.trim().toLowerCase();
+        const email = document.getElementById('editUserEmail').value.trim() || null;
+        const role = document.getElementById('editUserRole').value;
+        const status = document.getElementById('editUserStatus').value;
+        const facilities = document.getElementById('editUserFacility').value;
+
+        // Remove from old tenant array if tenant changed
+        if (origTenantId !== newTenantId && store.state.users[origTenantId]) {
+          store.state.users[origTenantId] = store.state.users[origTenantId].filter(u => u.id !== userId);
+        }
+
+        if (!store.state.users[newTenantId]) {
+          store.state.users[newTenantId] = [];
+        }
+
+        const existingIdx = store.state.users[newTenantId].findIndex(u => u.id === userId);
+        const existingPassword = existingIdx >= 0 ? store.state.users[newTenantId][existingIdx].password : null;
+
+        const updatedUser = {
+          id: userId,
+          name,
+          username,
+          email,
+          role,
+          status,
+          facilities,
+          tenantId: newTenantId,
+          password: existingPassword
+        };
+
+        if (existingIdx >= 0) {
+          store.state.users[newTenantId][existingIdx] = { ...store.state.users[newTenantId][existingIdx], ...updatedUser };
+        } else {
+          store.state.users[newTenantId].push(updatedUser);
+        }
+
+        // If updated user is current active user, sync active session
+        if (store.state.currentAuthUser && (store.state.currentAuthUser.id === userId || store.state.currentAuthUser.username === username || (email && store.state.currentAuthUser.email === email))) {
+          store.state.currentAuthUser = { ...store.state.currentAuthUser, ...updatedUser };
+        }
+
+        // If tenant admin changed, update tenant record
+        const tMatch = store.state.tenants.find(t => t.id === newTenantId);
+        if (tMatch && tMatch.adminUser && (`admin-${tMatch.id}` === userId || tMatch.adminUser.email === email || tMatch.adminUser.username === username)) {
+          tMatch.adminUser.name = name;
+          tMatch.adminUser.email = email;
+          tMatch.adminUser.username = username;
+          tMatch.adminUser.role = role;
+        }
+
+        store.save();
+
+        if (window.supabaseService && window.supabaseService.isConnected) {
+          await window.supabaseService.updateUserProfile(updatedUser);
+        }
+
+        this.closeModal('editUserModal');
+        this.renderAll();
+        this.showToast(`Updated user '${name}' (@${username}) access permissions.`, 'success');
+      });
+    }
+
     // 10. Add Facility Type Form (Modal)
     const addFTypeForm = document.getElementById('addFacilityTypeForm');
     if (addFTypeForm) {
@@ -3165,6 +3240,9 @@ class SimpletoryApp {
           <td><span class="badge badge-success">${usr.status || 'Active'}</span></td>
           <td>
             <div style="display:flex; gap:0.25rem; align-items:center;">
+              <button class="btn btn-ghost btn-xs text-primary" onclick="app.openEditUserModal('${usr.id}')" title="Edit User & Permissions">
+                <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+              </button>
               <button class="btn btn-ghost btn-xs text-muted" onclick="app.openChangePasswordModal('${usr.id}')" title="Reset User Password">
                 <i data-lucide="key" style="width:14px;height:14px;"></i>
               </button>
@@ -3533,6 +3611,97 @@ class SimpletoryApp {
     if (userInput) userInput.value = '';
     if (passInput) passInput.value = '';
     this.openModal('inviteUserModal');
+  }
+
+  openEditUserModal(userId) {
+    const isMaster = this.isMasterAdmin();
+    let targetUser = null;
+    let userTenantId = null;
+
+    for (const [tId, uList] of Object.entries(store.state.users || {})) {
+      const found = (uList || []).find(u => u.id === userId);
+      if (found) {
+        targetUser = found;
+        userTenantId = tId;
+        break;
+      }
+    }
+
+    if (!targetUser) {
+      // Check tenant admin users
+      const tMatch = store.state.tenants.find(t => t.id === userId || `admin-${t.id}` === userId || (t.adminUser && t.adminUser.email === userId));
+      if (tMatch && tMatch.adminUser) {
+        targetUser = {
+          id: `admin-${tMatch.id}`,
+          name: tMatch.adminUser.name,
+          email: tMatch.adminUser.email,
+          username: tMatch.adminUser.username || tMatch.adminUser.email.split('@')[0],
+          role: tMatch.adminUser.role || 'Company Admin',
+          facilities: 'All Facilities',
+          status: 'Active',
+          tenantId: tMatch.id
+        };
+        userTenantId = tMatch.id;
+      }
+    }
+
+    if (!targetUser) {
+      this.showToast('User profile not found.', 'error');
+      return;
+    }
+
+    document.getElementById('editUserId').value = targetUser.id;
+    document.getElementById('editUserOriginalTenantId').value = userTenantId || store.state.activeTenantId;
+    document.getElementById('editUserName').value = targetUser.name || '';
+    document.getElementById('editUserUsername').value = targetUser.username || '';
+    document.getElementById('editUserEmail').value = targetUser.email || '';
+    document.getElementById('editUserStatus').value = targetUser.status || 'Active';
+
+    // Populate roles
+    const roleSelect = document.getElementById('editUserRole');
+    if (roleSelect) {
+      let roleOptions = '';
+      if (isMaster) {
+        roleOptions += `<option value="Master Admin" ${targetUser.role === 'Master Admin' ? 'selected' : ''}>👑 Master Admin (Platform Superuser)</option>`;
+      }
+      roleOptions += `
+        <option value="Company Admin" ${targetUser.role === 'Company Admin' ? 'selected' : ''}>Company Admin (Full Org Access)</option>
+        <option value="Warehouse Manager" ${targetUser.role === 'Warehouse Manager' ? 'selected' : ''}>Warehouse Manager (Operations Lead)</option>
+        <option value="Warehouse Operator" ${targetUser.role === 'Warehouse Operator' ? 'selected' : ''}>Warehouse Operator (Floor Worker)</option>
+        <option value="Viewer / Auditor" ${targetUser.role === 'Viewer / Auditor' ? 'selected' : ''}>Viewer / Auditor (Read-Only)</option>
+      `;
+      roleSelect.innerHTML = roleOptions;
+    }
+
+    // Organization Select & Facility Select
+    const orgGroup = document.getElementById('editUserOrgGroup');
+    const orgSelect = document.getElementById('editUserOrgSelect');
+    const facSelect = document.getElementById('editUserFacility');
+
+    const updateFacilities = (tId, selectedFac) => {
+      if (!facSelect) return;
+      const targetFacs = store.state.facilities[tId] || [];
+      facSelect.innerHTML = `
+        <option value="All Facilities" ${selectedFac === 'All Facilities' ? 'selected' : ''}>All Facilities (Global Scope)</option>
+        ${targetFacs.map(f => `<option value="${f.code} ${f.name}" ${selectedFac === `${f.code} ${f.name}` || selectedFac === f.id ? 'selected' : ''}>${f.code} - ${f.name}</option>`).join('')}
+      `;
+    };
+
+    if (isMaster) {
+      if (orgGroup) orgGroup.style.display = 'block';
+      if (orgSelect) {
+        orgSelect.innerHTML = store.state.tenants.map(t => `
+          <option value="${t.id}" ${t.id === userTenantId ? 'selected' : ''}>🏢 ${t.name}</option>
+        `).join('');
+        orgSelect.onchange = (e) => updateFacilities(e.target.value, targetUser.facilities);
+      }
+    } else {
+      if (orgGroup) orgGroup.style.display = 'none';
+    }
+
+    updateFacilities(userTenantId || store.state.activeTenantId, targetUser.facilities);
+
+    this.openModal('editUserModal');
   }
 
   // ============================================================================
