@@ -322,7 +322,7 @@ CREATE OR REPLACE FUNCTION public.create_team_member(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth, pg_temp
+SET search_path = public, auth, extensions, pg_temp
 AS $$
 DECLARE
     v_caller_role TEXT;
@@ -355,7 +355,7 @@ BEGIN
     END IF;
 
     -- 3. Create auth.users Record (Auto-Confirmed Email with GoTrue Compliance)
-    v_encrypted_pw := crypt(p_password, gen_salt('bf'));
+    v_encrypted_pw := extensions.crypt(p_password, extensions.gen_salt('bf'));
 
     INSERT INTO auth.users (
         id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
