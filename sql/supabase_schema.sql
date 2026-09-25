@@ -10,8 +10,10 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 0. Cleanup Legacy Auth Triggers & Obsolete Functions (if present)
+-- 0. Cleanup Legacy Auth Triggers & Repair GoTrue auth.users Schema
 -- ----------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 DO $$
 DECLARE
     r RECORD;
@@ -27,6 +29,48 @@ BEGIN
 END $$;
 
 DROP FUNCTION IF EXISTS public.handle_new_auth_user() CASCADE;
+
+-- GoTrue Go-driver compatibility: Fix NULL string columns in auth.users
+UPDATE auth.users
+SET 
+    instance_id = COALESCE(instance_id, '00000000-0000-0000-0000-000000000000'),
+    aud = COALESCE(aud, 'authenticated'),
+    role = COALESCE(role, 'authenticated'),
+    confirmation_token = COALESCE(confirmation_token, ''),
+    recovery_token = COALESCE(recovery_token, ''),
+    email_change_token_new = COALESCE(email_change_token_new, ''),
+    email_change = COALESCE(email_change, ''),
+    phone_change = COALESCE(phone_change, ''),
+    phone_change_token = COALESCE(phone_change_token, ''),
+    email_change_token_current = COALESCE(email_change_token_current, ''),
+    email_change_confirm_status = COALESCE(email_change_confirm_status, 0),
+    reauthentication_token = COALESCE(reauthentication_token, ''),
+    is_sso_user = COALESCE(is_sso_user, false),
+    is_super_admin = COALESCE(is_super_admin, false),
+    is_anonymous = COALESCE(is_anonymous, false),
+    raw_app_meta_data = COALESCE(raw_app_meta_data, '{"provider":"email","providers":["email"]}'::jsonb),
+    raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb),
+    email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+    created_at = COALESCE(created_at, NOW()),
+    updated_at = NOW()
+WHERE 
+    confirmation_token IS NULL
+    OR recovery_token IS NULL
+    OR email_change_token_new IS NULL
+    OR email_change IS NULL
+    OR phone_change IS NULL
+    OR phone_change_token IS NULL
+    OR email_change_token_current IS NULL
+    OR email_change_confirm_status IS NULL
+    OR reauthentication_token IS NULL
+    OR is_sso_user IS NULL
+    OR is_super_admin IS NULL
+    OR is_anonymous IS NULL
+    OR raw_app_meta_data IS NULL
+    OR raw_user_meta_data IS NULL
+    OR aud IS NULL
+    OR role IS NULL
+    OR instance_id IS NULL;
 
 -- ----------------------------------------------------------------------------
 -- 1. Core Tables
