@@ -169,7 +169,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT tenant_id FROM public.users 
-  WHERE id = auth.uid() OR email = auth.jwt()->>'email'
+  WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
   LIMIT 1;
 $$;
 
@@ -181,11 +181,11 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT role FROM public.users 
-  WHERE id = auth.uid() OR email = auth.jwt()->>'email'
+  WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
   LIMIT 1;
 $$;
 
--- Public helper to resolve username to login email (for seamless username sign-in)
+-- Username to Email resolver for public login
 CREATE OR REPLACE FUNCTION public.get_email_for_login(p_identifier TEXT)
 RETURNS TEXT
 LANGUAGE sql
@@ -283,7 +283,7 @@ BEGIN
     -- 1. Caller Authorization Check
     SELECT role, tenant_id INTO v_caller_role, v_caller_tenant 
     FROM public.users 
-    WHERE id = auth.uid() OR email = auth.jwt()->>'email';
+    WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email';
 
     IF v_caller_role NOT IN ('Superadmin', 'Manager') THEN
         RETURN jsonb_build_object('success', false, 'error', 'Unauthorized: Only Managers and Superadmins can create team members.');
@@ -324,7 +324,7 @@ BEGIN
 
     -- 4. Create public.users Record
     INSERT INTO public.users (id, tenant_id, username, email, full_name, role, status, created_at)
-    VALUES (v_new_uid, p_tenant_id, v_clean_username, v_clean_email, p_full_name, p_role, 'Active', NOW());
+    VALUES (v_new_uid::text, p_tenant_id, v_clean_username, v_clean_email, p_full_name, p_role, 'Active', NOW());
 
     RETURN jsonb_build_object('success', true, 'user_id', v_new_uid);
 END;
