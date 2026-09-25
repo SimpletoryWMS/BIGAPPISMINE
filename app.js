@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      await this.loadTenants();
       await this.checkAuthState();
       this.updateSyncIndicator();
     },
@@ -95,17 +94,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // AUTHENTICATION CONTROLLER & SESSION STATE
     // ==========================================
     async checkAuthState() {
-      const user = window.WMSDataService.currentUser;
-      const authOverlay = document.getElementById('auth-overlay');
-      const appContainer = document.querySelector('.app-container');
+      const user = await window.WMSDataService.checkSession();
+      const authOverlay = document.getElementById('auth-overlay') || document.querySelector('.auth-view');
+      const appContainer = document.getElementById('app-container') || document.querySelector('.app-container');
 
       if (!user) {
         if (authOverlay) authOverlay.style.display = 'flex';
-        if (appContainer) appContainer.style.filter = 'blur(8px)';
+        if (appContainer) {
+          appContainer.style.display = 'none';
+          appContainer.style.filter = 'none';
+        }
+        this.currentUser = null;
+        this.items = [];
+        this.inventory = [];
+        this.history = [];
+        this.users = [];
         return false;
       } else {
         if (authOverlay) authOverlay.style.display = 'none';
-        if (appContainer) appContainer.style.filter = 'none';
+        if (appContainer) {
+          appContainer.style.display = 'flex';
+          appContainer.style.filter = 'none';
+        }
+        await this.loadTenants();
         this.applyRolePermissions();
         await this.refreshAllData();
         return true;
@@ -205,13 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (signoutBtn) {
-        signoutBtn.addEventListener('click', (e) => {
+        signoutBtn.addEventListener('click', async (e) => {
           e.preventDefault();
           if (menu) menu.classList.remove('show');
           if (toggleBtn) toggleBtn.classList.remove('active');
-          window.WMSDataService.logout();
+          await window.WMSDataService.logout();
           this.showToast('You have been signed out.', 'info');
-          this.checkAuthState();
+          await this.checkAuthState();
         });
       }
 
@@ -2073,7 +2084,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openNewUserModal() {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role;
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can add team members.', 'warning');
       }
@@ -2082,6 +2093,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (form) form.reset();
       document.getElementById('user-id').value = '';
       document.getElementById('modal-user-title').textContent = 'Add Team Member';
+
+      const pwdGroup = document.getElementById('user-password-group');
+      const pwdInput = document.getElementById('user-password');
+      if (pwdGroup) pwdGroup.style.display = 'block';
+      if (pwdInput) pwdInput.required = true;
 
       const tenantSelect = document.getElementById('user-tenant-select');
       if (tenantSelect) {
@@ -2095,7 +2111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openEditUserModal(userId) {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role;
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can edit team members.', 'warning');
       }
@@ -2108,6 +2124,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('user-username').value = user.username || '';
       document.getElementById('user-email').value = user.email || '';
       document.getElementById('user-role').value = user.role || 'User';
+
+      const pwdGroup = document.getElementById('user-password-group');
+      const pwdInput = document.getElementById('user-password');
+      if (pwdGroup) pwdGroup.style.display = 'none';
+      if (pwdInput) pwdInput.required = false;
 
       const tenantSelect = document.getElementById('user-tenant-select');
       if (tenantSelect) {
@@ -2287,22 +2308,42 @@ document.addEventListener('DOMContentLoaded', () => {
         formUser.addEventListener('submit', async (e) => {
           e.preventDefault();
           try {
-            const userData = {
-              id: document.getElementById('user-id').value || undefined,
-              full_name: document.getElementById('user-fullname').value.trim(),
-              username: document.getElementById('user-username').value.trim().toLowerCase(),
-              email: document.getElementById('user-email').value.trim(),
-              tenant_id: document.getElementById('user-tenant-select')?.value || window.WMSDataService.activeTenantId,
-              role: document.getElementById('user-role').value,
-              status: 'Active'
-            };
+            const userId = document.getElementById('user-id').value;
+            const fullName = document.getElementById('user-fullname').value.trim();
+            const username = document.getElementById('user-username').value.trim().toLowerCase();
+            const email = document.getElementById('user-email').value.trim();
+            const tenantId = document.getElementById('user-tenant-select')?.value || window.WMSDataService.activeTenantId;
+            const role = document.getElementById('user-role').value;
+            const password = document.getElementById('user-password')?.value;
 
-            await window.WMSDataService.upsertUser(userData);
+            if (userId) {
+              await window.WMSDataService.updateUser(userId, {
+                full_name: fullName,
+                username: username,
+                email: email,
+                tenant_id: tenantId,
+                role: role
+              });
+              this.showToast(`Updated member: ${fullName}`, 'success');
+            } else {
+              if (!password || password.length < 6) {
+                return this.showToast('Please enter a password of at least 6 characters.', 'warning');
+              }
+              await window.WMSDataService.createUser({
+                username,
+                email,
+                password,
+                fullName,
+                role,
+                tenantId
+              });
+              this.showToast(`Added team member: ${fullName}`, 'success');
+            }
+
             this.closeModal('modal-user');
-            this.showToast(`Saved user: ${userData.full_name}`, 'success');
             await this.refreshAllData();
           } catch (err) {
-            this.showToast(`Error saving user: ${err.message}`, 'danger');
+            this.showToast(`Error saving member: ${err.message}`, 'danger');
           }
         });
       }

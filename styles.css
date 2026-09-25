@@ -1138,7 +1138,8 @@ html, body {
 /* ==========================================================================
    AUTHENTICATION / LOGIN SCREEN OVERLAY - FLAT MATERIAL
    ========================================================================== */
-.auth-overlay {
+.auth-overlay,
+.auth-view {
   position: fixed;
   inset: 0;
   z-index: 2000;

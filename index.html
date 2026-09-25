@@ -17,8 +17,8 @@
   <!-- Supabase CDN Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <div class="app-container">
+<body data-theme="dark">
+  <div class="app-container" id="app-container" style="display: none;">
     <!-- ==========================================
          SIDEBAR NAVIGATION
          ========================================== -->
@@ -1537,15 +1537,20 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Email Address</label>
-              <input type="email" class="form-input" id="user-email" placeholder="e.g. derek@simpletory.com">
+              <label class="form-label">Email Address *</label>
+              <input type="email" class="form-input" id="user-email" placeholder="e.g. employee@company.com" required>
             </div>
-            <div class="form-group">
-              <label class="form-label">Assigned Facility / Tenant *</label>
-              <select class="form-select" id="user-tenant-select" required>
-                <!-- Populated dynamically -->
-              </select>
+            <div class="form-group" id="user-password-group">
+              <label class="form-label" id="user-password-label">Initial Password *</label>
+              <input type="password" class="form-input" id="user-password" placeholder="Min 6 characters">
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assigned Facility / Tenant *</label>
+            <select class="form-select" id="user-tenant-select" required>
+              <!-- Populated dynamically -->
+            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -1675,9 +1680,9 @@
   </div>
 
   <!-- ==========================================
-       AUTHENTICATION / LOGIN GATEWAY OVERLAY
+       AUTHENTICATION / LOGIN GATEWAY VIEW
        ========================================== -->
-  <div class="auth-overlay" id="auth-overlay" style="display: none;">
+  <div class="auth-view auth-overlay" id="auth-overlay">
     <div class="auth-bg-gradient"></div>
     <div class="auth-card-wrapper">
       <div class="auth-card">
@@ -1699,10 +1704,10 @@
           <div id="auth-error-alert" class="auth-alert" style="display: none;"></div>
 
           <div class="form-group">
-            <label class="form-label" for="login-username">Username</label>
+            <label class="form-label" for="login-username">Username or Email</label>
             <div class="input-with-icon">
               <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <input type="text" class="form-input" id="login-username" placeholder="Enter username (e.g. derek)" required autocomplete="username">
+              <input type="text" class="form-input" id="login-username" placeholder="Enter username or email" required autocomplete="username">
             </div>
           </div>
 
