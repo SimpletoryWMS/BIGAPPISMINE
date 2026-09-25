@@ -11,8 +11,8 @@
 (function (window) {
   'use strict';
 
-  const DEFAULT_SUPABASE_URL = 'https://wuxdffvkyxsqdmsnfkye.supabase.co';
-  const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1eGRmZnZreXhzcWRtc25ma3llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0ODQ3OTYsImV4cCI6MjA5MDA2MDc5Nn0.89uW63Dk144U00Wf0sL6e_d6m7R5z3Z_h8T7F0X2Z_Q';
+  const DEFAULT_SUPABASE_URL = 'https://mmowezszhasjgixcifcu.supabase.co';
+  const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tb3dlenN6aGFzamdpeGNpZmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1Nzc1MzMsImV4cCI6MjEwNTE1MzUzM30.1vLz1v5n36aHj1S2tYcfKhdekgArZ9-KlK2pbmH8ANM';
 
   const STORAGE_KEY_CONFIG = 'simpletory_supabase_config';
   const STORAGE_KEY_DATA = 'simpletory_wms_local_db';
@@ -88,7 +88,12 @@
     getSavedConfig() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.url && !parsed.url.includes('wuxdffvkyxsqdmsnfkye')) {
+            return parsed;
+          }
+        }
         if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
           return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_ANON_KEY };
         }
