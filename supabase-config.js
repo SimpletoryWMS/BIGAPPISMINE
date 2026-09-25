@@ -39,11 +39,7 @@
       { id: 'hist-3', tenant_id: 'org-primary', item_id: 'itm-3', sku: 'SKU-2001', item_name: 'Heavy Duty Steel Bracket 4-Hole', action_type: 'ADD', qty_change: 300, previous_qty: 0, new_qty: 300, location: 'B-02-01', user_name: 'Derek Lumpkin', notes: 'Bulk restock', created_at: new Date(Date.now() - 3600000 * 12).toISOString() },
       { id: 'hist-4', tenant_id: 'org-primary', item_id: 'itm-4', sku: 'SKU-3001', item_name: 'Premium Utility Knife Blades (Pack of 50)', action_type: 'SUBTRACT', qty_change: -2, previous_qty: 10, new_qty: 8, location: 'B-02-02', user_name: 'Derek Lumpkin', notes: 'Fulfillment Order #1042', created_at: new Date(Date.now() - 3600000 * 2).toISOString() }
     ],
-    users: [
-      { id: 'usr-admin-1', tenant_id: 'org-primary', username: 'derek', email: 'derek@simpletory.com', password_hash: '3b6f05feed61e71c2552c555e8b257f57844fa32d5b712ff40c1341af97e605f', full_name: 'Derek Lumpkin', role: 'Superadmin', status: 'Active', created_at: new Date().toISOString() },
-      { id: 'usr-mgr-1', tenant_id: 'org-primary', username: 'sarah.c', email: 'sarah@simpletory.com', password_hash: 'dd7f6bfb6e0d8bcd754e97cae4975c07996f00508f8346d649c5814e19c3f9b9', full_name: 'Sarah Connor', role: 'Manager', status: 'Active', created_at: new Date().toISOString() },
-      { id: 'usr-op-1', tenant_id: 'org-primary', username: 'mike.t', email: 'mike@simpletory.com', password_hash: '541bf3ce2c00becc8012af585a3fa01210c046c10039dab2f7990b5ea84c2312', full_name: 'Mike Torres', role: 'User', status: 'Active', created_at: new Date().toISOString() }
-    ]
+    users: []
   };
 
   class WMSDataService {

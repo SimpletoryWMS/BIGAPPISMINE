@@ -317,13 +317,6 @@ VALUES
   ('org-primary', 'Main Enterprise Warehouse', true),
   ('org-east', 'East Coast Distribution Center', true);
 
--- Seed Superadmin, Manager, and Standard User (With Pre-Hashed Passwords: derek123, sarah123, mike123)
-INSERT INTO public.users (id, tenant_id, username, email, password_hash, full_name, role, status)
-VALUES 
-  ('usr-admin-1', 'org-primary', 'derek', 'derek@simpletory.com', '3b6f05feed61e71c2552c555e8b257f57844fa32d5b712ff40c1341af97e605f', 'Derek Lumpkin', 'Superadmin', 'Active'),
-  ('usr-mgr-1', 'org-primary', 'sarah.c', 'sarah@simpletory.com', 'dd7f6bfb6e0d8bcd754e97cae4975c07996f00508f8346d649c5814e19c3f9b9', 'Sarah Connor', 'Manager', 'Active'),
-  ('usr-op-1', 'org-primary', 'mike.t', 'mike@simpletory.com', '541bf3ce2c00becc8012af585a3fa01210c046c10039dab2f7990b5ea84c2312', 'Mike Torres', 'User', 'Active');
-
 -- Seed Starter Catalog Items
 INSERT INTO public.items (id, tenant_id, sku, name, category, sub_category, uom, unit_cost, reorder_point)
 VALUES 
