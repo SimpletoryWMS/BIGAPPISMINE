@@ -102,11 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!user) {
         if (authOverlay) authOverlay.style.display = 'flex';
         if (appContainer) appContainer.style.filter = 'blur(8px)';
-        // Populate facilities in login overlay
-        const facilitySelect = document.getElementById('login-facility');
-        if (facilitySelect && this.tenants.length > 0) {
-          facilitySelect.innerHTML = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-        }
         return false;
       } else {
         if (authOverlay) authOverlay.style.display = 'none';
@@ -139,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
           e.preventDefault();
           const username = document.getElementById('login-username').value;
           const password = pwdInput ? pwdInput.value : '';
-          const facility = document.getElementById('login-facility').value;
           const remember = document.getElementById('login-remember')?.checked ?? true;
 
           if (btnSubmit) {
@@ -152,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await window.WMSDataService.authenticateUser({
               username,
               password,
-              tenantId: facility,
               remember
             });
 
@@ -441,12 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
           window.WMSDataService.activeTenantId = this.tenants[0].id;
         }
         select.value = window.WMSDataService.activeTenantId;
-      }
-
-      // Populate login facility select
-      const loginFacilitySelect = document.getElementById('login-facility');
-      if (loginFacilitySelect) {
-        loginFacilitySelect.innerHTML = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
       }
 
       this.renderTenantsTable();
