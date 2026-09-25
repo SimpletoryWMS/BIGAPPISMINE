@@ -353,11 +353,14 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Email address is already in use.');
     END IF;
 
-    -- 3. Create auth.users Record (Auto-Confirmed Email for Instant Sign-In)
+    -- 3. Create auth.users Record (Auto-Confirmed Email with GoTrue Compliance)
     v_encrypted_pw := crypt(p_password, gen_salt('bf'));
 
     INSERT INTO auth.users (
         id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+        confirmation_token, recovery_token, email_change_token_new, email_change,
+        phone_change, phone_change_token, email_change_token_current, email_change_confirm_status,
+        reauthentication_token, is_sso_user, is_super_admin,
         raw_app_meta_data, raw_user_meta_data, created_at, updated_at
     ) VALUES (
         v_new_uid,
@@ -367,13 +370,28 @@ BEGIN
         v_clean_email,
         v_encrypted_pw,
         NOW(),
+        '', '', '', '', '', '', '', 0, '', false, false,
         jsonb_build_object('provider', 'email', 'providers', array['email']),
         jsonb_build_object('username', v_clean_username, 'full_name', p_full_name, 'role', p_role, 'tenant_id', p_tenant_id),
         NOW(),
         NOW()
     );
 
-    -- 4. Create public.users Record
+    -- 4. Create auth.identities Record
+    INSERT INTO auth.identities (
+        id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
+    ) VALUES (
+        v_new_uid::text,
+        v_new_uid,
+        jsonb_build_object('sub', v_new_uid::text, 'email', v_clean_email, 'email_verified', true),
+        'email',
+        v_new_uid::text,
+        NOW(),
+        NOW(),
+        NOW()
+    );
+
+    -- 5. Create public.users Record
     INSERT INTO public.users (id, tenant_id, username, email, full_name, role, status, created_at)
     VALUES (v_new_uid::text, p_tenant_id, v_clean_username, v_clean_email, p_full_name, p_role, 'Active', NOW());
 
