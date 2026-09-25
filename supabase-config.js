@@ -7,9 +7,9 @@
   const STORAGE_KEY_CONFIG = 'simpletory_supabase_config';
   const STORAGE_KEY_DATA = 'simpletory_local_db_v2';
 
-  // Config Constants (Editable via UI Settings or directly)
-  const SUPABASE_URL = 'https://simpletory-demo.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_anon_public_key_ready';
+  // Default Production Supabase Cloud Credentials (Auto-Connects on all devices)
+  const DEFAULT_SUPABASE_URL = 'https://mmowezszhasjgixcifcu.supabase.co';
+  const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tb3dlenN6aGFzamdpeGNpZmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1Nzc1MzMsImV4cCI6MjEwNTE1MzUzM30.1vLz1v5n36aHj1S2tYcfKhdekgArZ9-KlK2pbmH8ANM';
 
   // Seed dataset mirroring supabase_schema.sql
   const INITIAL_SEED_DATA = {
@@ -58,9 +58,12 @@
 
     init() {
       const savedConfig = this.getSavedConfig();
-      if (savedConfig && savedConfig.url && savedConfig.key && window.supabase) {
+      const activeUrl = savedConfig?.url || DEFAULT_SUPABASE_URL;
+      const activeKey = savedConfig?.key || DEFAULT_SUPABASE_ANON_KEY;
+
+      if (activeUrl && activeKey && window.supabase) {
         try {
-          this.client = window.supabase.createClient(savedConfig.url, savedConfig.key);
+          this.client = window.supabase.createClient(activeUrl, activeKey);
           this.isSupabaseConnected = true;
           this.setupRealtimeListeners();
         } catch (e) {
@@ -85,7 +88,11 @@
     getSavedConfig() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
-        return raw ? JSON.parse(raw) : null;
+        if (raw) return JSON.parse(raw);
+        if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+          return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_ANON_KEY };
+        }
+        return null;
       } catch (e) {
         return null;
       }
