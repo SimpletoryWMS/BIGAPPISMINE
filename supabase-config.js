@@ -122,16 +122,35 @@
       }
     }
 
-    async testConnection() {
-      if (!this.client) {
+    async testConnection(customUrl, customKey) {
+      let clientToTest = this.client;
+      if (customUrl && customKey && window.supabase) {
+        try {
+          clientToTest = window.supabase.createClient(customUrl.trim(), customKey.trim());
+        } catch (e) {
+          return { success: false, message: `Invalid Supabase configuration: ${e.message}` };
+        }
+      }
+
+      if (!clientToTest) {
         return { success: false, message: 'No Supabase credentials configured.' };
       }
+
       try {
-        const { data, error } = await this.client.from('tenants').select('id').limit(1);
-        if (error) throw error;
+        const { data, error } = await clientToTest.from('tenants').select('id').limit(1);
+        if (error) {
+          if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('Load failed') || error.message.includes('NetworkError'))) {
+            return { success: false, message: 'Network Error: Could not reach the Supabase host URL. Please check the domain.' };
+          }
+          return { success: false, message: `Database responded with error: ${error.message}` };
+        }
         return { success: true, message: 'Supabase connection verified active and responsive!' };
       } catch (err) {
-        return { success: false, message: `Connection failed: ${err.message}` };
+        const msg = err.message || '';
+        if (msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
+          return { success: false, message: 'Network Error: Could not connect to Supabase server. Please verify the URL.' };
+        }
+        return { success: false, message: `Connection failed: ${msg}` };
       }
     }
 
@@ -239,7 +258,20 @@
           });
 
           if (authErr) {
-            return { success: false, error: authErr.message || 'Invalid username or password.' };
+            const errMsg = authErr.message || '';
+            if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('load failed')) {
+              return {
+                success: false,
+                error: 'Cannot reach Supabase database. Please click "Supabase Connection Settings" below to verify your Project URL and Anon API Key.'
+              };
+            }
+            if (errMsg.toLowerCase().includes('invalid login credentials')) {
+              return {
+                success: false,
+                error: 'Invalid credentials. If this is a new setup, ensure you ran the schema & created your Superadmin account in the Supabase SQL Editor.'
+              };
+            }
+            return { success: false, error: errMsg };
           }
 
           if (!authData || !authData.user) {
