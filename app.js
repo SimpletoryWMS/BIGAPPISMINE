@@ -1,6 +1,6 @@
 /**
  * SIMPLETORY WMS - CORE APPLICATION CONTROLLER
- * Ultra-responsive, modern frontend logic for inventory, catalog, scanning, and audits.
+ * Ultra-responsive, modern frontend logic for inventory, catalog, and audits.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
       this.bindModals();
       this.bindForms();
       this.bindGlobalActions();
-      this.bindScanner();
       this.bindShortcuts();
 
       // Listen for data mutations (realtime or local)
@@ -93,14 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetEl = document.getElementById(`view-${viewName}`);
       if (targetEl) {
         targetEl.classList.add('active');
-      }
-
-      // Auto-focus scanner input if switching to scanner view
-      if (viewName === 'scanner') {
-        setTimeout(() => {
-          const scanInput = document.getElementById('scanner-barcode-input');
-          if (scanInput) scanInput.focus();
-        }, 100);
       }
     },
 
@@ -286,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <tr>
             <td>
               <div class="sku-tag">${item.sku}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${item.barcode || '-'}</div>
             </td>
             <td>
               <div style="font-weight: 600;">${item.name}</div>
@@ -313,9 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="action-btn" title="Audit Count / Adjust" onclick="App.openAdjustModal('${inv.item_id}', '${inv.location}', ${inv.quantity})">
                   ⚙
                 </button>
-                <button class="action-btn" title="Print Barcode Label" onclick="App.openLabelModal('${inv.item_id}')">
-                  🏷
-                </button>
               </div>
             </td>
           </tr>
@@ -336,14 +323,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const filtered = this.items.filter(item => {
         const matchesSearch = !searchTerm || 
           item.sku.toLowerCase().includes(searchTerm) || 
-          item.name.toLowerCase().includes(searchTerm) || 
-          (item.barcode && item.barcode.toLowerCase().includes(searchTerm));
+          item.name.toLowerCase().includes(searchTerm);
         const matchesCat = !catFilter || item.category === catFilter;
         return matchesSearch && matchesCat;
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">No catalog items found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No catalog items found.</td></tr>`;
         return;
       }
 
@@ -356,11 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${item.uom}</td>
             <td>$${Number(item.unit_cost || 0).toFixed(2)}</td>
             <td><span style="font-weight: 600; color: var(--warning);">${item.reorder_point || 0}</span></td>
-            <td><code style="font-family: var(--font-mono); font-size: 0.78rem;">${item.barcode || item.sku}</code></td>
             <td>
               <div class="table-actions">
                 <button class="action-btn" title="Edit SKU" onclick="App.openEditItemModal('${item.id}')">✏ Edit</button>
-                <button class="action-btn" title="Print Label" onclick="App.openLabelModal('${item.id}')">🏷 Label</button>
                 <button class="action-btn" style="color: var(--danger);" title="Delete" onclick="App.handleDeleteItem('${item.id}')">🗑</button>
               </div>
             </td>
@@ -602,39 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('item-uom').value = item.uom || 'EA';
       document.getElementById('item-cost').value = item.unit_cost || 0;
       document.getElementById('item-reorder').value = item.reorder_point || 0;
-      document.getElementById('item-barcode').value = item.barcode || '';
 
       const title = document.getElementById('modal-item-title');
       if (title) title.textContent = `Edit SKU: ${item.sku}`;
 
       this.openModal('modal-item');
-    },
-
-    openLabelModal(itemId) {
-      const item = this.items.find(i => i.id === itemId);
-      if (!item) return;
-
-      const container = document.getElementById('label-preview-container');
-      const barcodeCode = item.barcode || item.sku;
-
-      if (container) {
-        container.innerHTML = `
-          <div class="thermal-label-card">
-            <div class="thermal-label-header">
-              <span class="thermal-label-sku">${item.sku}</span>
-              <span style="font-size: 0.8rem; font-weight:700;">${item.category || 'General'}</span>
-            </div>
-            <div class="thermal-label-name">${item.name}</div>
-            <div style="font-size:0.75rem; color:#444;">UOM: ${item.uom} | Cost: $${Number(item.unit_cost).toFixed(2)}</div>
-            ${this.generateBarcodeSvg(barcodeCode)}
-            <div style="text-align:center; font-family: var(--font-mono); font-size:0.8rem; font-weight:bold; letter-spacing:2px; margin-top:4px;">
-              ${barcodeCode}
-            </div>
-          </div>
-        `;
-      }
-
-      this.openModal('modal-label');
     },
 
     openNewUserModal() {
@@ -676,8 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
               category: document.getElementById('item-category').value.trim() || 'General',
               uom: document.getElementById('item-uom').value.trim() || 'EA',
               unit_cost: parseFloat(document.getElementById('item-cost').value) || 0,
-              reorder_point: parseFloat(document.getElementById('item-reorder').value) || 0,
-              barcode: document.getElementById('item-barcode').value.trim() || document.getElementById('item-sku').value.trim().toUpperCase()
+              reorder_point: parseFloat(document.getElementById('item-reorder').value) || 0
             };
 
             await window.WMSDataService.upsertItem(itemData);
@@ -887,100 +842,6 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // ==========================================
-    // BARCODE SCANNER WORKFLOW TERMINAL
-    // ==========================================
-    bindScanner() {
-      const input = document.getElementById('scanner-barcode-input');
-      const submitBtn = document.getElementById('btn-scanner-submit');
-
-      const executeScan = async () => {
-        const code = (input.value || '').trim().toUpperCase();
-        if (!code) return;
-
-        const mode = document.getElementById('scanner-mode-select').value;
-        const location = (document.getElementById('scanner-location-input').value || 'A-01-01').trim().toUpperCase();
-        const qty = parseFloat(document.getElementById('scanner-qty-input').value) || 1;
-        const notes = document.getElementById('scanner-notes-input').value.trim();
-
-        // Lookup matching item
-        const item = this.items.find(i => i.sku.toUpperCase() === code || (i.barcode && i.barcode.toUpperCase() === code));
-
-        if (!item) {
-          this.showScannerResult(`❌ No catalog item matches barcode: "${code}"`, 'danger');
-          return;
-        }
-
-        if (mode === 'LOOKUP') {
-          const invRecord = this.inventory.find(inv => inv.item_id === item.id && inv.location === location);
-          const onHand = invRecord ? invRecord.quantity : 0;
-          this.showScannerResult(`
-            <div style="text-align: left;">
-              <div style="font-size: 1.1rem; font-weight:700; color:var(--primary);">${item.name}</div>
-              <div style="font-size: 0.85rem; color:var(--text-secondary); margin-top:4px;">
-                SKU: <strong>${item.sku}</strong> | Category: <strong>${item.category}</strong>
-              </div>
-              <div style="margin-top: 8px; font-size: 0.95rem;">
-                Stock at <strong>${location}</strong>: <span style="font-weight:700; color:var(--success); font-size:1.1rem;">${onHand} ${item.uom}</span>
-              </div>
-            </div>
-          `, 'info');
-          input.value = '';
-          return;
-        }
-
-        try {
-          const actionType = mode === 'INTAKE' ? 'ADD' : 'SUBTRACT';
-          await window.WMSDataService.executeStockMovement({
-            itemId: item.id,
-            location,
-            actionType,
-            quantityChange: qty,
-            notes: notes || `Terminal scan ${mode}`
-          });
-
-          this.showScannerResult(`
-            <div style="text-align: left;">
-              <div style="color: var(--success); font-weight: 700; font-size: 1rem;">
-                ✓ ${actionType === 'ADD' ? '+' : '-'}${qty} ${item.uom} ${item.name}
-              </div>
-              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
-                Location: <strong>${location}</strong> | SKU: <strong>${item.sku}</strong>
-              </div>
-            </div>
-          `, 'success');
-
-          input.value = '';
-          input.focus();
-          await this.refreshAllData();
-        } catch (err) {
-          this.showScannerResult(`Scan error: ${err.message}`, 'danger');
-        }
-      };
-
-      if (submitBtn) submitBtn.addEventListener('click', executeScan);
-      if (input) {
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            executeScan();
-          }
-        });
-      }
-    },
-
-    showScannerResult(html, type) {
-      const display = document.getElementById('scanner-result-display');
-      if (display) {
-        const bg = type === 'success' ? 'var(--success-light)' : type === 'danger' ? 'var(--danger-light)' : 'var(--info-light)';
-        const border = type === 'success' ? 'var(--success-border)' : type === 'danger' ? 'var(--danger-border)' : 'rgba(14,165,233,0.3)';
-        display.style.display = 'block';
-        display.style.background = bg;
-        display.style.borderColor = border;
-        display.innerHTML = html;
-      }
-    },
-
-    // ==========================================
     // GLOBAL ACTIONS & SEARCH SHORTCUTS
     // ==========================================
     bindGlobalActions() {
@@ -1053,14 +914,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // Print Label Confirm
-      const btnPrint = document.getElementById('btn-print-label-confirm');
-      if (btnPrint) {
-        btnPrint.addEventListener('click', () => {
-          window.print();
-        });
-      }
-
       // Header Theme Toggle
       const themeBtn = document.getElementById('btn-toggle-theme');
       if (themeBtn) {
@@ -1088,9 +941,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           this.openQuickIntake();
-        } else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey) {
-          e.preventDefault();
-          this.switchView('scanner');
         }
       });
     },
@@ -1116,7 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // ==========================================
-    // UTILITIES: TOASTS, CSV, BARCODES
+    // UTILITIES: TOASTS, CSV
     // ==========================================
     showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
@@ -1157,23 +1007,6 @@ document.addEventListener('DOMContentLoaded', () => {
       a.click();
       URL.revokeObjectURL(url);
       this.showToast(`Exported ${filename}`, 'success');
-    },
-
-    generateBarcodeSvg(text) {
-      // Deterministic Code-128 style visual generator
-      let barsHtml = '';
-      let x = 10;
-      const clean = text.replace(/[^A-Z0-9-]/gi, '');
-      for (let i = 0; i < clean.length; i++) {
-        const charCode = clean.charCodeAt(i);
-        const w1 = (charCode % 3) + 1;
-        const w2 = ((charCode * 2) % 4) + 1;
-        barsHtml += `<rect x="${x}" y="0" width="${w1}" height="50" fill="#000" />`;
-        x += w1 + 2;
-        barsHtml += `<rect x="${x}" y="0" width="${w2}" height="50" fill="#000" />`;
-        x += w2 + 2;
-      }
-      return `<svg class="thermal-barcode-svg" viewBox="0 0 ${Math.max(x + 10, 180)} 50">${barsHtml}</svg>`;
     },
 
     formatTimeAgo(isoString) {

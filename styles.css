@@ -807,75 +807,6 @@ html, body {
 }
 
 /* ==========================================================================
-   SCANNER & QUICK WORKFLOW TERMINAL
-   ========================================================================== */
-.scanner-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 1.5rem;
-}
-
-.scanner-terminal-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.scanner-display {
-  background: #000000;
-  border: 2px dashed var(--primary);
-  border-radius: var(--radius-md);
-  padding: 2rem 1.5rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.scanner-laser-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #ef4444, transparent);
-  box-shadow: 0 0 10px #ef4444;
-  animation: scanLaser 2s infinite ease-in-out;
-}
-
-@keyframes scanLaser {
-  0% { top: 10%; opacity: 0.2; }
-  50% { top: 90%; opacity: 1; }
-  100% { top: 10%; opacity: 0.2; }
-}
-
-.scanner-input-large {
-  width: 100%;
-  background: var(--bg-input);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.85rem 1rem;
-  font-size: 1.1rem;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  outline: none;
-  text-align: center;
-  letter-spacing: 0.05em;
-}
-
-.scanner-input-large:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--primary-light);
-}
-
-/* ==========================================================================
    MODALS & DIALOGS
    ========================================================================== */
 .modal-overlay {
@@ -1035,46 +966,6 @@ html, body {
 .toast-warning { border-left: 4px solid var(--warning); }
 .toast-info    { border-left: 4px solid var(--info); }
 
-/* Thermal Label Print Styling */
-.thermal-label-card {
-  width: 320px;
-  border: 2px solid #000;
-  padding: 12px;
-  background: #fff;
-  color: #000;
-  border-radius: 4px;
-  margin: 0 auto;
-  font-family: var(--font-sans);
-}
-
-.thermal-label-header {
-  border-bottom: 2px solid #000;
-  padding-bottom: 4px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.thermal-label-sku {
-  font-size: 1.3rem;
-  font-weight: 900;
-  font-family: var(--font-mono);
-}
-
-.thermal-label-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.thermal-barcode-svg {
-  width: 100%;
-  height: 50px;
-  display: block;
-  margin: 8px 0;
-}
-
 /* Responsive Media Queries */
 @media (max-width: 900px) {
   .app-sidebar {
@@ -1090,8 +981,5 @@ html, body {
   .nav-item {
     justify-content: center;
     padding: 0.75rem;
-  }
-  .scanner-grid {
-    grid-template-columns: 1fr;
   }
 }

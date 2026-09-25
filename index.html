@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simpletory | Modern Warehouse Management System</title>
-  <meta name="description" content="Fast, simplified multi-tenant warehouse management system with real-time inventory tracking, barcode scanning, and audit trails.">
+  <meta name="description" content="Fast, simplified multi-tenant warehouse management system with real-time inventory tracking, stock movements, and audit trails.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,10 +50,6 @@
         <a class="nav-item" data-view="items" id="nav-items">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
           <span>Item Master</span>
-        </a>
-        <a class="nav-item" data-view="scanner" id="nav-scanner">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/></svg>
-          <span>Scan & Log</span>
         </a>
 
         <div class="nav-section-title" style="margin-top: 0.75rem;">Governance</div>
@@ -105,10 +101,6 @@
             <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
               <span>+ Intake Stock</span>
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="App.switchView('scanner')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/></svg>
-              <span>Scan</span>
             </button>
           </div>
 
@@ -258,7 +250,7 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>SKU & Barcode</th>
+                  <th>SKU Code</th>
                   <th>Item Name & Category</th>
                   <th>Location</th>
                   <th>On Hand</th>
@@ -281,7 +273,7 @@
           <div class="view-header">
             <div class="view-title-group">
               <h1>Item Master Catalog</h1>
-              <p class="view-subtitle">Centralized SKU registry, unit definitions, barcode identifiers, and reorder points.</p>
+              <p class="view-subtitle">Centralized SKU registry, unit definitions, and reorder points.</p>
             </div>
             <div class="action-btn-group">
               <button class="btn btn-secondary btn-sm" id="btn-export-items">📥 Export CSV</button>
@@ -292,7 +284,7 @@
           <!-- Filter Toolbar -->
           <div class="table-filter-bar">
             <div class="filter-left">
-              <input type="text" class="input-control" id="items-search-input" placeholder="Search SKU, name, barcode..." style="width: 260px;">
+              <input type="text" class="input-control" id="items-search-input" placeholder="Search SKU, name..." style="width: 260px;">
               <select class="input-control" id="items-category-filter">
                 <option value="">All Categories</option>
               </select>
@@ -309,7 +301,6 @@
                   <th>UOM</th>
                   <th>Unit Cost</th>
                   <th>Reorder Point</th>
-                  <th>Barcode</th>
                   <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
@@ -321,97 +312,7 @@
         </section>
 
         <!-- ==========================================
-             VIEW 4: SCANNER & RAPID WORKFLOW
-             ========================================== -->
-        <section class="view-container" id="view-scanner">
-          <div class="view-header">
-            <div class="view-title-group">
-              <h1>Scan & Log Terminal</h1>
-              <p class="view-subtitle">High-speed keyboard/hardware scanner workflow for rapid floor intake, picking, and lookups.</p>
-            </div>
-          </div>
-
-          <div class="scanner-grid">
-            <!-- Scan Input Console -->
-            <div class="scanner-terminal-card">
-              <div class="scanner-display">
-                <div class="scanner-laser-line"></div>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
-                  <path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/>
-                </svg>
-                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 600;">
-                  READY FOR BARCODE SCAN
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Scan Mode</label>
-                <select class="form-select" id="scanner-mode-select">
-                  <option value="INTAKE">Fast Intake (+ Receive Stock)</option>
-                  <option value="PICK">Fast Pick (- Dispatch Stock)</option>
-                  <option value="LOOKUP">Instant Stock & Bay Lookup</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Barcode / SKU Entry (Press Enter to Scan)</label>
-                <input type="text" class="scanner-input-large" id="scanner-barcode-input" placeholder="e.g. SKU-1001" autofocus autocomplete="off">
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Target Location</label>
-                  <input type="text" class="form-input" id="scanner-location-input" value="A-01-01" placeholder="e.g. A-01-01">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Quantity</label>
-                  <input type="number" class="form-input" id="scanner-qty-input" value="1" min="1">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Audit Notes (Optional)</label>
-                <input type="text" class="form-input" id="scanner-notes-input" placeholder="e.g. Floor restock / Express order">
-              </div>
-
-              <button class="btn btn-primary" id="btn-scanner-submit" style="padding: 0.85rem; font-size: 0.95rem;">
-                ⚡ Execute Scan Action
-              </button>
-
-              <!-- Dynamic Scan Result Feedback -->
-              <div id="scanner-result-display" style="display: none; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);"></div>
-            </div>
-
-            <!-- Scanner Helper & Instructions -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Scanner Floor Tips</div>
-              </div>
-              <div class="card-body">
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                  <div style="background: var(--bg-input); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary);">Hardware Scanner Compatibility</div>
-                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
-                      Any standard USB or Bluetooth HID barcode wedge scanner works out of the box. Keep the cursor focused in the barcode field.
-                    </div>
-                  </div>
-
-                  <div style="background: var(--bg-input); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--success);">Quick Keyboard Shortcuts</div>
-                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
-                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">S</kbd> anywhere to jump to this scan terminal.<br>
-                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">I</kbd> for stock intake modal.<br>
-                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">N</kbd> to add a new SKU.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==========================================
-             VIEW 5: AUDIT HISTORY
+             VIEW 4: AUDIT HISTORY
              ========================================== -->
         <section class="view-container" id="view-history">
           <div class="view-header">
@@ -460,7 +361,7 @@
         </section>
 
         <!-- ==========================================
-             VIEW 6: TEAM & RBAC
+             VIEW 5: TEAM & RBAC
              ========================================== -->
         <section class="view-container" id="view-users">
           <div class="view-header">
@@ -493,7 +394,7 @@
         </section>
 
         <!-- ==========================================
-             VIEW 7: SETTINGS & SUPABASE SYNC
+             VIEW 6: SETTINGS & SUPABASE SYNC
              ========================================== -->
         <section class="view-container" id="view-settings">
           <div class="view-header">
@@ -602,15 +503,9 @@
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Reorder Point</label>
-              <input type="number" class="form-input" id="item-reorder" placeholder="0" value="10">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Barcode (Defaults to SKU)</label>
-              <input type="text" class="form-input" id="item-barcode" placeholder="Optional barcode string">
-            </div>
+          <div class="form-group">
+            <label class="form-label">Reorder Point</label>
+            <input type="number" class="form-input" id="item-reorder" placeholder="0" value="10">
           </div>
         </div>
         <div class="modal-footer">
@@ -783,26 +678,7 @@
     </div>
   </div>
 
-  <!-- Modal 6: Thermal Barcode Label -->
-  <div class="modal-overlay" id="modal-label">
-    <div class="modal-container" style="max-width: 420px;">
-      <div class="modal-header">
-        <div class="modal-title">Thermal Barcode Label</div>
-        <button class="action-btn btn-modal-close">×</button>
-      </div>
-      <div class="modal-body" style="background: var(--bg-body); padding: 2rem 1rem;">
-        <div id="label-preview-container">
-          <!-- Dynamically populated thermal label -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-modal-close">Close</button>
-        <button type="button" class="btn btn-primary" id="btn-print-label-confirm">🖨 Print Label</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 7: User Management -->
+  <!-- Modal 6: User Management -->
   <div class="modal-overlay" id="modal-user">
     <div class="modal-container">
       <div class="modal-header">
