@@ -765,13 +765,24 @@
 
     async deleteUser(userId) {
       if (this.isSupabaseConnected && this.client) {
-        const { error } = await this.client.from('users').delete().eq('id', userId);
-        if (error) throw error;
+        try {
+          const { data, error } = await this.client.rpc('delete_team_member', {
+            p_user_id: userId
+          });
+          if (error) throw error;
+          if (data && data.success === false) {
+            throw new Error(data.error || 'Failed to delete user.');
+          }
+        } catch (rpcErr) {
+          console.warn('RPC delete_team_member failed, trying direct table delete:', rpcErr);
+          const { error } = await this.client.from('users').delete().eq('id', userId);
+          if (error) throw error;
+        }
         this.notifySubscribers('users');
         return true;
       }
       const db = this.getLocalDB();
-      db.users = db.users.filter(u => u.id !== userId);
+      db.users = (db.users || []).filter(u => u.id !== userId);
       this.setLocalDB(db);
       this.notifySubscribers('users');
       return true;

@@ -400,7 +400,59 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.delete_team_member(p_user_id TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    v_caller_role TEXT;
+    v_caller_tenant TEXT;
+    v_target_tenant TEXT;
+    v_target_role TEXT;
+    v_target_uuid UUID;
+BEGIN
+    -- 1. Caller Authorization Check
+    SELECT role, tenant_id INTO v_caller_role, v_caller_tenant 
+    FROM public.users 
+    WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email';
+
+    IF v_caller_role NOT IN ('Superadmin', 'Manager') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized: Only Managers and Superadmins can delete team members.');
+    END IF;
+
+    -- 2. Target Check
+    SELECT tenant_id, role INTO v_target_tenant, v_target_role
+    FROM public.users
+    WHERE id::text = p_user_id;
+
+    IF v_caller_role = 'Manager' AND (v_target_tenant <> v_caller_tenant OR v_target_role IN ('Superadmin', 'Manager')) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized: Managers can only remove standard users in their facility.');
+    END IF;
+
+    -- Try to parse UUID for auth.users cleanup
+    BEGIN
+        v_target_uuid := p_user_id::uuid;
+    EXCEPTION WHEN OTHERS THEN
+        v_target_uuid := NULL;
+    END;
+
+    -- 3. Delete from auth.identities & auth.users
+    IF v_target_uuid IS NOT NULL THEN
+        DELETE FROM auth.identities WHERE user_id = v_target_uuid;
+        DELETE FROM auth.users WHERE id = v_target_uuid;
+    END IF;
+
+    -- 4. Delete from public.users
+    DELETE FROM public.users WHERE id::text = p_user_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION public.create_team_member(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_team_member(TEXT) TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 6. Realtime Subscriptions

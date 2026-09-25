@@ -2789,7 +2789,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     async handleDeleteUser(userId) {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role;
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can manage members.', 'warning');
       }
@@ -2797,9 +2797,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const user = this.users.find(u => u.id === userId);
       if (!user) return;
       if (confirm(`Remove access for "${user.full_name}"?`)) {
-        await window.WMSDataService.deleteUser(userId);
-        this.showToast(`Removed member: ${user.full_name}`, 'info');
-        await this.refreshAllData();
+        try {
+          await window.WMSDataService.deleteUser(userId);
+          this.showToast(`Removed member: ${user.full_name}`, 'info');
+          await this.refreshAllData();
+        } catch (err) {
+          console.error('Failed to delete user:', err);
+          this.showToast(`Error removing member: ${err.message}`, 'danger');
+        }
       }
     },
 
