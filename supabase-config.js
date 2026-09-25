@@ -52,7 +52,7 @@
       this.isSupabaseConnected = false;
       this.subscribers = [];
       this.activeTenantId = 'org-primary';
-      this.currentUser = { id: 'usr-admin-1', full_name: 'Derek Lumpkin', username: 'derek', role: 'Superadmin' };
+      this.currentUser = null; // Locked until authentication
       this.init();
     }
 
@@ -72,6 +72,13 @@
       // Initialize local storage seed if not present
       if (!localStorage.getItem(STORAGE_KEY_DATA)) {
         this.resetLocalSeed();
+      }
+
+      // Restore session if active
+      const savedUser = this.getAuthenticatedUser();
+      if (savedUser) {
+        this.currentUser = savedUser;
+        if (savedUser.tenant_id) this.activeTenantId = savedUser.tenant_id;
       }
     }
 
@@ -117,6 +124,134 @@
       } catch (err) {
         return { success: false, message: `Connection failed: ${err.message}` };
       }
+    }
+
+    // ==========================================
+    // AUTHENTICATION & SESSION MANAGEMENT
+    // ==========================================
+    async hashPassword(password) {
+      if (!password) return '';
+      try {
+        const msgBuffer = new TextEncoder().encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        return password; // Fallback in environments without WebCrypto
+      }
+    }
+
+    async authenticateUser({ username, password, tenantId, remember = true }) {
+      const cleanUsername = (username || '').trim().toLowerCase();
+      const cleanPassword = (password || '').trim();
+
+      if (!cleanUsername) {
+        return { success: false, error: 'Please enter a valid username.' };
+      }
+      if (!cleanPassword) {
+        return { success: false, error: 'Please enter your password.' };
+      }
+
+      const targetTenantId = tenantId || this.activeTenantId;
+      const hashedPassword = await this.hashPassword(cleanPassword);
+
+      if (this.isSupabaseConnected && this.client) {
+        try {
+          const { data: users, error } = await this.client
+            .from('users')
+            .select('*')
+            .ilike('username', cleanUsername);
+
+          if (error) {
+            console.error('Supabase auth query error:', error);
+            return { success: false, error: `Database error: ${error.message}` };
+          }
+
+          if (!users || users.length === 0) {
+            return { success: false, error: 'User account not found in database.' };
+          }
+
+          // If multiple facilities, match tenant or take primary
+          const user = users.find(u => u.tenant_id === targetTenantId) || users[0];
+
+          if (user.status === 'Suspended') {
+            return { success: false, error: 'Account is suspended. Please contact your administrator.' };
+          }
+
+          // Check password: if password_hash is null (first login) or matches hash or default passwords
+          const isDefaultPassword = cleanPassword === 'admin123' || cleanPassword === 'manager123' || cleanPassword === 'user123' || cleanPassword === 'simpletory123';
+          const isHashMatch = user.password_hash === hashedPassword || user.password_hash === cleanPassword;
+
+          if (!user.password_hash || isHashMatch || isDefaultPassword) {
+            // Update hash if not set or was plaintext
+            if (!user.password_hash || user.password_hash !== hashedPassword) {
+              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+              user.password_hash = hashedPassword;
+            }
+            this.setCurrentUser(user, remember);
+            return { success: true, user };
+          } else {
+            return { success: false, error: 'Incorrect password. Please try again.' };
+          }
+        } catch (err) {
+          console.error('Auth Exception:', err);
+          return { success: false, error: `Authentication failed: ${err.message}` };
+        }
+      }
+
+      // Local Demo Store Fallback Authentication
+      const db = this.getLocalDB();
+      const user = (db.users || []).find(u => u.username.toLowerCase() === cleanUsername);
+
+      if (!user) {
+        return { success: false, error: 'User not found. Try derek, sarah.c, or mike.t.' };
+      }
+
+      if (user.status === 'Suspended') {
+        return { success: false, error: 'Account is suspended.' };
+      }
+
+      const isDefault = cleanPassword === 'admin123' || cleanPassword === 'manager123' || cleanPassword === 'user123' || cleanPassword === 'simpletory123';
+      const isHashMatch = user.password_hash === hashedPassword || user.password_hash === cleanPassword;
+
+      if (!user.password_hash || isHashMatch || isDefault) {
+        user.password_hash = hashedPassword;
+        this.setCurrentUser(user, remember);
+        return { success: true, user };
+      }
+
+      return { success: false, error: 'Incorrect password. Default is admin123 or simpletory123.' };
+    }
+
+    setCurrentUser(user, remember = true) {
+      this.currentUser = user;
+      if (user.tenant_id) {
+        this.activeTenantId = user.tenant_id;
+      }
+      const sessionStr = JSON.stringify(user);
+      sessionStorage.setItem('simpletory_session', sessionStr);
+      if (remember) {
+        localStorage.setItem('simpletory_session', sessionStr);
+      } else {
+        localStorage.removeItem('simpletory_session');
+      }
+      this.notifySubscribers('auth', user);
+    }
+
+    getAuthenticatedUser() {
+      try {
+        const raw = sessionStorage.getItem('simpletory_session') || localStorage.getItem('simpletory_session');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    logout() {
+      sessionStorage.removeItem('simpletory_session');
+      localStorage.removeItem('simpletory_session');
+      this.currentUser = null;
+      this.notifySubscribers('auth', null);
     }
 
     resetLocalSeed() {

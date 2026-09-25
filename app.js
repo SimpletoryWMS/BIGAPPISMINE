@@ -19,22 +19,180 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     async init() {
       this.applyTheme(this.theme);
+      this.bindAuth();
       this.bindNavigation();
       this.bindModals();
       this.bindForms();
       this.bindGlobalActions();
       this.bindShortcuts();
-      this.bindUserSwitcher();
+      this.bindUserProfileMenu();
 
       // Listen for data mutations (realtime or local)
-      window.WMSDataService.onDataChange(() => {
-        this.refreshAllData();
+      window.WMSDataService.onDataChange((topic) => {
+        if (topic === 'auth') {
+          this.checkAuthState();
+        } else {
+          this.refreshAllData();
+        }
       });
 
       await this.loadTenants();
-      await this.refreshAllData();
-      this.applyRolePermissions();
+      await this.checkAuthState();
       this.updateSyncIndicator();
+    },
+
+    // ==========================================
+    // AUTHENTICATION CONTROLLER & SESSION STATE
+    // ==========================================
+    async checkAuthState() {
+      const user = window.WMSDataService.currentUser;
+      const authOverlay = document.getElementById('auth-overlay');
+      const appContainer = document.querySelector('.app-container');
+
+      if (!user) {
+        if (authOverlay) authOverlay.style.display = 'flex';
+        if (appContainer) appContainer.style.filter = 'blur(8px)';
+        // Populate facilities in login overlay
+        const facilitySelect = document.getElementById('login-facility');
+        if (facilitySelect && this.tenants.length > 0) {
+          facilitySelect.innerHTML = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+        return false;
+      } else {
+        if (authOverlay) authOverlay.style.display = 'none';
+        if (appContainer) appContainer.style.filter = 'none';
+        this.applyRolePermissions();
+        await this.refreshAllData();
+        return true;
+      }
+    },
+
+    bindAuth() {
+      const loginForm = document.getElementById('form-login');
+      const authAlert = document.getElementById('auth-error-alert');
+      const btnSubmit = document.getElementById('btn-login-submit');
+      const btnTogglePwd = document.getElementById('btn-toggle-pwd');
+      const pwdInput = document.getElementById('login-password');
+
+      if (btnTogglePwd && pwdInput) {
+        btnTogglePwd.addEventListener('click', () => {
+          const isPwd = pwdInput.type === 'password';
+          pwdInput.type = isPwd ? 'text' : 'password';
+          btnTogglePwd.innerHTML = isPwd
+            ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+        });
+      }
+
+      // Quick Role Demo Pills
+      const demoPills = document.querySelectorAll('.demo-pill');
+      demoPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          const user = pill.getAttribute('data-user');
+          const pwd = pill.getAttribute('data-pwd');
+          const userInput = document.getElementById('login-username');
+          if (userInput) userInput.value = user;
+          if (pwdInput) pwdInput.value = pwd;
+          if (authAlert) authAlert.style.display = 'none';
+        });
+      });
+
+      if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const username = document.getElementById('login-username').value;
+          const password = pwdInput ? pwdInput.value : '';
+          const facility = document.getElementById('login-facility').value;
+          const remember = document.getElementById('login-remember')?.checked ?? true;
+
+          if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<span>Authenticating...</span>`;
+          }
+          if (authAlert) authAlert.style.display = 'none';
+
+          try {
+            const res = await window.WMSDataService.authenticateUser({
+              username,
+              password,
+              tenantId: facility,
+              remember
+            });
+
+            if (res.success) {
+              this.showToast(`Welcome back, ${res.user.full_name}!`, 'success');
+              await this.checkAuthState();
+            } else {
+              if (authAlert) {
+                authAlert.textContent = res.error || 'Authentication failed.';
+                authAlert.style.display = 'block';
+              }
+              this.showToast(res.error || 'Invalid credentials.', 'danger');
+            }
+          } catch (err) {
+            if (authAlert) {
+              authAlert.textContent = `Error: ${err.message}`;
+              authAlert.style.display = 'block';
+            }
+          } finally {
+            if (btnSubmit) {
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = `<span>Sign In to WMS</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
+            }
+          }
+        });
+      }
+    },
+
+    bindUserProfileMenu() {
+      const toggleBtn = document.getElementById('btn-user-profile-toggle');
+      const menu = document.getElementById('user-dropdown-menu');
+      const signoutBtn = document.getElementById('btn-header-signout');
+
+      if (toggleBtn && menu) {
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = menu.classList.toggle('show');
+          toggleBtn.classList.toggle('active', isOpen);
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('#user-profile-menu-container')) {
+            menu.classList.remove('show');
+            toggleBtn.classList.remove('active');
+          }
+        });
+      }
+
+      // Role switcher inside dropdown
+      const switchItems = document.querySelectorAll('.role-switch-item');
+      switchItems.forEach(item => {
+        item.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const targetRole = item.getAttribute('data-switch-role');
+          const found = this.users.find(u => u.role === targetRole) || 
+            (targetRole === 'Superadmin' ? { id: 'usr-admin-1', full_name: 'Derek Lumpkin', username: 'derek', role: 'Superadmin', email: 'derek@simpletory.com' } :
+             targetRole === 'Manager' ? { id: 'usr-mgr-1', full_name: 'Sarah Connor', username: 'sarah.c', role: 'Manager', email: 'sarah@simpletory.com' } :
+             { id: 'usr-op-1', full_name: 'Mike Torres', username: 'mike.t', role: 'User', email: 'mike@simpletory.com' });
+
+          window.WMSDataService.setCurrentUser(found, true);
+          if (menu) menu.classList.remove('show');
+          if (toggleBtn) toggleBtn.classList.remove('active');
+          this.showToast(`Switched active role to: ${found.full_name} (${found.role})`, 'info');
+          this.applyRolePermissions();
+        });
+      });
+
+      if (signoutBtn) {
+        signoutBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (menu) menu.classList.remove('show');
+          if (toggleBtn) toggleBtn.classList.remove('active');
+          window.WMSDataService.logout();
+          this.showToast('You have been signed out.', 'info');
+          this.checkAuthState();
+        });
+      }
     },
 
     // ==========================================
@@ -61,18 +219,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     applyRolePermissions() {
       const user = window.WMSDataService.currentUser;
+      if (!user) return;
       const role = user.role || 'Superadmin';
 
-      // Update header badge display
+      // Update header badge and dropdown display
       const avatarEl = document.getElementById('header-user-avatar');
       const nameEl = document.getElementById('header-user-name');
       const roleEl = document.getElementById('header-user-role');
-      const switcherEl = document.getElementById('header-user-switcher');
 
-      if (avatarEl) avatarEl.textContent = user.full_name ? user.full_name.charAt(0) : 'U';
+      const dropAvatarEl = document.getElementById('dropdown-user-avatar');
+      const dropNameEl = document.getElementById('dropdown-user-name');
+      const dropEmailEl = document.getElementById('dropdown-user-email');
+      const dropRoleBadgeEl = document.getElementById('dropdown-user-role-badge');
+
+      const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+      if (avatarEl) avatarEl.textContent = initial;
       if (nameEl) nameEl.textContent = user.full_name || 'User';
       if (roleEl) roleEl.textContent = role;
-      if (switcherEl) switcherEl.value = user.id;
+
+      if (dropAvatarEl) dropAvatarEl.textContent = initial;
+      if (dropNameEl) dropNameEl.textContent = user.full_name || 'User';
+      if (dropEmailEl) dropEmailEl.textContent = user.email || `${user.username || 'user'}@simpletory.com`;
+      if (dropRoleBadgeEl) {
+        dropRoleBadgeEl.textContent = role;
+        dropRoleBadgeEl.className = `badge ${role === 'Superadmin' ? 'badge-primary' : role === 'Manager' ? 'badge-warning' : 'badge-secondary'} user-dropdown-role-badge`;
+      }
 
       // 1. Settings View (Supabase Link): Locked to Superadmin only
       const navSettings = document.getElementById('nav-settings');
@@ -109,21 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
-    bindUserSwitcher() {
-      const switcher = document.getElementById('header-user-switcher');
-      if (switcher) {
-        switcher.addEventListener('change', (e) => {
-          const userId = e.target.value;
-          const found = this.users.find(u => u.id === userId);
-          if (found) {
-            window.WMSDataService.currentUser = { ...found };
-            this.showToast(`Switched active role: ${found.full_name} (${found.role})`, 'info');
-            this.applyRolePermissions();
-          }
-        });
-      }
-    },
-
     // ==========================================
     // NAVIGATION & VIEW SWITCHING
     // ==========================================
@@ -148,7 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     switchView(viewName) {
-      const role = window.WMSDataService.currentUser.role;
+      const user = window.WMSDataService.currentUser;
+      const role = user ? user.role : 'User';
       // Guard locked views
       if (viewName === 'settings' && role !== 'Superadmin') {
         return this.showToast('Access Denied: Settings & Supabase connection is restricted to Superadmin.', 'danger');
