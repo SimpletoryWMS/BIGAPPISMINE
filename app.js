@@ -2442,6 +2442,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
+      // Delete User Confirmation Modal Submission
+      const btnConfirmDelete = document.getElementById('btn-confirm-delete-user-submit');
+      if (btnConfirmDelete) {
+        btnConfirmDelete.addEventListener('click', async () => {
+          const idEl = document.getElementById('delete-user-confirm-id');
+          const userId = idEl ? idEl.value : '';
+          if (!userId) return;
+
+          btnConfirmDelete.disabled = true;
+          btnConfirmDelete.textContent = 'Deleting...';
+
+          try {
+            await window.WMSDataService.deleteUser(userId);
+            this.showToast('Team member removed successfully.', 'info');
+            this.closeModal('modal-confirm-delete-user');
+            await this.refreshAllData();
+          } catch (err) {
+            console.error('Failed to delete user:', err);
+            this.showToast(`Error removing member: ${err.message}`, 'danger');
+          } finally {
+            btnConfirmDelete.disabled = false;
+            btnConfirmDelete.textContent = 'Delete Member';
+          }
+        });
+      }
+
       // 7. Supabase Settings Form
       const btnSaveSupabase = document.getElementById('btn-save-supabase');
       if (btnSaveSupabase) {
@@ -2789,24 +2815,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
-    async handleDeleteUser(userId) {
-      const role = window.WMSDataService.currentUser?.role;
+    handleDeleteUser(userId) {
+      const role = window.WMSDataService.currentUser?.role || this.currentUser?.role;
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can manage members.', 'warning');
       }
 
       const user = this.users.find(u => u.id === userId);
       if (!user) return;
-      if (confirm(`Remove access for "${user.full_name}"?`)) {
-        try {
-          await window.WMSDataService.deleteUser(userId);
-          this.showToast(`Removed member: ${user.full_name}`, 'info');
-          await this.refreshAllData();
-        } catch (err) {
-          console.error('Failed to delete user:', err);
-          this.showToast(`Error removing member: ${err.message}`, 'danger');
-        }
-      }
+
+      const nameEl = document.getElementById('delete-user-confirm-name');
+      const idEl = document.getElementById('delete-user-confirm-id');
+      if (nameEl) nameEl.textContent = `"${user.full_name}" (${user.username})`;
+      if (idEl) idEl.value = userId;
+
+      this.openModal('modal-confirm-delete-user');
     },
 
     // ==========================================
