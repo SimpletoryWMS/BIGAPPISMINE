@@ -146,7 +146,7 @@
       const cleanPassword = (password || '').trim();
 
       if (!cleanUsername) {
-        return { success: false, error: 'Please enter a valid username.' };
+        return { success: false, error: 'Please enter a valid username, email, or user ID.' };
       }
       if (!cleanPassword) {
         return { success: false, error: 'Please enter your password.' };
@@ -157,10 +157,11 @@
 
       if (this.isSupabaseConnected && this.client) {
         try {
+          // Query Supabase by username, email, or ID
           const { data: users, error } = await this.client
             .from('users')
             .select('*')
-            .ilike('username', cleanUsername);
+            .or(`username.ilike.${cleanUsername},email.ilike.${cleanUsername},id.eq.${cleanUsername}`);
 
           if (error) {
             console.error('Supabase auth query error:', error);
@@ -168,7 +169,7 @@
           }
 
           if (!users || users.length === 0) {
-            return { success: false, error: 'User account not found in database.' };
+            return { success: false, error: `User '${username}' not found in Supabase database. Please check username/email.` };
           }
 
           // If multiple facilities, match tenant or take primary
@@ -190,7 +191,11 @@
           // Verify password securely against stored SHA-256 password_hash
           if (!user.password_hash) {
             // If user was newly created in database with null password, set password on first sign-in
-            await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+            try {
+              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+            } catch (updateErr) {
+              console.warn('Could not persist initial password hash to Supabase:', updateErr);
+            }
             user.password_hash = hashedPassword;
             this.setCurrentUser(user, remember);
             return { success: true, user };
@@ -200,7 +205,7 @@
             this.setCurrentUser(user, remember);
             return { success: true, user };
           } else {
-            return { success: false, error: 'Incorrect username or password.' };
+            return { success: false, error: 'Incorrect password entered.' };
           }
         } catch (err) {
           console.error('Auth Exception:', err);
@@ -210,10 +215,17 @@
 
       // Local Store Fallback Authentication
       const db = this.getLocalDB();
-      const user = (db.users || []).find(u => u.username.toLowerCase() === cleanUsername);
+      const user = (db.users || []).find(u => 
+        (u.username && u.username.toLowerCase() === cleanUsername) ||
+        (u.email && u.email.toLowerCase() === cleanUsername) ||
+        (u.id && u.id.toLowerCase() === cleanUsername)
+      );
 
       if (!user) {
-        return { success: false, error: 'Invalid username or password.' };
+        return { 
+          success: false, 
+          error: `User '${username}' not found in local store. Note: App is currently running in Offline/Local Mode because Supabase credentials are not connected on this browser.` 
+        };
       }
 
       if (user.status === 'Suspended') {
@@ -239,7 +251,7 @@
         return { success: true, user };
       }
 
-      return { success: false, error: 'Incorrect username or password.' };
+      return { success: false, error: 'Incorrect password entered.' };
     }
 
     // ==========================================
