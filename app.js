@@ -808,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.getElementById('items-table-body');
       if (!tbody) return;
 
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role || this.currentUser?.role || 'User';
       const canManage = role === 'Superadmin' || role === 'Manager';
 
       const searchTerm = (document.getElementById('items-search-input')?.value || '').toLowerCase().trim();
@@ -2136,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openNewItemModal() {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role || this.currentUser?.role || 'User';
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can add catalog items.', 'warning');
       }
@@ -2151,7 +2151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openEditItemModal(itemId) {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role || this.currentUser?.role || 'User';
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can edit catalog items.', 'warning');
       }
@@ -2446,7 +2446,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const btnSaveSupabase = document.getElementById('btn-save-supabase');
       if (btnSaveSupabase) {
         btnSaveSupabase.addEventListener('click', async () => {
-          if (window.WMSDataService.currentUser.role !== 'Superadmin') {
+          const role = window.WMSDataService.currentUser?.role || this.currentUser?.role;
+          if (role !== 'Superadmin') {
             return this.showToast('Superadmin access required to configure database credentials.', 'danger');
           }
           const url = document.getElementById('setting-supabase-url').value;
@@ -2774,7 +2775,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     async handleDeleteItem(itemId) {
-      const role = window.WMSDataService.currentUser.role;
+      const role = window.WMSDataService.currentUser?.role || this.currentUser?.role || 'User';
       if (role !== 'Superadmin' && role !== 'Manager') {
         return this.showToast('Permission Denied: Only Managers and Superadmins can delete catalog items.', 'warning');
       }
