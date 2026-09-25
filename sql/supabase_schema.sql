@@ -181,41 +181,64 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_audit_inventory_changes();
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_auth_tenant_id()
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT tenant_id FROM public.users 
-  WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
-  LIMIT 1;
+DECLARE
+    v_tenant TEXT;
+BEGIN
+    SELECT tenant_id INTO v_tenant 
+    FROM public.users 
+    WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
+    LIMIT 1;
+    RETURN COALESCE(v_tenant, auth.jwt()->'user_metadata'->>'tenant_id');
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_auth_role()
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT role FROM public.users 
-  WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
-  LIMIT 1;
+DECLARE
+    v_role TEXT;
+BEGIN
+    SELECT role INTO v_role 
+    FROM public.users 
+    WHERE id::text = auth.uid()::text OR email = auth.jwt()->>'email'
+    LIMIT 1;
+    RETURN COALESCE(v_role, auth.jwt()->'user_metadata'->>'role', 'User');
+END;
 $$;
 
 -- Username to Email resolver for public login
 CREATE OR REPLACE FUNCTION public.get_email_for_login(p_identifier TEXT)
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT email FROM public.users 
-  WHERE (LOWER(username) = LOWER(TRIM(p_identifier)) OR LOWER(email) = LOWER(TRIM(p_identifier)))
-    AND status = 'Active'
-  LIMIT 1;
+DECLARE
+    v_email TEXT;
+BEGIN
+    SELECT email INTO v_email 
+    FROM public.users 
+    WHERE (LOWER(username) = LOWER(TRIM(p_identifier)) OR LOWER(email) = LOWER(TRIM(p_identifier)))
+      AND status = 'Active'
+    LIMIT 1;
+    RETURN v_email;
+END;
 $$;
+
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
 
 GRANT EXECUTE ON FUNCTION public.get_auth_tenant_id() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_auth_role() TO anon, authenticated;
@@ -259,12 +282,22 @@ CREATE POLICY "Tenant isolation inventory_history" ON public.inventory_history
   USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'Superadmin')
   WITH CHECK (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'Superadmin');
 
--- 5. Users Table Policies
+-- 5. Users Table Policies (Recursion-Safe)
 DROP POLICY IF EXISTS "Tenant isolation users" ON public.users;
 CREATE POLICY "Tenant isolation users" ON public.users
   FOR ALL TO authenticated
-  USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'Superadmin')
-  WITH CHECK (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'Superadmin');
+  USING (
+    id::text = auth.uid()::text 
+    OR email = auth.jwt()->>'email'
+    OR (auth.jwt()->'user_metadata'->>'role') = 'Superadmin'
+    OR tenant_id = public.get_auth_tenant_id()
+  )
+  WITH CHECK (
+    id::text = auth.uid()::text 
+    OR email = auth.jwt()->>'email'
+    OR (auth.jwt()->'user_metadata'->>'role') = 'Superadmin'
+    OR tenant_id = public.get_auth_tenant_id()
+  );
 
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_items_tenant ON public.items(tenant_id);
