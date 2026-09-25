@@ -466,14 +466,17 @@
 
     async getUsers(tenantId = this.activeTenantId) {
       if (this.isSupabaseConnected && this.client) {
-        const { data, error } = await this.client
-          .from('users')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('full_name');
+        let query = this.client.from('users').select('*').order('full_name');
+        if (tenantId && tenantId !== 'ALL') {
+          query = query.eq('tenant_id', tenantId);
+        }
+        const { data, error } = await query;
         if (!error && data) return data;
       }
       const db = this.getLocalDB();
+      if (!tenantId || tenantId === 'ALL') {
+        return db.users || [];
+      }
       return (db.users || []).filter(u => u.tenant_id === tenantId);
     }
 
@@ -625,6 +628,7 @@
       if (this.isSupabaseConnected && this.client) {
         const { data, error } = await this.client.from('users').upsert(user).select().single();
         if (error) throw error;
+        this.notifySubscribers('users');
         return data;
       }
 
@@ -636,6 +640,7 @@
         db.users.push(user);
       }
       this.setLocalDB(db);
+      this.notifySubscribers('users');
       return user;
     }
 
@@ -643,11 +648,13 @@
       if (this.isSupabaseConnected && this.client) {
         const { error } = await this.client.from('users').delete().eq('id', userId);
         if (error) throw error;
+        this.notifySubscribers('users');
         return true;
       }
       const db = this.getLocalDB();
       db.users = db.users.filter(u => u.id !== userId);
       this.setLocalDB(db);
+      this.notifySubscribers('users');
       return true;
     }
 

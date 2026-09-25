@@ -482,11 +482,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async refreshAllData() {
       const tenantId = window.WMSDataService.activeTenantId;
+      const currentUser = window.WMSDataService.currentUser;
+      const isSuperadmin = currentUser && (currentUser.role === 'Superadmin' || currentUser.role === 'Admin');
+
       [this.items, this.inventory, this.history, this.users] = await Promise.all([
         window.WMSDataService.getItems(tenantId),
         window.WMSDataService.getInventory(tenantId),
         window.WMSDataService.getHistory(tenantId),
-        window.WMSDataService.getUsers(tenantId)
+        window.WMSDataService.getUsers(isSuperadmin ? 'ALL' : tenantId)
       ]);
 
       this.renderDashboard();
@@ -796,20 +799,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.getElementById('users-table-body');
       if (!tbody) return;
 
+      const allTenantsList = this.allTenants || this.tenants || [];
+
       tbody.innerHTML = this.users.map(u => {
         const roleBadge = u.role === 'Superadmin' ? 'badge-danger' : u.role === 'Manager' ? 'badge-warning' : 'badge-info';
+        const tenantObj = allTenantsList.find(t => t.id === u.tenant_id);
+        const tenantName = tenantObj ? tenantObj.name : (u.tenant_id || 'Primary Facility');
+
         return `
           <tr>
             <td>
               <div style="display: flex; align-items: center; gap: 0.65rem;">
-                <div class="user-avatar" style="width:26px; height:26px; font-size:0.7rem;">${u.full_name.charAt(0)}</div>
-                <strong style="font-size: 0.85rem;">${u.full_name}</strong>
+                <div class="user-avatar" style="width:26px; height:26px; font-size:0.7rem;">${(u.full_name || 'U').charAt(0)}</div>
+                <strong style="font-size: 0.85rem;">${u.full_name || 'User'}</strong>
               </div>
             </td>
             <td><code style="font-family: var(--font-mono);">${u.username}</code></td>
             <td style="color: var(--text-secondary);">${u.email || '-'}</td>
+            <td><span class="badge badge-neutral">${tenantName}</span></td>
             <td><span class="badge ${roleBadge}">${u.role}</span></td>
-            <td><span class="badge ${u.status === 'Active' ? 'badge-success' : 'badge-neutral'}">${u.status}</span></td>
+            <td><span class="badge ${u.status === 'Active' ? 'badge-success' : 'badge-neutral'}">${u.status || 'Active'}</span></td>
             <td>
               <div class="table-actions">
                 <button class="action-btn" onclick="App.openEditUserModal('${u.id}')">✏ Edit</button>
@@ -995,6 +1004,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (form) form.reset();
       document.getElementById('user-id').value = '';
       document.getElementById('modal-user-title').textContent = 'Add Team Member';
+
+      const tenantSelect = document.getElementById('user-tenant-select');
+      if (tenantSelect) {
+        const list = this.allTenants || this.tenants || [];
+        tenantSelect.innerHTML = list.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        tenantSelect.value = window.WMSDataService.activeTenantId;
+        tenantSelect.disabled = (role !== 'Superadmin' && role !== 'Admin');
+      }
+
       this.openModal('modal-user');
     },
 
@@ -1008,12 +1026,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!user) return;
 
       document.getElementById('user-id').value = user.id;
-      document.getElementById('user-fullname').value = user.full_name;
-      document.getElementById('user-username').value = user.username;
+      document.getElementById('user-fullname').value = user.full_name || '';
+      document.getElementById('user-username').value = user.username || '';
       document.getElementById('user-email').value = user.email || '';
       document.getElementById('user-role').value = user.role || 'User';
-      document.getElementById('modal-user-title').textContent = `Edit Member: ${user.full_name}`;
 
+      const tenantSelect = document.getElementById('user-tenant-select');
+      if (tenantSelect) {
+        const list = this.allTenants || this.tenants || [];
+        tenantSelect.innerHTML = list.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        tenantSelect.value = user.tenant_id || window.WMSDataService.activeTenantId;
+        tenantSelect.disabled = (role !== 'Superadmin' && role !== 'Admin');
+      }
+
+      document.getElementById('modal-user-title').textContent = `Edit Member: ${user.full_name}`;
       this.openModal('modal-user');
     },
 
@@ -1188,6 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
               full_name: document.getElementById('user-fullname').value.trim(),
               username: document.getElementById('user-username').value.trim().toLowerCase(),
               email: document.getElementById('user-email').value.trim(),
+              tenant_id: document.getElementById('user-tenant-select')?.value || window.WMSDataService.activeTenantId,
               role: document.getElementById('user-role').value,
               status: 'Active'
             };

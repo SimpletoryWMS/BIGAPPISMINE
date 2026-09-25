@@ -432,6 +432,7 @@
                   <th>Full Name</th>
                   <th>Username</th>
                   <th>Email</th>
+                  <th>Facility / Warehouse</th>
                   <th>Role</th>
                   <th>Status</th>
                   <th style="text-align: right;">Actions</th>
@@ -1399,9 +1400,17 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <input type="email" class="form-input" id="user-email" placeholder="e.g. derek@simpletory.com">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" class="form-input" id="user-email" placeholder="e.g. derek@simpletory.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assigned Facility / Tenant *</label>
+              <select class="form-select" id="user-tenant-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
