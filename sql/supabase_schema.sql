@@ -14,14 +14,15 @@
 -- ----------------------------------------------------------------------------
 DO $$
 DECLARE
-    trg_record RECORD;
+    r RECORD;
 BEGIN
-    FOR trg_record IN 
-        SELECT trigger_name 
-        FROM information_schema.triggers 
-        WHERE event_object_schema = 'auth' AND event_object_table = 'users'
-    LOOP
-        EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(trg_record.trigger_name) || ' ON auth.users CASCADE;';
+    FOR r IN (
+        SELECT tgname 
+        FROM pg_trigger 
+        WHERE tgrelid = 'auth.users'::regclass 
+          AND NOT tgisinternal
+    ) LOOP
+        EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(r.tgname) || ' ON auth.users CASCADE;';
     END LOOP;
 END $$;
 
