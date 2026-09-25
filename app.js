@@ -280,24 +280,30 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><span class="badge badge-neutral">${item.category || 'General'}</span></td>
             <td><span class="badge badge-neutral" style="opacity: 0.85;">${item.sub_category || 'Standard'}</span></td>
             <td><span class="location-tag">${inv.location}</span></td>
-            <td><strong style="font-size: 0.95rem;">${inv.quantity}</strong></td>
-            <td><span style="font-size: 0.8rem; color: var(--text-muted);">${item.uom}</span></td>
+            <td>
+              <div class="qty-stepper-cell">
+                <button class="qty-stepper-btn btn-minus" title="Subtract stock (-)" onclick="App.openQuickDispatch('${inv.item_id}', '${inv.location}', ${inv.quantity})">−</button>
+                <strong style="font-size: 0.95rem; min-width: 28px; text-align: center;">${inv.quantity}</strong>
+                <button class="qty-stepper-btn btn-plus" title="Add stock (+)" onclick="App.openQuickIntake('${inv.item_id}', '${inv.location}')">+</button>
+              </div>
+            </td>
+            <td><span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">${item.uom}</span></td>
             <td>$${Number(item.unit_cost).toFixed(2)}</td>
             <td><strong>$${extVal}</strong></td>
             <td><span class="badge ${statusBadge}">${inv.status}</span></td>
             <td>
               <div class="table-actions">
-                <button class="action-btn" title="Quick Intake (+)" onclick="App.openQuickIntake('${inv.item_id}', '${inv.location}')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg> +
+                <button class="action-btn action-btn-add" title="Quick Add (+)" onclick="App.openQuickIntake('${inv.item_id}', '${inv.location}')">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg> + Add
                 </button>
-                <button class="action-btn" title="Quick Dispatch (-)" onclick="App.openQuickDispatch('${inv.item_id}', '${inv.location}', ${inv.quantity})">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg> -
+                <button class="action-btn action-btn-sub" title="Quick Subtract (-)" onclick="App.openQuickDispatch('${inv.item_id}', '${inv.location}', ${inv.quantity})">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg> − Subtract
                 </button>
                 <button class="action-btn" title="Transfer Location" onclick="App.openTransferModal('${inv.item_id}', '${inv.location}', ${inv.quantity})">
-                  ⇄
+                  ⇄ Move
                 </button>
                 <button class="action-btn" title="Audit Count / Adjust" onclick="App.openAdjustModal('${inv.item_id}', '${inv.location}', ${inv.quantity})">
-                  ⚙
+                  ⚙ Adjust
                 </button>
               </div>
             </td>

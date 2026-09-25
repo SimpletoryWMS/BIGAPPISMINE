@@ -98,9 +98,13 @@
 
         <div class="header-right">
           <div class="action-btn-group">
-            <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">
+            <button class="btn btn-success btn-sm" onclick="App.openQuickIntake()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
-              <span>+ Intake Stock</span>
+              <span>+ Add Stock</span>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="App.openQuickDispatch()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+              <span>- Subtract Stock</span>
             </button>
           </div>
 
@@ -134,7 +138,8 @@
             </div>
             <div class="action-btn-group">
               <button class="btn btn-secondary btn-sm" onclick="App.openNewItemModal()">+ New SKU</button>
-              <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">Receive Shipment</button>
+              <button class="btn btn-success btn-sm" onclick="App.openQuickIntake()">+ Add Stock</button>
+              <button class="btn btn-danger btn-sm" onclick="App.openQuickDispatch()">- Subtract Stock</button>
             </div>
           </div>
 
@@ -222,7 +227,14 @@
             </div>
             <div class="action-btn-group">
               <button class="btn btn-secondary btn-sm" id="btn-export-inventory">📥 Export CSV</button>
-              <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">+ Intake Stock</button>
+              <button class="btn btn-success btn-sm" onclick="App.openQuickIntake()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
+                <span>+ Add Stock</span>
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="App.openQuickDispatch()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+                <span>- Subtract Stock</span>
+              </button>
             </div>
           </div>
 

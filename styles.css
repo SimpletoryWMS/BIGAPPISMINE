@@ -779,11 +779,58 @@ html, body {
   color: var(--primary);
 }
 
-/* Action Cell Buttons */
+/* Action Cell Buttons & Steppers */
 .table-actions {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+}
+
+.qty-stepper-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qty-stepper-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.qty-stepper-btn.btn-plus {
+  color: var(--success);
+  border-color: var(--success-border);
+  background: var(--success-light);
+}
+
+.qty-stepper-btn.btn-plus:hover {
+  background: var(--success);
+  color: #ffffff;
+  border-color: var(--success);
+}
+
+.qty-stepper-btn.btn-minus {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-light);
+}
+
+.qty-stepper-btn.btn-minus:hover {
+  background: var(--danger);
+  color: #ffffff;
+  border-color: var(--danger);
 }
 
 .action-btn {
@@ -796,7 +843,8 @@ html, body {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  font-weight: 600;
   transition: all var(--transition-fast);
 }
 
@@ -804,6 +852,28 @@ html, body {
   background: var(--bg-card-hover);
   color: var(--text-primary);
   border-color: var(--text-muted);
+}
+
+.action-btn-add {
+  color: var(--success) !important;
+  border-color: var(--success-border) !important;
+  background: var(--success-light) !important;
+}
+
+.action-btn-add:hover {
+  background: var(--success) !important;
+  color: #ffffff !important;
+}
+
+.action-btn-sub {
+  color: var(--danger) !important;
+  border-color: var(--danger-border) !important;
+  background: var(--danger-light) !important;
+}
+
+.action-btn-sub:hover {
+  background: var(--danger) !important;
+  color: #ffffff !important;
 }
 
 /* ==========================================================================
