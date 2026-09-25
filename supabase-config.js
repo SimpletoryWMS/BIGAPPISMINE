@@ -225,6 +225,26 @@
       return { success: false, error: 'Incorrect username or password.' };
     }
 
+    // ==========================================
+    // INACTIVITY TIMEOUT & SESSION MANAGEMENT
+    // ==========================================
+    recordActivity() {
+      if (this.currentUser) {
+        const now = Date.now().toString();
+        localStorage.setItem('simpletory_last_activity', now);
+        sessionStorage.setItem('simpletory_last_activity', now);
+      }
+    }
+
+    isSessionTimedOut() {
+      if (!this.currentUser) return false;
+      const raw = localStorage.getItem('simpletory_last_activity') || sessionStorage.getItem('simpletory_last_activity');
+      if (!raw) return false;
+      const last = parseInt(raw, 10);
+      const THIRTY_MINUTES = 30 * 60 * 1000;
+      return (Date.now() - last) > THIRTY_MINUTES;
+    }
+
     setCurrentUser(user, remember = true) {
       this.currentUser = user;
       if (user.tenant_id) {
@@ -237,13 +257,25 @@
       } else {
         localStorage.removeItem('simpletory_session');
       }
+      this.recordActivity();
       this.notifySubscribers('auth', user);
     }
 
     getAuthenticatedUser() {
       try {
         const raw = sessionStorage.getItem('simpletory_session') || localStorage.getItem('simpletory_session');
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        
+        // Check 30-minute inactivity timeout
+        const lastRaw = localStorage.getItem('simpletory_last_activity') || sessionStorage.getItem('simpletory_last_activity');
+        if (lastRaw) {
+          const last = parseInt(lastRaw, 10);
+          if (Date.now() - last > (30 * 60 * 1000)) {
+            this.logout();
+            return null;
+          }
+        }
+        return JSON.parse(raw);
       } catch (e) {
         return null;
       }
@@ -252,6 +284,8 @@
     logout() {
       sessionStorage.removeItem('simpletory_session');
       localStorage.removeItem('simpletory_session');
+      sessionStorage.removeItem('simpletory_last_activity');
+      localStorage.removeItem('simpletory_last_activity');
       this.currentUser = null;
       this.notifySubscribers('auth', null);
     }

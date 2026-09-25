@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this.bindGlobalActions();
       this.bindShortcuts();
       this.bindUserProfileMenu();
+      this.initIdleTimeoutTracker();
 
       // Listen for data mutations (realtime or local)
       window.WMSDataService.onDataChange((topic) => {
@@ -39,6 +40,52 @@ document.addEventListener('DOMContentLoaded', () => {
       await this.loadTenants();
       await this.checkAuthState();
       this.updateSyncIndicator();
+    },
+
+    // ==========================================
+    // INACTIVITY IDLE TIMEOUT ENGINE (30 MIN)
+    // ==========================================
+    initIdleTimeoutTracker() {
+      let lastRecorded = Date.now();
+
+      const onUserActivity = () => {
+        const now = Date.now();
+        // Throttle activity recording to at most once every 10 seconds
+        if (now - lastRecorded > 10000) {
+          lastRecorded = now;
+          window.WMSDataService.recordActivity();
+        }
+      };
+
+      // Listen for user interaction events across the page
+      ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+        window.addEventListener(evt, onUserActivity, { passive: true });
+      });
+
+      // Periodic check every 15 seconds
+      setInterval(() => {
+        if (window.WMSDataService.currentUser && window.WMSDataService.isSessionTimedOut()) {
+          this.handleSessionTimeout();
+        }
+      }, 15000);
+
+      // Check when user returns to tab / wakes device
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && window.WMSDataService.currentUser && window.WMSDataService.isSessionTimedOut()) {
+          this.handleSessionTimeout();
+        }
+      });
+    },
+
+    handleSessionTimeout() {
+      window.WMSDataService.logout();
+      const authAlert = document.getElementById('auth-error-alert');
+      if (authAlert) {
+        authAlert.textContent = 'Your session has expired due to 30 minutes of inactivity. Please sign in again.';
+        authAlert.style.display = 'block';
+      }
+      this.showToast('Session expired after 30 minutes of inactivity.', 'warning');
+      this.checkAuthState();
     },
 
     // ==========================================
