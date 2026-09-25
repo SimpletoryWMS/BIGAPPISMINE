@@ -40,9 +40,9 @@
       { id: 'hist-4', tenant_id: 'org-primary', item_id: 'itm-4', sku: 'SKU-3001', item_name: 'Premium Utility Knife Blades (Pack of 50)', action_type: 'SUBTRACT', qty_change: -2, previous_qty: 10, new_qty: 8, location: 'B-02-02', user_name: 'Derek Lumpkin', notes: 'Fulfillment Order #1042', created_at: new Date(Date.now() - 3600000 * 2).toISOString() }
     ],
     users: [
-      { id: 'usr-admin-1', tenant_id: 'org-primary', username: 'derek', email: 'derek@simpletory.com', full_name: 'Derek Lumpkin', role: 'Superadmin', status: 'Active', created_at: new Date().toISOString() },
-      { id: 'usr-mgr-1', tenant_id: 'org-primary', username: 'sarah.c', email: 'sarah@simpletory.com', full_name: 'Sarah Connor', role: 'Manager', status: 'Active', created_at: new Date().toISOString() },
-      { id: 'usr-op-1', tenant_id: 'org-primary', username: 'mike.t', email: 'mike@simpletory.com', full_name: 'Mike Torres', role: 'User', status: 'Active', created_at: new Date().toISOString() }
+      { id: 'usr-admin-1', tenant_id: 'org-primary', username: 'derek', email: 'derek@simpletory.com', password_hash: '3b6f05feed61e71c2552c555e8b257f57844fa32d5b712ff40c1341af97e605f', full_name: 'Derek Lumpkin', role: 'Superadmin', status: 'Active', created_at: new Date().toISOString() },
+      { id: 'usr-mgr-1', tenant_id: 'org-primary', username: 'sarah.c', email: 'sarah@simpletory.com', password_hash: 'dd7f6bfb6e0d8bcd754e97cae4975c07996f00508f8346d649c5814e19c3f9b9', full_name: 'Sarah Connor', role: 'Manager', status: 'Active', created_at: new Date().toISOString() },
+      { id: 'usr-op-1', tenant_id: 'org-primary', username: 'mike.t', email: 'mike@simpletory.com', password_hash: '541bf3ce2c00becc8012af585a3fa01210c046c10039dab2f7990b5ea84c2312', full_name: 'Mike Torres', role: 'User', status: 'Active', created_at: new Date().toISOString() }
     ]
   };
 
@@ -164,10 +164,29 @@
 
       if (this.isSupabaseConnected && this.client) {
         try {
-          // Query Supabase by username, email, or ID
+          // 1. Primary Secure Path: Execute Server-Side Postgres RPC (SECURITY DEFINER)
+          try {
+            const { data: rpcData, error: rpcError } = await this.client.rpc('authenticate_user', {
+              p_username: cleanUsername,
+              p_password_hash: hashedPassword
+            });
+
+            if (!rpcError && rpcData) {
+              if (rpcData.success && rpcData.user) {
+                this.setCurrentUser(rpcData.user, remember);
+                return { success: true, user: rpcData.user };
+              } else if (rpcData.error) {
+                return { success: false, error: rpcData.error };
+              }
+            }
+          } catch (rpcEx) {
+            console.warn('RPC authenticate_user unavailable, executing direct strict verification:', rpcEx);
+          }
+
+          // 2. Direct Query Fallback (Strict exact SHA-256 verification only - NO NULL claiming)
           const { data: users, error } = await this.client
             .from('users')
-            .select('*')
+            .select('id, tenant_id, username, email, full_name, role, status, password_hash, last_login_at, created_at')
             .or(`username.ilike.${cleanUsername},email.ilike.${cleanUsername},id.eq.${cleanUsername}`);
 
           if (error) {
@@ -176,17 +195,15 @@
           }
 
           if (!users || users.length === 0) {
-            return { success: false, error: `User '${username}' not found in Supabase database. Please check username/email.` };
+            return { success: false, error: 'Invalid username or password.' };
           }
 
-          // If multiple facilities, match tenant or take primary
           const user = users.find(u => u.tenant_id === targetTenantId) || users[0];
 
           if (user.status === 'Suspended') {
             return { success: false, error: 'Account is suspended. Please contact your administrator.' };
           }
 
-          // Check if associated tenant is active
           if (user.role !== 'Superadmin') {
             const allTenants = await this.getTenants(true);
             const userTenant = allTenants.find(t => t.id === user.tenant_id);
@@ -195,52 +212,31 @@
             }
           }
 
+          // Strict Hash Verification: Require valid, matching hash
+          if (!user.password_hash || (user.password_hash.toLowerCase() !== hashedPassword.toLowerCase())) {
+            return { success: false, error: 'Invalid username or password.' };
+          }
+
           const nowIso = new Date().toISOString();
           user.last_login_at = nowIso;
-
-          // 1. First-time initialization (if password_hash was NULL)
-          if (!user.password_hash) {
-            try {
-              await this.client.from('users').update({ password_hash: hashedPassword, last_login_at: nowIso }).eq('id', user.id);
-            } catch (updateErr) {
-              console.warn('Could not persist initial password hash / last login to Supabase:', updateErr);
-            }
-            user.password_hash = hashedPassword;
-            this.setCurrentUser(user, remember);
-            return { success: true, user };
+          try {
+            await this.client.from('users').update({ last_login_at: nowIso }).eq('id', user.id);
+          } catch (loginTimeErr) {
+            console.warn('Could not update last_login_at in Supabase:', loginTimeErr);
           }
 
-          // 2. Exact match against stored SHA-256 hash
-          if (user.password_hash === hashedPassword) {
-            try {
-              await this.client.from('users').update({ last_login_at: nowIso }).eq('id', user.id);
-            } catch (loginTimeErr) {
-              console.warn('Could not update last_login_at in Supabase:', loginTimeErr);
-            }
-            this.setCurrentUser(user, remember);
-            return { success: true, user };
-          }
-
-          // 3. Plain-text password entered directly in database (auto-upgrade to SHA-256 hash)
-          if (user.password_hash === cleanPassword) {
-            try {
-              await this.client.from('users').update({ password_hash: hashedPassword, last_login_at: nowIso }).eq('id', user.id);
-            } catch (upgradeErr) {
-              console.warn('Could not upgrade plain-text password / last login:', upgradeErr);
-            }
-            user.password_hash = hashedPassword;
-            this.setCurrentUser(user, remember);
-            return { success: true, user };
-          }
-
-          return { success: false, error: 'Incorrect password entered.' };
+          // Sanitize user object before setting in session
+          const sanitizedUser = { ...user };
+          delete sanitizedUser.password_hash;
+          this.setCurrentUser(sanitizedUser, remember);
+          return { success: true, user: sanitizedUser };
         } catch (err) {
           console.error('Auth Exception:', err);
           return { success: false, error: `Authentication failed: ${err.message}` };
         }
       }
 
-      // Local Store Fallback Authentication
+      // Local Store Fallback Authentication (Strict hash verification)
       const db = this.getLocalDB();
       const user = (db.users || []).find(u => 
         (u.username && u.username.toLowerCase() === cleanUsername) ||
@@ -251,7 +247,7 @@
       if (!user) {
         return { 
           success: false, 
-          error: `User '${username}' not found in local store. Note: App is currently running in Offline/Local Mode because Supabase credentials are not connected on this browser.` 
+          error: `User '${username}' not found in local store. Note: App is running in Local Mode because Supabase credentials are not connected.` 
         };
       }
 
@@ -259,7 +255,6 @@
         return { success: false, error: 'Account is suspended. Please contact your administrator.' };
       }
 
-      // Check if associated tenant is active in local store
       if (user.role !== 'Superadmin') {
         const userTenant = (db.tenants || []).find(t => t.id === user.tenant_id);
         if (userTenant && userTenant.is_active === false) {
@@ -267,33 +262,23 @@
         }
       }
 
+      // Disallow unhashed or mismatched passwords
+      if (!user.password_hash || (user.password_hash.toLowerCase() !== hashedPassword.toLowerCase())) {
+        return { success: false, error: 'Invalid username or password.' };
+      }
+
       const nowIso = new Date().toISOString();
       user.last_login_at = nowIso;
       const userIdx = (db.users || []).findIndex(u => u.id === user.id);
-
-      if (!user.password_hash) {
-        user.password_hash = hashedPassword;
-        if (userIdx !== -1) {
-          db.users[userIdx].password_hash = hashedPassword;
-          db.users[userIdx].last_login_at = nowIso;
-          this.setLocalDB(db);
-        }
-        this.setCurrentUser(user, remember);
-        return { success: true, user };
+      if (userIdx !== -1) {
+        db.users[userIdx].last_login_at = nowIso;
+        this.setLocalDB(db);
       }
 
-      if (user.password_hash === hashedPassword || user.password_hash === cleanPassword) {
-        user.password_hash = hashedPassword;
-        if (userIdx !== -1) {
-          db.users[userIdx].password_hash = hashedPassword;
-          db.users[userIdx].last_login_at = nowIso;
-          this.setLocalDB(db);
-        }
-        this.setCurrentUser(user, remember);
-        return { success: true, user };
-      }
-
-      return { success: false, error: 'Incorrect password entered.' };
+      const sanitizedLocalUser = { ...user };
+      delete sanitizedLocalUser.password_hash;
+      this.setCurrentUser(sanitizedLocalUser, remember);
+      return { success: true, user: sanitizedLocalUser };
     }
 
     // ==========================================
@@ -488,7 +473,10 @@
 
     async getUsers(tenantId = this.activeTenantId) {
       if (this.isSupabaseConnected && this.client) {
-        let query = this.client.from('users').select('*').order('full_name');
+        let query = this.client
+          .from('users')
+          .select('id, tenant_id, username, email, full_name, role, status, last_login_at, created_at')
+          .order('full_name');
         if (tenantId && tenantId !== 'ALL') {
           query = query.eq('tenant_id', tenantId);
         }
@@ -496,10 +484,16 @@
         if (!error && data) return data;
       }
       const db = this.getLocalDB();
-      if (!tenantId || tenantId === 'ALL') {
-        return db.users || [];
-      }
-      return (db.users || []).filter(u => u.tenant_id === tenantId);
+      const rawUsers = (!tenantId || tenantId === 'ALL')
+        ? (db.users || [])
+        : (db.users || []).filter(u => u.tenant_id === tenantId);
+
+      // Strip password_hash from returned objects
+      return rawUsers.map(u => {
+        const clean = { ...u };
+        delete clean.password_hash;
+        return clean;
+      });
     }
 
     // ==========================================
@@ -688,53 +682,75 @@
       const wantsPasswordChange = Boolean(password && password.trim());
 
       if (this.isSupabaseConnected && this.client) {
-        // If changing password, verify current password first against Supabase
         if (wantsPasswordChange) {
           if (!currentPassword || !currentPassword.trim()) {
             throw new Error('Please enter your current password to authorize a password change.');
           }
 
-          const { data: userRec, error: fetchErr } = await this.client
+          const cleanCurrentPwd = currentPassword.trim();
+          const cleanNewPwd = password.trim();
+          const hashedCurrentPwd = await this.hashPassword(cleanCurrentPwd);
+          const hashedNewPwd = await this.hashPassword(cleanNewPwd);
+
+          let rpcSuccess = false;
+          try {
+            const { data: rpcRes, error: rpcErr } = await this.client.rpc('change_user_password', {
+              p_user_id: userId,
+              p_current_password_hash: hashedCurrentPwd,
+              p_new_password_hash: hashedNewPwd
+            });
+
+            if (!rpcErr && rpcRes) {
+              if (rpcRes.success) {
+                rpcSuccess = true;
+              } else if (rpcRes.error) {
+                throw new Error(rpcRes.error);
+              }
+            }
+          } catch (rpcEx) {
+            if (rpcEx.message && rpcEx.message.includes('password')) throw rpcEx;
+          }
+
+          // Fallback if RPC was not available
+          if (!rpcSuccess) {
+            const { data: userRec, error: fetchErr } = await this.client
+              .from('users')
+              .select('password_hash')
+              .eq('id', userId)
+              .single();
+
+            if (fetchErr || !userRec) {
+              throw new Error('User record verification failed.');
+            }
+
+            const isValid = userRec.password_hash === hashedCurrentPwd || userRec.password_hash === cleanCurrentPwd;
+            if (!isValid) {
+              throw new Error('Incorrect current password. Password was not updated.');
+            }
+
+            updates.password_hash = hashedNewPwd;
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { data, error } = await this.client
             .from('users')
-            .select('password_hash')
+            .update(updates)
             .eq('id', userId)
+            .select('id, tenant_id, username, email, full_name, role, status, last_login_at, created_at')
             .single();
 
-          if (fetchErr || !userRec) {
-            throw new Error('User record verification failed.');
+          if (error) throw error;
+          
+          if (this.currentUser && this.currentUser.id === userId) {
+            this.currentUser = { ...this.currentUser, ...data };
+            this.setCurrentUser(this.currentUser, true);
           }
-
-          const cleanCurrentPwd = currentPassword.trim();
-          const hashedCurrentPwd = await this.hashPassword(cleanCurrentPwd);
-
-          const isValid = !userRec.password_hash || 
-                          userRec.password_hash === hashedCurrentPwd || 
-                          userRec.password_hash === cleanCurrentPwd;
-
-          if (!isValid) {
-            throw new Error('Incorrect current password. Password was not updated.');
-          }
-
-          updates.password_hash = await this.hashPassword(password.trim());
+          this.notifySubscribers('users');
+          this.notifySubscribers('auth');
+          return { success: true, user: data };
         }
-
-        const { data, error } = await this.client
-          .from('users')
-          .update(updates)
-          .eq('id', userId)
-          .select()
-          .single();
-
-        if (error) throw error;
-        
-        // Update currently authenticated user session
-        if (this.currentUser && this.currentUser.id === userId) {
-          this.currentUser = { ...this.currentUser, ...data };
-          this.setCurrentUser(this.currentUser, true);
-        }
-        this.notifySubscribers('users');
-        this.notifySubscribers('auth');
-        return { success: true, user: data };
+        return { success: true, user: this.currentUser };
       }
 
       // Local Store Fallback
@@ -750,10 +766,7 @@
           const cleanCurrentPwd = currentPassword.trim();
           const hashedCurrentPwd = await this.hashPassword(cleanCurrentPwd);
 
-          const isValid = !userRec.password_hash || 
-                          userRec.password_hash === hashedCurrentPwd || 
-                          userRec.password_hash === cleanCurrentPwd;
-
+          const isValid = userRec.password_hash === hashedCurrentPwd || userRec.password_hash === cleanCurrentPwd;
           if (!isValid) {
             throw new Error('Incorrect current password. Password was not updated.');
           }
@@ -763,13 +776,17 @@
 
         db.users[idx] = { ...db.users[idx], ...updates };
         this.setLocalDB(db);
+
+        const sanitizedLocalUser = { ...db.users[idx] };
+        delete sanitizedLocalUser.password_hash;
+
         if (this.currentUser && this.currentUser.id === userId) {
-          this.currentUser = { ...this.currentUser, ...db.users[idx] };
+          this.currentUser = { ...this.currentUser, ...sanitizedLocalUser };
           this.setCurrentUser(this.currentUser, true);
         }
         this.notifySubscribers('users');
         this.notifySubscribers('auth');
-        return { success: true, user: db.users[idx] };
+        return { success: true, user: sanitizedLocalUser };
       }
       throw new Error('User account not found.');
     }

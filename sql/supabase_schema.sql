@@ -191,6 +191,124 @@ BEGIN
 END $$;
 
 -- ============================================================================
+-- SECURE AUTHENTICATION & PASSWORD RPC FUNCTIONS (SECURITY DEFINER)
+-- ============================================================================
+-- Authenticate User RPC (Returns sanitized user profile without password_hash)
+CREATE OR REPLACE FUNCTION public.authenticate_user(
+    p_username TEXT,
+    p_password_hash TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_user RECORD;
+    v_tenant RECORD;
+    v_clean_username TEXT := LOWER(TRIM(p_username));
+    v_clean_hash TEXT := LOWER(TRIM(p_password_hash));
+BEGIN
+    -- 1. Find user matching username, email, or id
+    SELECT * INTO v_user
+    FROM public.users
+    WHERE LOWER(username) = v_clean_username
+       OR LOWER(email) = v_clean_username
+       OR LOWER(id) = v_clean_username
+    LIMIT 1;
+
+    IF v_user IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid username or password.');
+    END IF;
+
+    -- 2. Check if user is suspended
+    IF v_user.status = 'Suspended' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Account is suspended. Please contact your administrator.');
+    END IF;
+
+    -- 3. Check if tenant is active (except superadmins)
+    IF v_user.role <> 'Superadmin' THEN
+        SELECT * INTO v_tenant FROM public.tenants WHERE id = v_user.tenant_id;
+        IF v_tenant IS NOT NULL AND v_tenant.is_active = FALSE THEN
+            RETURN jsonb_build_object('success', false, 'error', 'This facility / tenant account is inactive. Please contact your administrator.');
+        END IF;
+    END IF;
+
+    -- 4. Verify password hash (strictly require exact SHA-256 match, disallow NULL)
+    IF v_user.password_hash IS NULL OR LENGTH(v_user.password_hash) < 10 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Account security configuration invalid. Please contact administrator.');
+    END IF;
+
+    IF LOWER(v_user.password_hash) <> v_clean_hash THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid username or password.');
+    END IF;
+
+    -- 5. Update last_login_at
+    UPDATE public.users
+    SET last_login_at = NOW()
+    WHERE id = v_user.id;
+
+    -- 6. Return sanitized user object (EXCLUDES password_hash!)
+    RETURN jsonb_build_object(
+        'success', true,
+        'user', jsonb_build_object(
+            'id', v_user.id,
+            'tenant_id', v_user.tenant_id,
+            'username', v_user.username,
+            'email', v_user.email,
+            'full_name', v_user.full_name,
+            'role', v_user.role,
+            'status', v_user.status,
+            'last_login_at', NOW(),
+            'created_at', v_user.created_at
+        )
+    );
+END;
+$$;
+
+-- Change User Password RPC (Requires valid current password before updating)
+CREATE OR REPLACE FUNCTION public.change_user_password(
+    p_user_id TEXT,
+    p_current_password_hash TEXT,
+    p_new_password_hash TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_user RECORD;
+    v_clean_curr TEXT := LOWER(TRIM(p_current_password_hash));
+    v_clean_new TEXT := LOWER(TRIM(p_new_password_hash));
+BEGIN
+    SELECT * INTO v_user FROM public.users WHERE id = p_user_id;
+
+    IF v_user IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'User not found.');
+    END IF;
+
+    IF v_user.password_hash IS NOT NULL AND LOWER(v_user.password_hash) <> v_clean_curr THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Current password is incorrect.');
+    END IF;
+
+    IF LENGTH(v_clean_new) < 10 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'New password hash is invalid.');
+    END IF;
+
+    UPDATE public.users
+    SET password_hash = v_clean_new
+    WHERE id = p_user_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- Grant execution to public / anon / authenticated so frontend can authenticate securely
+GRANT EXECUTE ON FUNCTION public.authenticate_user(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.change_user_password(TEXT, TEXT, TEXT) TO anon, authenticated;
+
+-- ============================================================================
 -- INITIAL SEED DATA
 -- ============================================================================
 -- Seed Default Primary Tenant
@@ -199,12 +317,12 @@ VALUES
   ('org-primary', 'Main Enterprise Warehouse', true),
   ('org-east', 'East Coast Distribution Center', true);
 
--- Seed Superadmin, Manager, and Standard User
+-- Seed Superadmin, Manager, and Standard User (With Pre-Hashed Passwords: derek123, sarah123, mike123)
 INSERT INTO public.users (id, tenant_id, username, email, password_hash, full_name, role, status)
 VALUES 
-  ('usr-admin-1', 'org-primary', 'derek', 'derek@simpletory.com', NULL, 'Derek Lumpkin', 'Superadmin', 'Active'),
-  ('usr-mgr-1', 'org-primary', 'sarah.c', 'sarah@simpletory.com', NULL, 'Sarah Connor', 'Manager', 'Active'),
-  ('usr-op-1', 'org-primary', 'mike.t', 'mike@simpletory.com', NULL, 'Mike Torres', 'User', 'Active');
+  ('usr-admin-1', 'org-primary', 'derek', 'derek@simpletory.com', '3b6f05feed61e71c2552c555e8b257f57844fa32d5b712ff40c1341af97e605f', 'Derek Lumpkin', 'Superadmin', 'Active'),
+  ('usr-mgr-1', 'org-primary', 'sarah.c', 'sarah@simpletory.com', 'dd7f6bfb6e0d8bcd754e97cae4975c07996f00508f8346d649c5814e19c3f9b9', 'Sarah Connor', 'Manager', 'Active'),
+  ('usr-op-1', 'org-primary', 'mike.t', 'mike@simpletory.com', '541bf3ce2c00becc8012af585a3fa01210c046c10039dab2f7990b5ea84c2312', 'Mike Torres', 'User', 'Active');
 
 -- Seed Starter Catalog Items
 INSERT INTO public.items (id, tenant_id, sku, name, category, sub_category, uom, unit_cost, reorder_point)
