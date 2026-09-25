@@ -65,6 +65,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Settings & Sync</span>
         </a>
+
+        <div class="nav-section-title" style="margin-top: 0.75rem;">Support</div>
+        <a class="nav-item" data-view="help" id="nav-help">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Help & User Guide</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -82,7 +88,7 @@
       <!-- Top Header -->
       <header class="app-header">
         <div class="header-left">
-          <div class="tenant-picker-wrapper">
+          <div class="tenant-picker-wrapper" id="tenant-picker-container">
             <span class="tenant-picker-label">Facility</span>
             <select class="tenant-select" id="tenant-select" title="Active Tenant Warehouse">
               <!-- Dynamically populated -->
@@ -114,12 +120,18 @@
             </svg>
           </button>
 
-          <div class="user-profile-badge" title="Super Admin Account">
+          <!-- User Role Switcher Profile Box -->
+          <div class="user-profile-badge" title="Click to switch simulated role">
             <div class="user-avatar" id="header-user-avatar">D</div>
             <div class="user-info">
               <span class="user-name" id="header-user-name">Derek Lumpkin</span>
-              <span class="user-role" id="header-user-role">Super Admin</span>
+              <span class="user-role" id="header-user-role">Superadmin</span>
             </div>
+            <select class="user-role-select" id="header-user-switcher" title="Switch User Role for Testing" style="position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; cursor: pointer;">
+              <option value="usr-admin-1">👑 Derek Lumpkin (Superadmin)</option>
+              <option value="usr-mgr-1">👔 Sarah Connor (Manager)</option>
+              <option value="usr-op-1">📦 Mike Torres (User)</option>
+            </select>
           </div>
         </div>
       </header>
@@ -137,7 +149,7 @@
               <p class="view-subtitle">Real-time warehouse KPIs, category distribution, and recent inventory velocity.</p>
             </div>
             <div class="action-btn-group">
-              <button class="btn btn-secondary btn-sm" onclick="App.openNewItemModal()">+ New SKU</button>
+              <button class="btn btn-secondary btn-sm" id="btn-dash-new-sku" onclick="App.openNewItemModal()">+ New SKU</button>
               <button class="btn btn-success btn-sm" onclick="App.openQuickIntake()">+ Add Stock</button>
               <button class="btn btn-danger btn-sm" onclick="App.openQuickDispatch()">- Subtract Stock</button>
             </div>
@@ -253,7 +265,7 @@
               </select>
             </div>
             <div class="filter-right">
-              <span class="form-hint">Tip: Click <strong>+</strong> or <strong>-</strong> for rapid count adjustments</span>
+              <span class="form-hint">Tip: Click <strong>+</strong> or <strong>−</strong> stepper on any row for instant adjustments</span>
             </div>
           </div>
 
@@ -293,7 +305,7 @@
             </div>
             <div class="action-btn-group">
               <button class="btn btn-secondary btn-sm" id="btn-export-items">📥 Export CSV</button>
-              <button class="btn btn-primary btn-sm" onclick="App.openNewItemModal()">+ Add New SKU</button>
+              <button class="btn btn-primary btn-sm" id="btn-catalog-add-sku" onclick="App.openNewItemModal()">+ Add New SKU</button>
             </div>
           </div>
 
@@ -389,7 +401,7 @@
               <p class="view-subtitle">Manage operators, warehouse managers, and administrators for this facility.</p>
             </div>
             <div class="action-btn-group">
-              <button class="btn btn-primary btn-sm" onclick="App.openNewUserModal()">+ Add Team Member</button>
+              <button class="btn btn-primary btn-sm" id="btn-add-team-member" onclick="App.openNewUserModal()">+ Add Team Member</button>
             </div>
           </div>
 
@@ -413,13 +425,13 @@
         </section>
 
         <!-- ==========================================
-             VIEW 6: SETTINGS & SUPABASE SYNC
+             VIEW 6: SETTINGS & SUPABASE SYNC (SUPERADMIN ONLY)
              ========================================== -->
         <section class="view-container" id="view-settings">
           <div class="view-header">
             <div class="view-title-group">
-              <h1>System Settings & Database Sync</h1>
-              <p class="view-subtitle">Configure live Supabase connection parameters or manage demo warehouse storage.</p>
+              <h1>System Settings & Database Sync <span class="badge badge-danger" style="margin-left: 8px;">Superadmin Only</span></h1>
+              <p class="view-subtitle">Configure live Supabase connection parameters, manage API keys, and control warehouse data stores.</p>
             </div>
           </div>
 
@@ -466,6 +478,188 @@
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 7: HELP & USER GUIDE (WALKTHROUGH)
+             ========================================== -->
+        <section class="view-container" id="view-help">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Warehouse Operations & User Guide</h1>
+              <p class="view-subtitle">Illustrated, step-by-step instructions for receiving, dispatching, transferring, and auditing warehouse stock.</p>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- Guide Card 1: Receiving Stock -->
+            <div class="card">
+              <div class="card-header" style="background: var(--bg-sidebar);">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 1</span>
+                  <div class="card-title" style="font-size: 1.05rem;">How to Receive & Add New Stock (+ Intake)</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                  Follow these steps when new shipments or supplier deliveries arrive at the warehouse dock:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 1: Open Add Dialog</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click the green <strong>+ Add Stock</strong> button in the top navigation bar, or press <kbd style="background:var(--bg-card); padding:2px 5px; border:1px solid var(--border-color); border-radius:3px;">I</kbd> on your keyboard.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 2: Select SKU & Location</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Choose the item from the catalog dropdown and type the destination Bay / Bin (e.g. <code>A-01-01</code>).
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 3: Enter Quantity & PO #</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Enter the number of units received and type the Purchase Order or supplier reference note.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 4: Save & Confirm</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click <strong>Receive & Stock</strong>. On-hand units increment instantly, and an audit entry is automatically created.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Guide Card 2: Dispatching Stock -->
+            <div class="card">
+              <div class="card-header" style="background: var(--bg-sidebar);">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-danger" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 2</span>
+                  <div class="card-title" style="font-size: 1.05rem;">How to Pick & Dispatch Orders (− Dispatch)</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                  Follow these steps when picking goods for customer shipments, work orders, or outbound deliveries:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 1: Locate Item</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Find the item in the <strong>Inventory On Hand</strong> table using search or category filters.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 2: Click − Subtract</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click the red <strong>− Subtract</strong> button on the row or click the <strong>−</strong> quantity stepper.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 3: Enter Order Ref</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Specify the units being picked and type the customer order or delivery tracking number.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 4: Dispatch</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click <strong>Dispatch Units</strong>. Stock levels decrease, and reorder warnings appear automatically if stock falls low.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Guide Card 3: Moving Stock -->
+            <div class="card">
+              <div class="card-header" style="background: var(--bg-sidebar);">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-info" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 3</span>
+                  <div class="card-title" style="font-size: 1.05rem;">How to Move Stock Between Bays (⇄ Transfer)</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                  Use location transfers when reorganizing racks or consolidating pallets into new bin locations:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 1: Click ⇄ Move</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      On the item's row, click the <strong>⇄ Move</strong> button under Quick Actions.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 2: Enter Destination</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Type the target location (e.g. from <code>A-01-01</code> to <code>B-03-02</code>).
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 3: Transfer & Confirm</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click <strong>Complete Transfer</strong>. The system automatically reduces from the source bay and adds to the destination bay.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Guide Card 4: Physical Count Reconciliation -->
+            <div class="card">
+              <div class="card-header" style="background: var(--bg-sidebar);">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-warning" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 4</span>
+                  <div class="card-title" style="font-size: 1.05rem;">How to Perform a Physical Count Audit (⚙ Adjust)</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                  Use count adjustment during regular cycle audits or year-end physical inventory reconciliations:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 1: Click ⚙ Adjust</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click <strong>⚙ Adjust</strong> on the bay row you are physically counting.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 2: Enter Physical Count</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Enter the actual count physically found on the rack and describe the reason for any variance.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 3: Save Count</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                      Click <strong>Save Reconciled Count</strong>. The audit trail logs the exact delta variance and your operator name.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -727,10 +921,9 @@
             <div class="form-group">
               <label class="form-label">Role</label>
               <select class="form-select" id="user-role">
-                <option value="Admin">Admin (Full Access)</option>
-                <option value="Manager">Manager (Supervisory)</option>
-                <option value="Operator">Operator (Floor Operations)</option>
-                <option value="Viewer">Viewer (Read-Only)</option>
+                <option value="Superadmin">Superadmin (Global Database Admin)</option>
+                <option value="Manager">Manager (Facility Administrator)</option>
+                <option value="User">User (Standard Inventory Staff)</option>
               </select>
             </div>
           </div>

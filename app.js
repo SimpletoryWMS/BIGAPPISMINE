@@ -1,6 +1,7 @@
 /**
  * SIMPLETORY WMS - CORE APPLICATION CONTROLLER
- * Ultra-responsive, modern frontend logic for inventory, catalog, and audits.
+ * Ultra-responsive, modern frontend logic with 3-tier RBAC security (Superadmin, Manager, User),
+ * automated change logging, and interactive user guides.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this.bindForms();
       this.bindGlobalActions();
       this.bindShortcuts();
+      this.bindUserSwitcher();
 
       // Listen for data mutations (realtime or local)
       window.WMSDataService.onDataChange(() => {
@@ -31,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       await this.loadTenants();
       await this.refreshAllData();
+      this.applyRolePermissions();
       this.updateSyncIndicator();
     },
 
@@ -51,6 +54,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggleTheme() {
       this.applyTheme(this.theme === 'dark' ? 'light' : 'dark');
+    },
+
+    // ==========================================
+    // RBAC & ROLE LOCKING CONTROLLER
+    // ==========================================
+    applyRolePermissions() {
+      const user = window.WMSDataService.currentUser;
+      const role = user.role || 'Superadmin';
+
+      // Update header badge display
+      const avatarEl = document.getElementById('header-user-avatar');
+      const nameEl = document.getElementById('header-user-name');
+      const roleEl = document.getElementById('header-user-role');
+      const switcherEl = document.getElementById('header-user-switcher');
+
+      if (avatarEl) avatarEl.textContent = user.full_name ? user.full_name.charAt(0) : 'U';
+      if (nameEl) nameEl.textContent = user.full_name || 'User';
+      if (roleEl) roleEl.textContent = role;
+      if (switcherEl) switcherEl.value = user.id;
+
+      // 1. Settings View (Supabase Link): Locked to Superadmin only
+      const navSettings = document.getElementById('nav-settings');
+      if (navSettings) {
+        navSettings.style.display = (role === 'Superadmin') ? 'flex' : 'none';
+      }
+
+      // 2. Tenant / Facility Picker: Locked to Superadmin only
+      const tenantPicker = document.getElementById('tenant-picker-container');
+      if (tenantPicker) {
+        tenantPicker.style.display = (role === 'Superadmin') ? 'flex' : 'none';
+      }
+
+      // 3. Team & User Management: Locked to Superadmin and Manager
+      const navUsers = document.getElementById('nav-users');
+      if (navUsers) {
+        navUsers.style.display = (role === 'Superadmin' || role === 'Manager') ? 'flex' : 'none';
+      }
+
+      // 4. Catalog Creation / Editing: Locked to Superadmin and Manager
+      const btnDashNew = document.getElementById('btn-dash-new-sku');
+      const btnCatNew = document.getElementById('btn-catalog-add-sku');
+      if (btnDashNew) btnDashNew.style.display = (role === 'Superadmin' || role === 'Manager') ? 'inline-flex' : 'none';
+      if (btnCatNew) btnCatNew.style.display = (role === 'Superadmin' || role === 'Manager') ? 'inline-flex' : 'none';
+
+      // Re-render items table to show/hide edit actions based on role
+      this.renderItemsTable();
+
+      // If user is on a locked view, redirect to dashboard
+      if (this.currentView === 'settings' && role !== 'Superadmin') {
+        this.switchView('dashboard');
+      } else if (this.currentView === 'users' && role === 'User') {
+        this.switchView('dashboard');
+      }
+    },
+
+    bindUserSwitcher() {
+      const switcher = document.getElementById('header-user-switcher');
+      if (switcher) {
+        switcher.addEventListener('change', (e) => {
+          const userId = e.target.value;
+          const found = this.users.find(u => u.id === userId);
+          if (found) {
+            window.WMSDataService.currentUser = { ...found };
+            this.showToast(`Switched active role: ${found.full_name} (${found.role})`, 'info');
+            this.applyRolePermissions();
+          }
+        });
+      }
     },
 
     // ==========================================
@@ -77,6 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     switchView(viewName) {
+      const role = window.WMSDataService.currentUser.role;
+      // Guard locked views
+      if (viewName === 'settings' && role !== 'Superadmin') {
+        return this.showToast('Access Denied: Settings & Supabase connection is restricted to Superadmin.', 'danger');
+      }
+      if (viewName === 'users' && role === 'User') {
+        return this.showToast('Access Denied: Team management is restricted to Managers and Superadmins.', 'warning');
+      }
+
       this.currentView = viewName;
       
       // Update nav active class
@@ -319,6 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.getElementById('items-table-body');
       if (!tbody) return;
 
+      const role = window.WMSDataService.currentUser.role;
+      const canManage = role === 'Superadmin' || role === 'Manager';
+
       const searchTerm = (document.getElementById('items-search-input')?.value || '').toLowerCase().trim();
       const catFilter = document.getElementById('items-category-filter')?.value || '';
 
@@ -337,6 +420,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       tbody.innerHTML = filtered.map(item => {
+        const actionsHtml = canManage ? `
+          <div class="table-actions">
+            <button class="action-btn" title="Edit SKU" onclick="App.openEditItemModal('${item.id}')">✏ Edit</button>
+            <button class="action-btn" style="color: var(--danger);" title="Delete" onclick="App.handleDeleteItem('${item.id}')">🗑</button>
+          </div>
+        ` : `<span class="badge badge-neutral">Read Only</span>`;
+
         return `
           <tr>
             <td><span class="sku-tag">${item.sku}</span></td>
@@ -346,12 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${item.uom}</td>
             <td>$${Number(item.unit_cost || 0).toFixed(2)}</td>
             <td><span style="font-weight: 600; color: var(--warning);">${item.reorder_point || 0}</span></td>
-            <td>
-              <div class="table-actions">
-                <button class="action-btn" title="Edit SKU" onclick="App.openEditItemModal('${item.id}')">✏ Edit</button>
-                <button class="action-btn" style="color: var(--danger);" title="Delete" onclick="App.handleDeleteItem('${item.id}')">🗑</button>
-              </div>
-            </td>
+            <td>${actionsHtml}</td>
           </tr>
         `;
       }).join('');
@@ -419,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!tbody) return;
 
       tbody.innerHTML = this.users.map(u => {
-        const roleBadge = u.role === 'Admin' ? 'badge-danger' : u.role === 'Manager' ? 'badge-warning' : 'badge-info';
+        const roleBadge = u.role === 'Superadmin' ? 'badge-danger' : u.role === 'Manager' ? 'badge-warning' : 'badge-info';
         return `
           <tr>
             <td>
@@ -566,6 +651,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openNewItemModal() {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can add catalog items.', 'warning');
+      }
+
       const form = document.getElementById('form-item');
       if (form) form.reset();
       const idInput = document.getElementById('item-id');
@@ -576,6 +666,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openEditItemModal(itemId) {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can edit catalog items.', 'warning');
+      }
+
       const item = this.items.find(i => i.id === itemId);
       if (!item) return;
 
@@ -598,6 +693,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openNewUserModal() {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can add team members.', 'warning');
+      }
+
       const form = document.getElementById('form-user');
       if (form) form.reset();
       document.getElementById('user-id').value = '';
@@ -606,6 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     openEditUserModal(userId) {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can edit team members.', 'warning');
+      }
+
       const user = this.users.find(u => u.id === userId);
       if (!user) return;
 
@@ -613,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('user-fullname').value = user.full_name;
       document.getElementById('user-username').value = user.username;
       document.getElementById('user-email').value = user.email || '';
-      document.getElementById('user-role').value = user.role || 'Operator';
+      document.getElementById('user-role').value = user.role || 'User';
       document.getElementById('modal-user-title').textContent = `Edit Member: ${user.full_name}`;
 
       this.openModal('modal-user');
@@ -808,6 +913,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const btnSaveSupabase = document.getElementById('btn-save-supabase');
       if (btnSaveSupabase) {
         btnSaveSupabase.addEventListener('click', () => {
+          if (window.WMSDataService.currentUser.role !== 'Superadmin') {
+            return this.showToast('Superadmin access required to configure database credentials.', 'danger');
+          }
           const url = document.getElementById('setting-supabase-url').value;
           const key = document.getElementById('setting-supabase-key').value;
           const res = window.WMSDataService.saveConfig(url, key);
@@ -954,6 +1062,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     async handleDeleteItem(itemId) {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can delete catalog items.', 'warning');
+      }
+
       const item = this.items.find(i => i.id === itemId);
       if (!item) return;
       if (confirm(`Are you sure you want to delete SKU "${item.sku}"? This will also remove associated inventory records.`)) {
@@ -964,6 +1077,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     async handleDeleteUser(userId) {
+      const role = window.WMSDataService.currentUser.role;
+      if (role !== 'Superadmin' && role !== 'Manager') {
+        return this.showToast('Permission Denied: Only Managers and Superadmins can manage members.', 'warning');
+      }
+
       const user = this.users.find(u => u.id === userId);
       if (!user) return;
       if (confirm(`Remove access for "${user.full_name}"?`)) {
@@ -1023,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (seconds < 60) return `${seconds}s ago`;
       const mins = Math.floor(seconds / 60);
       if (mins < 60) return `${mins}m ago`;
-      const hrs = Math.floor(mins / 60);
+      const hrs = Math.floor(mins / 24);
       if (hrs < 24) return `${hrs}h ago`;
       return `${Math.floor(hrs / 24)}d ago`;
     }

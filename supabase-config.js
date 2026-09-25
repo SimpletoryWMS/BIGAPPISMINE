@@ -40,9 +40,9 @@
       { id: 'hist-4', tenant_id: 'org-primary', item_id: 'itm-4', sku: 'SKU-3001', item_name: 'Premium Utility Knife Blades (Pack of 50)', action_type: 'SUBTRACT', qty_change: -2, previous_qty: 10, new_qty: 8, location: 'B-02-02', user_name: 'Derek Lumpkin', notes: 'Fulfillment Order #1042', created_at: new Date(Date.now() - 3600000 * 2).toISOString() }
     ],
     users: [
-      { id: 'usr-admin-1', tenant_id: 'org-primary', username: 'derek', email: 'derek@simpletory.com', full_name: 'Derek Lumpkin', role: 'Admin', status: 'Active', created_at: new Date().toISOString() },
+      { id: 'usr-admin-1', tenant_id: 'org-primary', username: 'derek', email: 'derek@simpletory.com', full_name: 'Derek Lumpkin', role: 'Superadmin', status: 'Active', created_at: new Date().toISOString() },
       { id: 'usr-mgr-1', tenant_id: 'org-primary', username: 'sarah.c', email: 'sarah@simpletory.com', full_name: 'Sarah Connor', role: 'Manager', status: 'Active', created_at: new Date().toISOString() },
-      { id: 'usr-op-1', tenant_id: 'org-primary', username: 'mike.t', email: 'mike@simpletory.com', full_name: 'Mike Torres', role: 'Operator', status: 'Active', created_at: new Date().toISOString() }
+      { id: 'usr-op-1', tenant_id: 'org-primary', username: 'mike.t', email: 'mike@simpletory.com', full_name: 'Mike Torres', role: 'User', status: 'Active', created_at: new Date().toISOString() }
     ]
   };
 
@@ -52,7 +52,7 @@
       this.isSupabaseConnected = false;
       this.subscribers = [];
       this.activeTenantId = 'org-primary';
-      this.currentUser = { id: 'usr-admin-1', full_name: 'Derek Lumpkin', role: 'Admin' };
+      this.currentUser = { id: 'usr-admin-1', full_name: 'Derek Lumpkin', username: 'derek', role: 'Superadmin' };
       this.init();
     }
 
