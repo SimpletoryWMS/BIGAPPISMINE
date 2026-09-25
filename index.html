@@ -525,179 +525,668 @@
         </section>
 
         <!-- ==========================================
-             VIEW 7: HELP & USER GUIDE (WALKTHROUGH)
+             VIEW 7: HELP & USER GUIDE (ENTERPRISE SOP CENTER)
              ========================================== -->
         <section class="view-container" id="view-help">
-          <div class="view-header">
-            <div class="view-title-group">
-              <h1>Warehouse Operations & User Guide</h1>
-              <p class="view-subtitle">Illustrated, step-by-step instructions for receiving, dispatching, transferring, and auditing warehouse stock.</p>
+          <!-- Hero Banner & Live Search -->
+          <div class="help-hero-banner">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+              <span class="badge badge-primary" style="font-size: 0.75rem; padding: 3px 10px;">Enterprise Knowledge Base</span>
+              <span class="badge badge-success" style="font-size: 0.75rem; padding: 3px 10px;">v2.4 Live Manual</span>
+            </div>
+            <h1 style="font-size: 1.65rem; font-weight: 800; margin-bottom: 0.35rem;">Warehouse Operations & Standard Operating Procedures (SOP)</h1>
+            <p style="color: var(--text-secondary); font-size: 0.92rem; max-width: 780px; margin-bottom: 0;">
+              Comprehensive, step-by-step operating guidelines for receiving shipments, picking orders, internal rack transfers, cycle auditing, SKU master governance, and security controls.
+            </p>
+            
+            <div class="help-search-wrapper">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted); flex-shrink: 0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="help-search-input" class="help-search-input" placeholder="Search SOPs, workflows, keywords (e.g. 'transfer', 'reorder', 'password', 'intake', 'timeout')...">
             </div>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- Category Filter Navigation Pills -->
+          <div class="help-category-pills" id="help-category-pills">
+            <button class="help-pill-btn active" data-category="all">
+              <span>🌟</span> All SOPs & Guides
+            </button>
+            <button class="help-pill-btn" data-category="inbound">
+              <span>📦</span> Inbound & Receiving
+            </button>
+            <button class="help-pill-btn" data-category="outbound">
+              <span>🚚</span> Picking & Dispatch
+            </button>
+            <button class="help-pill-btn" data-category="transfers">
+              <span>🔄</span> Rack Transfers
+            </button>
+            <button class="help-pill-btn" data-category="audits">
+              <span>📋</span> Physical Counts & Audits
+            </button>
+            <button class="help-pill-btn" data-category="catalog">
+              <span>🏷️</span> Master Catalog & SKUs
+            </button>
+            <button class="help-pill-btn" data-category="facilities">
+              <span>🏢</span> Facilities & Tenants
+            </button>
+            <button class="help-pill-btn" data-category="security">
+              <span>🔐</span> Roles & Security
+            </button>
+            <button class="help-pill-btn" data-category="shortcuts">
+              <span>⌨️</span> Hotkeys & Shortcuts
+            </button>
+          </div>
+
+          <!-- Guides & SOP Container -->
+          <div id="help-content-list" style="display: flex; flex-direction: column; gap: 1.5rem;">
             
-            <!-- Guide Card 1: Receiving Stock -->
-            <div class="card">
-              <div class="card-header" style="background: var(--bg-sidebar);">
+            <!-- SOP Card 1: Inbound Receiving -->
+            <div class="card help-guide-card" data-category="inbound" data-keywords="receiving intake inbound arrival stock add po purchase order supplier dock delivery">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 1</span>
-                  <div class="card-title" style="font-size: 1.05rem;">How to Receive & Add New Stock (+ Intake)</div>
+                  <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">SOP 01</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Inbound Shipment Receiving & Stock Intake (+ Intake)</div>
                 </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Available to: All Operators</span>
               </div>
               <div class="card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                  Follow these steps when new shipments or supplier deliveries arrive at the warehouse dock:
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Execute this standard operating procedure whenever new vendor shipments, supplier purchase orders, or cross-docked goods arrive at the inbound warehouse dock.
                 </p>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 1: Open Add Dialog</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click the green <strong>+ Add Stock</strong> button in the top navigation bar, or press <kbd style="background:var(--bg-card); padding:2px 5px; border:1px solid var(--border-color); border-radius:3px;">I</kbd> on your keyboard.
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--success-light); color: var(--success);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Launch Intake Modal</strong>
                     </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click the green <strong>+ Add Stock</strong> button in the top navigation bar, or press hotkey <kbd class="shortcut-key">I</kbd>.
+                    </p>
                   </div>
 
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 2: Select SKU & Location</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Choose the item from the catalog dropdown and type the destination Bay / Bin (e.g. <code>A-01-01</code>).
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--success-light); color: var(--success);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Select SKU & Destination Bay</strong>
                     </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Select the catalog item from the dropdown and type the destination Bay / Bin (e.g. <code>A-01-01</code> or <code>RECEIVING-DOCK</code>).
+                    </p>
                   </div>
 
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 3: Enter Quantity & PO #</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Enter the number of units received and type the Purchase Order or supplier reference note.
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--success-light); color: var(--success);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Input Units & Purchase Order #</strong>
                     </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Enter the verified physical unit count. Enter the supplier invoice, PO #, or carrier Bill of Lading (BOL) in the Reference field.
+                    </p>
                   </div>
 
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--success); font-size: 0.85rem;">Step 4: Save & Confirm</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click <strong>Receive & Stock</strong>. On-hand units increment instantly, and an audit entry is automatically created.
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--success-light); color: var(--success);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Commit & Auto-Audit</strong>
                     </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Receive & Stock</strong>. On-hand inventory increments immediately and creates an immutable row in the Inventory History audit log.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-tip">
+                  <span style="font-size: 1.1rem;">💡</span>
+                  <div><strong>Best Practice:</strong> Double-check the barcode label on the physical pallet before confirming putaway to prevent misplacing mixed SKU batches in high-density rack zones.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 2: Outbound Picking & Dispatch -->
+            <div class="card help-guide-card" data-category="outbound" data-keywords="picking dispatch outbound subtract remove shipping orders fulfillment work order customers">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-danger" style="font-size: 0.8rem; padding: 4px 10px;">SOP 02</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Outbound Order Picking & Inventory Dispatch (− Dispatch)</div>
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Available to: All Operators</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Follow this procedure when picking stock for outbound customer sales orders, manufacturing work orders, or inter-facility transfers.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--danger-light); color: var(--danger);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Locate Stock in Table</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      On the <strong>Inventory On Hand</strong> view, use the live search bar or category filters to find the specific SKU and location.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--danger-light); color: var(--danger);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Click − Subtract Action</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click the red <strong>− Subtract</strong> button on that row, or use the <strong>−</strong> quantity stepper for single-unit picks.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--danger-light); color: var(--danger);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Specify Units & Order Reference</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Enter the number of units being dispatched. Type the customer order number, packing slip #, or carrier tracking ID.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--danger-light); color: var(--danger);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Confirm & Low-Stock Trigger</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Dispatch Units</strong>. If the remaining count drops to or below the minimum Reorder Point, a yellow <strong>Low Stock</strong> badge appears automatically.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-warning">
+                  <span style="font-size: 1.1rem;">⚠️</span>
+                  <div><strong>Safety Warning:</strong> You cannot dispatch more units than are currently on hand in that location. If stock is insufficient, check other warehouse bays or perform a location transfer.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 3: Rack Transfers -->
+            <div class="card help-guide-card" data-category="transfers" data-keywords="transfer move relocation internal consolidation bay rack aisle slotting bins">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-info" style="font-size: 0.8rem; padding: 4px 10px;">SOP 03</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Internal Location Relocation & Bay Transfers (⇄ Move)</div>
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Available to: All Operators</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Use internal transfers when reorganizing warehouse aisles, moving pallets from receiving staging to permanent bulk storage, or consolidating partial cartons.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Select Source Bay</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Find the item in the inventory list and click the blue <strong>⇄ Move</strong> button under Quick Actions.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Enter Destination Bay</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Type the target location code (e.g., from <code>STAGE-01</code> to <code>B-04-02</code>).
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Specify Units to Relocate</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Enter the exact quantity being moved. You can transfer full pallets or split partial cartons.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Atomic Database Move</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Complete Transfer</strong>. The system automatically reduces from the source location and adds to the destination location in a single atomic transaction.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-tip">
+                  <span style="font-size: 1.1rem;">💡</span>
+                  <div><strong>Consolidation Rule:</strong> If the destination bay already holds that same SKU, Simpletory will automatically merge the quantities together instead of creating duplicate records.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 4: Cycle Counting & Audits -->
+            <div class="card help-guide-card" data-category="audits" data-keywords="count cycle audit adjust reconcile variance physical stocktake reconciliation discrepancy">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-warning" style="font-size: 0.8rem; padding: 4px 10px;">SOP 04</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Physical Cycle Counting & Inventory Reconciliation (⚙ Adjust)</div>
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Available to: All Operators</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Perform periodic physical cycle counts to verify that on-hand inventory levels match physical rack contents, preventing stockouts and shrinkage.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--warning-light); color: var(--warning);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Initiate Bay Count</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Locate the bay row undergoing audit and click the <strong>⚙ Adjust</strong> button under Quick Actions.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--warning-light); color: var(--warning);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Perform Physical Count</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Physically count all units on the shelf or pallet. Check for damaged or un-scanned items.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--warning-light); color: var(--warning);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Enter Count & Variance Reason</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Input the verified physical quantity into the form and provide a clear explanation (e.g. <em>"Q4 Cycle Count"</em>, <em>"Found 2 damaged boxes"</em>).
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--warning-light); color: var(--warning);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Save Reconciled Count</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Save Reconciled Count</strong>. The system records the previous quantity, the new quantity, and the exact delta in the permanent audit trail.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-tip">
+                  <span style="font-size: 1.1rem;">📊</span>
+                  <div><strong>Accountability:</strong> The Inventory History log records the user's name, timestamp, and variance delta so management can track shrinkage trends across specific warehouse zones.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 5: Master Catalog Management -->
+            <div class="card help-guide-card" data-category="catalog" data-keywords="catalog sku item product create category subcategory uom unit cost reorder point master">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-primary" style="font-size: 0.8rem; padding: 4px 10px;">SOP 05</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Master SKU Catalog & Product Definition Management</div>
+                </div>
+                <span class="badge badge-warning" style="font-size: 0.72rem;">Restricted to: Superadmin & Manager</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Catalog management defines the master item records, classification hierarchy, units of measure, and safety stock reorder thresholds for your facility.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Open Item Catalog View</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Item Catalog</strong> in the left sidebar (or press <kbd class="shortcut-key">C</kbd>), then click the <strong>+ New SKU</strong> button.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Define SKU & Description</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Enter the unique SKU identifier (e.g. <code>SKU-5001</code>) and an item description. SKUs must be unique within each tenant facility.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Assign Categories & UOM</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Select or type the <strong>Category</strong>, <strong>Sub-Category</strong>, and <strong>Unit of Measure (UOM)</strong> (EA, CS, PL, RL, PK, etc.).
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Set Reorder Point & Unit Cost</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Enter the minimum safety stock threshold (reorder point) and the replacement unit cost for inventory valuation reports.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-tip">
+                  <span style="font-size: 1.1rem;">💡</span>
+                  <div><strong>Catalog vs Inventory:</strong> The <em>Item Catalog</em> defines what a product is, while <em>Inventory On Hand</em> tracks where and how many units exist in physical warehouse racks.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 6: Multi-Facility & Active/Inactive Rules -->
+            <div class="card help-guide-card" data-category="facilities" data-keywords="facility tenant warehouse isolation active inactive multi-tenant branch locations deactivate auto-hide">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-primary" style="font-size: 0.8rem; padding: 4px 10px;">SOP 06</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Multi-Facility Management & Active/Inactive Isolation Rules</div>
+                </div>
+                <span class="badge badge-primary" style="font-size: 0.72rem;">Restricted to: Superadmin Only</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Simpletory supports complete multi-facility isolation. Superadmins can manage multiple distribution centers, toggle facilities active/inactive, and control site visibility.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Access Facility Control</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Navigate to <strong>System Settings</strong> (press <kbd class="shortcut-key">S</kbd>) and scroll to the <strong>Warehouse Facilities & Tenant Isolation Control</strong> panel.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Add New Facilities</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>+ Add Facility</strong>, assign a name (e.g. <em>"West Coast Distribution Center"</em>), and define an isolation code (e.g. <code>org-west</code>).
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Toggle Active / Inactive Status</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Use the <strong>Deactivate / Activate</strong> action button on any facility row to immediately toggle its operational status in real-time.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Automatic Auto-Hiding</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Inactive facilities are <strong>instantly hidden</strong> from all login selectors, top header facility switchers, and operator dropdowns across all devices.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-warning">
+                  <span style="font-size: 1.1rem;">🔒</span>
+                  <div><strong>Security Protection:</strong> If a standard operator belonging to an inactive facility tries to sign in, access is blocked with a security notice directing them to contact their Superadmin.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 7: Roles & Security -->
+            <div class="card help-guide-card" data-category="security" data-keywords="roles rbac security superadmin manager user permissions password timeout sha-256 session lock inactivity">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-primary" style="font-size: 0.8rem; padding: 4px 10px;">SOP 07</span>
+                  <div class="card-title" style="font-size: 1.05rem;">User Roles, Access Permissions & Security Governance</div>
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Overview</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Simpletory enforces a strict 3-tier Role-Based Access Control (RBAC) model, automated 30-minute idle session timeouts, and cryptographic SHA-256 password protection.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                  <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                      <span class="badge badge-primary">Superadmin</span>
+                    </div>
+                    <ul style="font-size: 0.8rem; color: var(--text-secondary); padding-left: 1.25rem; margin: 0; line-height: 1.6;">
+                      <li>Global multi-warehouse switching</li>
+                      <li>Supabase cloud database configuration</li>
+                      <li>Create / Deactivate warehouse facilities</li>
+                      <li>Global user & team management</li>
+                      <li>Full inventory and catalog control</li>
+                    </ul>
+                  </div>
+
+                  <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                      <span class="badge badge-warning">Manager</span>
+                    </div>
+                    <ul style="font-size: 0.8rem; color: var(--text-secondary); padding-left: 1.25rem; margin: 0; line-height: 1.6;">
+                      <li>Manage all operations within assigned facility</li>
+                      <li>Create & edit master catalog SKUs</li>
+                      <li>Manage facility team members & operators</li>
+                      <li>Perform stock intake, pick, transfers, audits</li>
+                      <li><em>Restricted from global settings & other sites</em></li>
+                    </ul>
+                  </div>
+
+                  <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                      <span class="badge badge-secondary">Standard User / Operator</span>
+                    </div>
+                    <ul style="font-size: 0.8rem; color: var(--text-secondary); padding-left: 1.25rem; margin: 0; line-height: 1.6;">
+                      <li>View on-hand inventory in assigned facility</li>
+                      <li>Perform receiving (+ Add) and picking (− Pick)</li>
+                      <li>Execute rack transfers (⇄ Move) and cycle audits</li>
+                      <li>View change history audit trail</li>
+                      <li><em>Restricted from SKU master & settings</em></li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="sop-callout sop-callout-tip">
+                  <span style="font-size: 1.1rem;">⏱️</span>
+                  <div><strong>Inactivity Timeout:</strong> For compliance and floor security, if an operator is idle for <strong>30 minutes</strong> without mouse/keyboard interaction, the session terminates automatically and requires fresh login.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOP Card 8: Change History & Audit Trail -->
+            <div class="card help-guide-card" data-category="audits" data-keywords="history audit logs changes delta operator tracking timestamps compliance accountability">
+              <div class="card-header" style="background: var(--bg-sidebar); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge badge-info" style="font-size: 0.8rem; padding: 4px 10px;">SOP 08</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Inventory Change History, Audit Logs & Traceability</div>
+                </div>
+                <span class="badge badge-secondary" style="font-size: 0.72rem;">Available to: All Operators</span>
+              </div>
+              <div class="card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Every single stock modification (Add, Subtract, Move, Adjust, Transfer) creates a permanent, immutable record in the database audit log.
+                </p>
+
+                <div class="sop-grid">
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">1</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Open Change History</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Click <strong>Change History</strong> in the sidebar (or press <kbd class="shortcut-key">H</kbd>) to view the real-time audit stream.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">2</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Filter by Action Type</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Use the action filter dropdown to isolate specific transaction types (<code>ADD</code>, <code>SUBTRACT</code>, <code>ADJUST</code>, <code>TRANSFER</code>).
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">3</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Inspect Delta Quantities</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Review the exact <strong>Previous Quantity</strong>, <strong>Delta (+/−)</strong>, and resulting <strong>New Quantity</strong> for every transaction.
+                    </p>
+                  </div>
+
+                  <div class="sop-step-card">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="sop-step-number" style="background: var(--primary-light); color: var(--primary);">4</span>
+                      <strong style="font-size: 0.85rem; color: var(--text-primary);">Operator Accountability</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                      Each entry records the operator's full name, timestamp, location, and reason notes for complete compliance.
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Guide Card 2: Dispatching Stock -->
-            <div class="card">
+            <!-- FAQ & Troubleshooting Accordion -->
+            <div class="card help-guide-card" data-category="all security facilities" data-keywords="faq troubleshooting help questions answers problems password offline sync timeout">
               <div class="card-header" style="background: var(--bg-sidebar);">
                 <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <span class="badge badge-danger" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 2</span>
-                  <div class="card-title" style="font-size: 1.05rem;">How to Pick & Dispatch Orders (− Dispatch)</div>
+                  <span class="badge badge-primary" style="font-size: 0.8rem; padding: 4px 10px;">FAQ</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Frequently Asked Questions & Troubleshooting</div>
                 </div>
               </div>
               <div class="card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                  Follow these steps when picking goods for customer shipments, work orders, or outbound deliveries:
-                </p>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 1: Locate Item</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Find the item in the <strong>Inventory On Hand</strong> table using search or category filters.
-                    </div>
+                
+                <div class="faq-accordion-item">
+                  <div class="faq-header">
+                    <span>Q: Why can't an operator switch to or view another warehouse facility?</span>
+                    <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                   </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 2: Click − Subtract</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click the red <strong>− Subtract</strong> button on the row or click the <strong>−</strong> quantity stepper.
-                    </div>
-                  </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 3: Enter Order Ref</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Specify the units being picked and type the customer order or delivery tracking number.
-                    </div>
-                  </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--danger); font-size: 0.85rem;">Step 4: Dispatch</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click <strong>Dispatch Units</strong>. Stock levels decrease, and reorder warnings appear automatically if stock falls low.
-                    </div>
+                  <div class="faq-body">
+                    By design, standard operators and managers are restricted to their assigned facility for multi-tenant data isolation. Only accounts with the <strong>Superadmin</strong> role have global facility switching privileges.
                   </div>
                 </div>
+
+                <div class="faq-accordion-item">
+                  <div class="faq-header">
+                    <span>Q: How do I set or reset a team member's password?</span>
+                    <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="faq-body">
+                    You have two easy options:<br>
+                    <strong>1. Plain-Text Entry:</strong> Open your Supabase Table Editor, find the user in <code>public.users</code>, and type their temporary password directly into the <code>password_hash</code> column. On their next login, Simpletory will authenticate them and automatically upgrade it to a secure SHA-256 hash.<br>
+                    <strong>2. Self-Service Activation:</strong> Set <code>password_hash</code> to <code>NULL</code>. On their next sign-in, whatever password they type on the login screen becomes their permanent password.
+                  </div>
+                </div>
+
+                <div class="faq-accordion-item">
+                  <div class="faq-header">
+                    <span>Q: What triggers the yellow "Low Stock" warning badge?</span>
+                    <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="faq-body">
+                    Every master SKU has a configurable <strong>Reorder Point</strong> (minimum safety threshold). Whenever total on-hand inventory across all warehouse locations drops to or below this number, Simpletory automatically displays a yellow <strong>Low Stock</strong> warning badge and highlights the item in the Dashboard KPI alerts.
+                  </div>
+                </div>
+
+                <div class="faq-accordion-item">
+                  <div class="faq-header">
+                    <span>Q: How does the 30-minute idle session timeout protect the system?</span>
+                    <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="faq-body">
+                    In warehouse environments, terminals and tablets are frequently shared or left unattended on picking carts. If no user interaction (clicks, typing, touches) occurs for 30 consecutive minutes, the active session is cleared and the screen locks immediately to prevent unauthorized stock adjustments.
+                  </div>
+                </div>
+
+                <div class="faq-accordion-item">
+                  <div class="faq-header">
+                    <span>Q: Can I log in using my email address instead of my username?</span>
+                    <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="faq-body">
+                    Yes! The authentication gateway allows you to sign in using your <strong>Username</strong>, your <strong>Email Address</strong>, or your <strong>User ID</strong>.
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <!-- Guide Card 3: Moving Stock -->
-            <div class="card">
+            <!-- Keyboard Shortcuts Reference Card -->
+            <div class="card help-guide-card" data-category="shortcuts" data-keywords="keyboard shortcuts hotkeys hotkey navigation fast keys cheat sheet">
               <div class="card-header" style="background: var(--bg-sidebar);">
                 <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <span class="badge badge-info" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 3</span>
-                  <div class="card-title" style="font-size: 1.05rem;">How to Move Stock Between Bays (⇄ Transfer)</div>
+                  <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">Pro Tips</span>
+                  <div class="card-title" style="font-size: 1.05rem;">Keyboard Hotkeys & Fast Navigation Cheat Sheet</div>
                 </div>
               </div>
               <div class="card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                  Use location transfers when reorganizing racks or consolidating pallets into new bin locations:
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.88rem;">
+                  Power operators can use keyboard shortcuts for high-speed stock operations and hands-free barcode scanning:
                 </p>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 1: Click ⇄ Move</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      On the item's row, click the <strong>⇄ Move</strong> button under Quick Actions.
-                    </div>
+                <div class="shortcut-grid">
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Quick Stock Intake (+ Add)</span>
+                    <kbd class="shortcut-key">I</kbd>
                   </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 2: Enter Destination</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Type the target location (e.g. from <code>A-01-01</code> to <code>B-03-02</code>).
-                    </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Jump to Dashboard Overview</span>
+                    <kbd class="shortcut-key">D</kbd>
                   </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--info); font-size: 0.85rem;">Step 3: Transfer & Confirm</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click <strong>Complete Transfer</strong>. The system automatically reduces from the source bay and adds to the destination bay.
-                    </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Jump to Item Catalog</span>
+                    <kbd class="shortcut-key">C</kbd>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Guide Card 4: Physical Count Reconciliation -->
-            <div class="card">
-              <div class="card-header" style="background: var(--bg-sidebar);">
-                <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <span class="badge badge-warning" style="font-size: 0.8rem; padding: 4px 10px;">Workflow 4</span>
-                  <div class="card-title" style="font-size: 1.05rem;">How to Perform a Physical Count Audit (⚙ Adjust)</div>
-                </div>
-              </div>
-              <div class="card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                  Use count adjustment during regular cycle audits or year-end physical inventory reconciliations:
-                </p>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 1: Click ⚙ Adjust</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click <strong>⚙ Adjust</strong> on the bay row you are physically counting.
-                    </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Jump to Change History Audit</span>
+                    <kbd class="shortcut-key">H</kbd>
                   </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 2: Enter Physical Count</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Enter the actual count physically found on the rack and describe the reason for any variance.
-                    </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Jump to System Settings (Superadmin)</span>
+                    <kbd class="shortcut-key">S</kbd>
                   </div>
-
-                  <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; color: var(--warning); font-size: 0.85rem;">Step 3: Save Count</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
-                      Click <strong>Save Reconciled Count</strong>. The audit trail logs the exact delta variance and your operator name.
-                    </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Jump to Team Management</span>
+                    <kbd class="shortcut-key">U</kbd>
+                  </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Open Help Center & SOP Manual</span>
+                    <kbd class="shortcut-key">?</kbd>
+                  </div>
+                  <div class="shortcut-item">
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">Close Any Modal / Dialog</span>
+                    <kbd class="shortcut-key">Esc</kbd>
                   </div>
                 </div>
               </div>

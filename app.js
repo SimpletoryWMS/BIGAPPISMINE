@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this.bindForms();
       this.bindGlobalActions();
       this.bindShortcuts();
+      this.bindHelpCenter();
       this.bindUserProfileMenu();
       this.initIdleTimeoutTracker();
 
@@ -1330,13 +1331,79 @@ document.addEventListener('DOMContentLoaded', () => {
           e.preventDefault();
           const search = document.getElementById('global-search-input');
           if (search) search.focus();
-        } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
-          e.preventDefault();
-          this.openNewItemModal();
         } else if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           this.openQuickIntake();
+        } else if (e.key.toLowerCase() === 'd' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('dashboard');
+        } else if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('items');
+        } else if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('history');
+        } else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('settings');
+        } else if (e.key.toLowerCase() === 'u' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('users');
+        } else if ((e.key === '?' || e.key === 'F1') && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('help');
         }
+      });
+    },
+
+    bindHelpCenter() {
+      const searchInput = document.getElementById('help-search-input');
+      const pillButtons = document.querySelectorAll('.help-pill-btn');
+      const guideCards = document.querySelectorAll('.help-guide-card');
+      const faqHeaders = document.querySelectorAll('.faq-header');
+
+      // 1. Live Category Filtering
+      pillButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          pillButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const category = btn.getAttribute('data-category');
+
+          guideCards.forEach(card => {
+            const cardCat = card.getAttribute('data-category') || '';
+            if (category === 'all' || cardCat.includes(category)) {
+              card.style.display = 'block';
+            } else {
+              card.style.display = 'none';
+            }
+          });
+        });
+      });
+
+      // 2. Live Keyword Search
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = (e.target.value || '').toLowerCase().trim();
+          guideCards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            const keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+            if (!q || text.includes(q) || keywords.includes(q)) {
+              card.style.display = 'block';
+            } else {
+              card.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // 3. FAQ Accordions
+      faqHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+          const item = header.closest('.faq-accordion-item');
+          if (item) {
+            item.classList.toggle('open');
+          }
+        });
       });
     },
 
