@@ -1395,16 +1395,6 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       }
-
-      // 3. FAQ Accordions
-      faqHeaders.forEach(header => {
-        header.addEventListener('click', () => {
-          const item = header.closest('.faq-accordion-item');
-          if (item) {
-            item.classList.toggle('open');
-          }
-        });
-      });
     },
 
     async handleDeleteItem(itemId) {
