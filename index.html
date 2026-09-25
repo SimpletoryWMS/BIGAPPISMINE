@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simpletory | Modern Warehouse Management System</title>
+  <meta name="description" content="Fast, simplified multi-tenant warehouse management system with real-time inventory tracking, barcode scanning, and audit trails.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Supabase CDN Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <div class="brand-title">
+          Simpletory <span class="brand-badge">WMS</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Operations</div>
+        <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-view="inventory" id="nav-inventory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          <span>Inventory On Hand</span>
+          <span class="nav-badge" id="nav-inventory-badge">0</span>
+        </a>
+        <a class="nav-item" data-view="items" id="nav-items">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          <span>Item Master</span>
+        </a>
+        <a class="nav-item" data-view="scanner" id="nav-scanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/></svg>
+          <span>Scan & Log</span>
+        </a>
+
+        <div class="nav-section-title" style="margin-top: 0.75rem;">Governance</div>
+        <a class="nav-item" data-view="history" id="nav-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+          <span>Audit History</span>
+        </a>
+        <a class="nav-item" data-view="users" id="nav-users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Team & RBAC</span>
+        </a>
+        <a class="nav-item" data-view="settings" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings & Sync</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sync-status-indicator">
+          <div class="status-dot" id="sync-status-dot"></div>
+          <span id="sync-status-text">Demo Mode</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN CONTENT AREA
+         ========================================== -->
+    <main class="app-main">
+      <!-- Top Header -->
+      <header class="app-header">
+        <div class="header-left">
+          <div class="tenant-picker-wrapper">
+            <span class="tenant-picker-label">Facility</span>
+            <select class="tenant-select" id="tenant-select" title="Active Tenant Warehouse">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div class="global-search-wrapper">
+            <svg class="search-icon-left" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="global-search-input" id="global-search-input" placeholder="Search SKU, Item, Location...">
+            <span class="search-shortcut-badge">/</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="action-btn-group">
+            <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
+              <span>+ Intake Stock</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="App.switchView('scanner')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/></svg>
+              <span>Scan</span>
+            </button>
+          </div>
+
+          <button class="btn btn-secondary btn-icon-only" id="btn-toggle-theme" title="Toggle Light/Dark Theme">
+            <svg id="theme-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <!-- Dynamically rendered -->
+            </svg>
+          </button>
+
+          <div class="user-profile-badge" title="Super Admin Account">
+            <div class="user-avatar" id="header-user-avatar">D</div>
+            <div class="user-info">
+              <span class="user-name" id="header-user-name">Derek Lumpkin</span>
+              <span class="user-role" id="header-user-role">Super Admin</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Content Viewport -->
+      <div class="content-viewport">
+        
+        <!-- ==========================================
+             VIEW 1: DASHBOARD
+             ========================================== -->
+        <section class="view-container active" id="view-dashboard">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Operations Dashboard</h1>
+              <p class="view-subtitle">Real-time warehouse KPIs, category distribution, and recent inventory velocity.</p>
+            </div>
+            <div class="action-btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="App.openNewItemModal()">+ New SKU</button>
+              <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">Receive Shipment</button>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Active SKUs</div>
+                <div class="stat-value" id="stat-total-skus">0</div>
+                <div class="stat-subtext">Catalog items defined</div>
+              </div>
+              <div class="stat-icon-wrapper icon-primary">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Total Units on Hand</div>
+                <div class="stat-value" id="stat-total-units">0</div>
+                <div class="stat-subtext">Stored across all locations</div>
+              </div>
+              <div class="stat-icon-wrapper icon-success">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Low Stock Alerts</div>
+                <div class="stat-value" id="stat-low-stock" style="color: var(--danger);">0</div>
+                <div class="stat-subtext">At or below reorder threshold</div>
+              </div>
+              <div class="stat-icon-wrapper icon-danger">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">Total Inventory Value</div>
+                <div class="stat-value" id="stat-total-value">$0.00</div>
+                <div class="stat-subtext">Extended valuation</div>
+              </div>
+              <div class="stat-icon-wrapper icon-warning">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2-Column Dashboard Cards -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- Category Distribution -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Inventory by Category</div>
+                <button class="btn btn-secondary btn-sm" onclick="App.switchView('inventory')">View All</button>
+              </div>
+              <div class="card-body" id="dashboard-category-breakdown">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Recent Stock Movements</div>
+                <button class="btn btn-secondary btn-sm" onclick="App.switchView('history')">Audit Trail</button>
+              </div>
+              <div class="card-body" id="dashboard-recent-activity">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 2: INVENTORY ON HAND
+             ========================================== -->
+        <section class="view-container" id="view-inventory">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Inventory on Hand</h1>
+              <p class="view-subtitle">Live physical stock levels by bay, bin, and location with quick action triggers.</p>
+            </div>
+            <div class="action-btn-group">
+              <button class="btn btn-secondary btn-sm" id="btn-export-inventory">📥 Export CSV</button>
+              <button class="btn btn-primary btn-sm" onclick="App.openQuickIntake()">+ Intake Stock</button>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="table-filter-bar">
+            <div class="filter-left">
+              <input type="text" class="input-control" id="inventory-search-input" placeholder="Search SKU, name, bay..." style="width: 240px;">
+              <select class="input-control" id="inventory-category-filter">
+                <option value="">All Categories</option>
+              </select>
+              <select class="input-control" id="inventory-status-filter">
+                <option value="">All Statuses</option>
+                <option value="Available">Available</option>
+                <option value="Low Stock">Low Stock</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+            </div>
+            <div class="filter-right">
+              <span class="form-hint">Tip: Click <strong>+</strong> or <strong>-</strong> for rapid count adjustments</span>
+            </div>
+          </div>
+
+          <!-- Responsive Data Table -->
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>SKU & Barcode</th>
+                  <th>Item Name & Category</th>
+                  <th>Location</th>
+                  <th>On Hand</th>
+                  <th>Unit Cost (Ext)</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-table-body">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 3: ITEM MASTER CATALOG
+             ========================================== -->
+        <section class="view-container" id="view-items">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Item Master Catalog</h1>
+              <p class="view-subtitle">Centralized SKU registry, unit definitions, barcode identifiers, and reorder points.</p>
+            </div>
+            <div class="action-btn-group">
+              <button class="btn btn-secondary btn-sm" id="btn-export-items">📥 Export CSV</button>
+              <button class="btn btn-primary btn-sm" onclick="App.openNewItemModal()">+ Add New SKU</button>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="table-filter-bar">
+            <div class="filter-left">
+              <input type="text" class="input-control" id="items-search-input" placeholder="Search SKU, name, barcode..." style="width: 260px;">
+              <select class="input-control" id="items-category-filter">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>SKU Code</th>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>UOM</th>
+                  <th>Unit Cost</th>
+                  <th>Reorder Point</th>
+                  <th>Barcode</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="items-table-body">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 4: SCANNER & RAPID WORKFLOW
+             ========================================== -->
+        <section class="view-container" id="view-scanner">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Scan & Log Terminal</h1>
+              <p class="view-subtitle">High-speed keyboard/hardware scanner workflow for rapid floor intake, picking, and lookups.</p>
+            </div>
+          </div>
+
+          <div class="scanner-grid">
+            <!-- Scan Input Console -->
+            <div class="scanner-terminal-card">
+              <div class="scanner-display">
+                <div class="scanner-laser-line"></div>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m1 0h16"/>
+                </svg>
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 600;">
+                  READY FOR BARCODE SCAN
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Scan Mode</label>
+                <select class="form-select" id="scanner-mode-select">
+                  <option value="INTAKE">Fast Intake (+ Receive Stock)</option>
+                  <option value="PICK">Fast Pick (- Dispatch Stock)</option>
+                  <option value="LOOKUP">Instant Stock & Bay Lookup</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Barcode / SKU Entry (Press Enter to Scan)</label>
+                <input type="text" class="scanner-input-large" id="scanner-barcode-input" placeholder="e.g. SKU-1001" autofocus autocomplete="off">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Target Location</label>
+                  <input type="text" class="form-input" id="scanner-location-input" value="A-01-01" placeholder="e.g. A-01-01">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" class="form-input" id="scanner-qty-input" value="1" min="1">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Audit Notes (Optional)</label>
+                <input type="text" class="form-input" id="scanner-notes-input" placeholder="e.g. Floor restock / Express order">
+              </div>
+
+              <button class="btn btn-primary" id="btn-scanner-submit" style="padding: 0.85rem; font-size: 0.95rem;">
+                ⚡ Execute Scan Action
+              </button>
+
+              <!-- Dynamic Scan Result Feedback -->
+              <div id="scanner-result-display" style="display: none; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);"></div>
+            </div>
+
+            <!-- Scanner Helper & Instructions -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Scanner Floor Tips</div>
+              </div>
+              <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                  <div style="background: var(--bg-input); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary);">Hardware Scanner Compatibility</div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
+                      Any standard USB or Bluetooth HID barcode wedge scanner works out of the box. Keep the cursor focused in the barcode field.
+                    </div>
+                  </div>
+
+                  <div style="background: var(--bg-input); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--success);">Quick Keyboard Shortcuts</div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px;">
+                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">S</kbd> anywhere to jump to this scan terminal.<br>
+                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">I</kbd> for stock intake modal.<br>
+                      Press <kbd style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); border:1px solid var(--border-color);">N</kbd> to add a new SKU.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 5: AUDIT HISTORY
+             ========================================== -->
+        <section class="view-container" id="view-history">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Inventory Audit Trail</h1>
+              <p class="view-subtitle">Full immutable log of all inventory intakes, dispatches, cycle adjustments, and transfers.</p>
+            </div>
+            <div class="action-btn-group">
+              <button class="btn btn-secondary btn-sm" id="btn-export-history">📥 Export History CSV</button>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="table-filter-bar">
+            <div class="filter-left">
+              <input type="text" class="input-control" id="history-search-input" placeholder="Search SKU, item, operator, notes..." style="width: 260px;">
+              <select class="input-control" id="history-action-filter">
+                <option value="">All Action Types</option>
+                <option value="ADD">ADD (Intake)</option>
+                <option value="SUBTRACT">SUBTRACT (Dispatch)</option>
+                <option value="ADJUST">ADJUST (Audit Count)</option>
+                <option value="TRANSFER">TRANSFER (Move)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Item & SKU</th>
+                  <th>Action</th>
+                  <th>Delta</th>
+                  <th>Qty Change</th>
+                  <th>Location</th>
+                  <th>Operator</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 6: TEAM & RBAC
+             ========================================== -->
+        <section class="view-container" id="view-users">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>Team & Role-Based Access Control</h1>
+              <p class="view-subtitle">Manage operators, warehouse managers, and administrators for this facility.</p>
+            </div>
+            <div class="action-btn-group">
+              <button class="btn btn-primary btn-sm" onclick="App.openNewUserModal()">+ Add Team Member</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <!-- Dynamically rendered -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 7: SETTINGS & SUPABASE SYNC
+             ========================================== -->
+        <section class="view-container" id="view-settings">
+          <div class="view-header">
+            <div class="view-title-group">
+              <h1>System Settings & Database Sync</h1>
+              <p class="view-subtitle">Configure live Supabase connection parameters or manage demo warehouse storage.</p>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem;">
+            <!-- Supabase Config Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Live Supabase Database Connection</div>
+              </div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                  <label class="form-label">Supabase Project URL</label>
+                  <input type="text" class="form-input" id="setting-supabase-url" placeholder="https://your-project.supabase.co">
+                  <span class="form-hint">Find in your Supabase project settings -> API</span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                  <label class="form-label">Supabase Anon Public API Key</label>
+                  <input type="password" class="form-input" id="setting-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                  <span class="form-hint">Safe for client-side queries protected with RLS</span>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem;">
+                  <button class="btn btn-primary" id="btn-save-supabase">Save & Connect</button>
+                  <button class="btn btn-secondary" id="btn-test-supabase">Test Connection</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Demo Data Management Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Local Demo Data & Diagnostics</div>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+                  When Supabase credentials are omitted, Simpletory operates autonomously with a high-performance in-browser database mirroring the SQL schema.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                  <button class="btn btn-secondary" id="btn-reset-demo-data" style="color: var(--danger); justify-content: flex-start;">
+                    ↺ Reset Demo Inventory to Default Seed
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==========================================
+       MODALS & DIALOGS
+       ========================================== -->
+
+  <!-- Modal 1: SKU Catalog Item -->
+  <div class="modal-overlay" id="modal-item">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-item-title">Add New SKU to Catalog</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-item">
+        <div class="modal-body">
+          <input type="hidden" id="item-id">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">SKU Code *</label>
+              <input type="text" class="form-input" id="item-sku" placeholder="e.g. SKU-9001" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <input type="text" class="form-input" id="item-category" placeholder="e.g. Packaging, Hardware" value="General">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Item Description / Name *</label>
+            <input type="text" class="form-input" id="item-name" placeholder="e.g. Industrial Packing Tape 3-Inch" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Unit of Measure (UOM)</label>
+              <select class="form-select" id="item-uom">
+                <option value="EA">EA (Each)</option>
+                <option value="CS">CS (Case)</option>
+                <option value="PK">PK (Pack)</option>
+                <option value="RL">RL (Roll)</option>
+                <option value="PL">PL (Pallet)</option>
+                <option value="BX">BX (Box)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unit Cost ($)</label>
+              <input type="number" step="0.01" class="form-input" id="item-cost" placeholder="0.00" value="0.00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Reorder Point</label>
+              <input type="number" class="form-input" id="item-reorder" placeholder="0" value="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Barcode (Defaults to SKU)</label>
+              <input type="text" class="form-input" id="item-barcode" placeholder="Optional barcode string">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save SKU</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Stock Intake -->
+  <div class="modal-overlay" id="modal-intake">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">Stock Intake / Fast Receive</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-intake">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Select Catalog Item *</label>
+            <select class="form-select" id="intake-item-select" required></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Destination Location / Bay *</label>
+              <input type="text" class="form-input" id="intake-location" value="A-01-01" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantity to Receive *</label>
+              <input type="number" step="any" class="form-input" id="intake-qty" placeholder="e.g. 50" min="1" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Receipt / PO Notes</label>
+            <input type="text" class="form-input" id="intake-notes" placeholder="e.g. PO-9912 from Supplier">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-success">Receive & Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Stock Dispatch -->
+  <div class="modal-overlay" id="modal-dispatch">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">Pick & Dispatch Stock</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-dispatch">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Select Item *</label>
+            <select class="form-select" id="dispatch-item-select" required></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Source Location *</label>
+              <input type="text" class="form-input" id="dispatch-location" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantity to Dispatch *</label>
+              <input type="number" step="any" class="form-input" id="dispatch-qty" placeholder="e.g. 10" min="1" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Dispatch Order / Pick Notes</label>
+            <input type="text" class="form-input" id="dispatch-notes" placeholder="e.g. Order #5542 Customer Delivery">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-danger">Dispatch Units</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Stock Adjustment -->
+  <div class="modal-overlay" id="modal-adjust">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">Cycle Count Reconciliation</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-adjust">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Catalog Item *</label>
+            <select class="form-select" id="adjust-item-select" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-input" id="adjust-location" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">System Recorded Qty</label>
+              <input type="number" class="form-input" id="adjust-current-qty" readonly style="opacity: 0.7;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual Physical Count *</label>
+              <input type="number" step="any" class="form-input" id="adjust-actual-qty" min="0" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Variance Reason *</label>
+            <input type="text" class="form-input" id="adjust-reason" placeholder="e.g. Physical inventory cycle count audit" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Reconciled Count</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Location Transfer -->
+  <div class="modal-overlay" id="modal-transfer">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">Transfer Stock Location</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-transfer">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Item *</label>
+            <select class="form-select" id="transfer-item-select" required></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">From Location *</label>
+              <input type="text" class="form-input" id="transfer-from-location" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">To Location *</label>
+              <input type="text" class="form-input" id="transfer-to-location" placeholder="e.g. B-03-01" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Transfer Quantity *</label>
+            <input type="number" step="any" class="form-input" id="transfer-qty" min="1" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Transfer Reason / Notes</label>
+            <input type="text" class="form-input" id="transfer-notes" placeholder="e.g. Consolidating pallet bays">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Complete Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Thermal Barcode Label -->
+  <div class="modal-overlay" id="modal-label">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <div class="modal-title">Thermal Barcode Label</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <div class="modal-body" style="background: var(--bg-body); padding: 2rem 1rem;">
+        <div id="label-preview-container">
+          <!-- Dynamically populated thermal label -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="btn-print-label-confirm">🖨 Print Label</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 7: User Management -->
+  <div class="modal-overlay" id="modal-user">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-user-title">Add Team Member</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-user">
+        <div class="modal-body">
+          <input type="hidden" id="user-id">
+
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" class="form-input" id="user-fullname" placeholder="e.g. Derek Lumpkin" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Username *</label>
+              <input type="text" class="form-input" id="user-username" placeholder="e.g. derek.l" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <select class="form-select" id="user-role">
+                <option value="Admin">Admin (Full Access)</option>
+                <option value="Manager">Manager (Supervisory)</option>
+                <option value="Operator">Operator (Floor Operations)</option>
+                <option value="Viewer">Viewer (Read-Only)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="user-email" placeholder="e.g. derek@simpletory.com">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
