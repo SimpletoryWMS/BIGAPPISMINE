@@ -18,12 +18,12 @@
       { id: 'org-east', name: 'East Coast Distribution Center', created_at: new Date().toISOString() }
     ],
     items: [
-      { id: 'itm-1', tenant_id: 'org-primary', sku: 'SKU-1001', name: 'Standard Heavy Duty Pallet Box', category: 'Packaging', uom: 'EA', unit_cost: 14.50, reorder_point: 20, barcode: 'SKU-1001' },
-      { id: 'itm-2', tenant_id: 'org-primary', sku: 'SKU-1002', name: 'Industrial Stretch Film Roll 80GA', category: 'Packaging', uom: 'RL', unit_cost: 22.00, reorder_point: 15, barcode: 'SKU-1002' },
-      { id: 'itm-3', tenant_id: 'org-primary', sku: 'SKU-2001', name: 'Heavy Duty Steel Bracket 4-Hole', category: 'Hardware', uom: 'EA', unit_cost: 3.75, reorder_point: 50, barcode: 'SKU-2001' },
-      { id: 'itm-4', tenant_id: 'org-primary', sku: 'SKU-3001', name: 'Premium Utility Knife Blades (Pack of 50)', category: 'Tools', uom: 'PK', unit_cost: 8.90, reorder_point: 10, barcode: 'SKU-3001' },
-      { id: 'itm-5', tenant_id: 'org-primary', sku: 'SKU-4001', name: 'Poly Bubble Mailers #0 (6x10)', category: 'Packaging', uom: 'CS', unit_cost: 32.40, reorder_point: 25, barcode: 'SKU-4001' },
-      { id: 'itm-6', tenant_id: 'org-primary', sku: 'SKU-5001', name: 'Direct Thermal Shipping Labels 4x6', category: 'Supplies', uom: 'RL', unit_cost: 11.25, reorder_point: 30, barcode: 'SKU-5001' }
+      { id: 'itm-1', tenant_id: 'org-primary', sku: 'SKU-1001', name: 'Standard Heavy Duty Pallet Box', category: 'Packaging', sub_category: 'Corrugated', uom: 'EA', unit_cost: 14.50, reorder_point: 20 },
+      { id: 'itm-2', tenant_id: 'org-primary', sku: 'SKU-1002', name: 'Industrial Stretch Film Roll 80GA', category: 'Packaging', sub_category: 'Plastic Wrap', uom: 'RL', unit_cost: 22.00, reorder_point: 15 },
+      { id: 'itm-3', tenant_id: 'org-primary', sku: 'SKU-2001', name: 'Heavy Duty Steel Bracket 4-Hole', category: 'Hardware', sub_category: 'Brackets', uom: 'EA', unit_cost: 3.75, reorder_point: 50 },
+      { id: 'itm-4', tenant_id: 'org-primary', sku: 'SKU-3001', name: 'Premium Utility Knife Blades (Pack of 50)', category: 'Tools', sub_category: 'Blades', uom: 'PK', unit_cost: 8.90, reorder_point: 10 },
+      { id: 'itm-5', tenant_id: 'org-primary', sku: 'SKU-4001', name: 'Poly Bubble Mailers #0 (6x10)', category: 'Packaging', sub_category: 'Envelopes', uom: 'CS', unit_cost: 32.40, reorder_point: 25 },
+      { id: 'itm-6', tenant_id: 'org-primary', sku: 'SKU-5001', name: 'Direct Thermal Shipping Labels 4x6', category: 'Supplies', sub_category: 'Labels', uom: 'RL', unit_cost: 11.25, reorder_point: 30 }
     ],
     inventory: [
       { id: 'inv-1', tenant_id: 'org-primary', item_id: 'itm-1', location: 'A-01-01', quantity: 120, status: 'Available', updated_at: new Date().toISOString() },

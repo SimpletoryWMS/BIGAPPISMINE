@@ -16,10 +16,10 @@ CREATE TABLE IF NOT EXISTS public.items (
     sku TEXT NOT NULL,
     name TEXT NOT NULL,
     category TEXT DEFAULT 'General',
+    sub_category TEXT DEFAULT 'Standard',
     uom TEXT NOT NULL DEFAULT 'EA',
     unit_cost NUMERIC(12, 2) DEFAULT 0.00,
     reorder_point NUMERIC(12, 2) DEFAULT 0.00,
-    barcode TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_tenant_sku UNIQUE (tenant_id, sku)
 );
@@ -117,12 +117,12 @@ VALUES ('usr-admin-1', 'org-primary', 'derek', 'derek@simpletory.com', NULL, 'De
 ON CONFLICT (tenant_id, username) DO UPDATE SET role = 'Admin';
 
 -- Seed Starter Catalog Items
-INSERT INTO public.items (id, tenant_id, sku, name, category, uom, unit_cost, reorder_point, barcode)
+INSERT INTO public.items (id, tenant_id, sku, name, category, sub_category, uom, unit_cost, reorder_point)
 VALUES 
-  ('itm-1', 'org-primary', 'SKU-1001', 'Standard Heavy Duty Pallet Box', 'Packaging', 'EA', 14.50, 20, 'SKU-1001'),
-  ('itm-2', 'org-primary', 'SKU-1002', 'Industrial Stretch Film Roll 80GA', 'Packaging', 'RL', 22.00, 15, 'SKU-1002'),
-  ('itm-3', 'org-primary', 'SKU-2001', 'Heavy Duty Steel Bracket 4-Hole', 'Hardware', 'EA', 3.75, 50, 'SKU-2001'),
-  ('itm-4', 'org-primary', 'SKU-3001', 'Premium Utility Knife Blades (Pack of 50)', 'Tools', 'PK', 8.90, 10, 'SKU-3001')
+  ('itm-1', 'org-primary', 'SKU-1001', 'Standard Heavy Duty Pallet Box', 'Packaging', 'Corrugated', 'EA', 14.50, 20),
+  ('itm-2', 'org-primary', 'SKU-1002', 'Industrial Stretch Film Roll 80GA', 'Packaging', 'Plastic Wrap', 'RL', 22.00, 15),
+  ('itm-3', 'org-primary', 'SKU-2001', 'Heavy Duty Steel Bracket 4-Hole', 'Hardware', 'Brackets', 'EA', 3.75, 50),
+  ('itm-4', 'org-primary', 'SKU-3001', 'Premium Utility Knife Blades (Pack of 50)', 'Tools', 'Blades', 'PK', 8.90, 10)
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed Initial On-Hand Inventory

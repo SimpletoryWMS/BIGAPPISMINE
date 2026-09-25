@@ -264,30 +264,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No inventory records found matching your filters.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 2rem; color: var(--text-muted);">No inventory records found matching your filters.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtered.map(inv => {
-        const item = this.items.find(i => i.id === inv.item_id) || { sku: 'Unknown', name: 'Unknown', uom: 'EA', unit_cost: 0 };
+        const item = this.items.find(i => i.id === inv.item_id) || { sku: 'Unknown', name: 'Unknown', category: 'General', sub_category: 'Standard', uom: 'EA', unit_cost: 0 };
         const extVal = (Number(inv.quantity) * Number(item.unit_cost)).toFixed(2);
         const statusBadge = inv.status === 'Available' ? 'badge-success' : inv.status === 'Low Stock' ? 'badge-warning' : 'badge-danger';
 
         return `
           <tr>
-            <td>
-              <div class="sku-tag">${item.sku}</div>
-            </td>
-            <td>
-              <div style="font-weight: 600;">${item.name}</div>
-              <span class="badge badge-neutral" style="margin-top: 2px;">${item.category || 'General'}</span>
-            </td>
+            <td><span class="sku-tag">${item.sku}</span></td>
+            <td style="font-weight: 600;">${item.name}</td>
+            <td><span class="badge badge-neutral">${item.category || 'General'}</span></td>
+            <td><span class="badge badge-neutral" style="opacity: 0.85;">${item.sub_category || 'Standard'}</span></td>
             <td><span class="location-tag">${inv.location}</span></td>
-            <td>
-              <strong style="font-size: 0.95rem;">${inv.quantity}</strong> 
-              <span style="font-size: 0.75rem; color: var(--text-muted);">${item.uom}</span>
-            </td>
-            <td>$${Number(item.unit_cost).toFixed(2)} <span style="font-size: 0.72rem; color: var(--text-muted);">($${extVal})</span></td>
+            <td><strong style="font-size: 0.95rem;">${inv.quantity}</strong></td>
+            <td><span style="font-size: 0.8rem; color: var(--text-muted);">${item.uom}</span></td>
+            <td>$${Number(item.unit_cost).toFixed(2)}</td>
+            <td><strong>$${extVal}</strong></td>
             <td><span class="badge ${statusBadge}">${inv.status}</span></td>
             <td>
               <div class="table-actions">
@@ -323,13 +319,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const filtered = this.items.filter(item => {
         const matchesSearch = !searchTerm || 
           item.sku.toLowerCase().includes(searchTerm) || 
-          item.name.toLowerCase().includes(searchTerm);
+          item.name.toLowerCase().includes(searchTerm) ||
+          (item.sub_category && item.sub_category.toLowerCase().includes(searchTerm));
         const matchesCat = !catFilter || item.category === catFilter;
         return matchesSearch && matchesCat;
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No catalog items found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">No catalog items found.</td></tr>`;
         return;
       }
 
@@ -339,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><span class="sku-tag">${item.sku}</span></td>
             <td style="font-weight: 600;">${item.name}</td>
             <td><span class="badge badge-neutral">${item.category || 'General'}</span></td>
+            <td><span class="badge badge-neutral" style="opacity: 0.85;">${item.sub_category || 'Standard'}</span></td>
             <td>${item.uom}</td>
             <td>$${Number(item.unit_cost || 0).toFixed(2)}</td>
             <td><span style="font-weight: 600; color: var(--warning);">${item.reorder_point || 0}</span></td>
@@ -376,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">No transaction logs recorded.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-muted);">No transaction logs recorded.</td></tr>`;
         return;
       }
 
@@ -389,17 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
           <tr>
             <td style="font-size: 0.78rem; color: var(--text-secondary);">${formattedDate}</td>
-            <td>
-              <div style="font-weight: 600;">${h.item_name}</div>
-              <span class="sku-tag" style="font-size: 0.75rem;">${h.sku}</span>
-            </td>
+            <td><span class="sku-tag">${h.sku}</span></td>
+            <td style="font-weight: 600;">${h.item_name}</td>
             <td><span class="badge ${badgeClass}">${h.action_type}</span></td>
             <td>
               <strong style="color: ${isAdd ? 'var(--success)' : isSub ? 'var(--danger)' : 'var(--text-primary)'};">
                 ${isAdd ? '+' : ''}${h.qty_change}
               </strong>
             </td>
-            <td style="font-size: 0.8rem; color: var(--text-muted);">${h.previous_qty} ➔ ${h.new_qty}</td>
+            <td>${h.previous_qty}</td>
+            <td>${h.new_qty}</td>
             <td><span class="location-tag">${h.location}</span></td>
             <td style="font-weight: 500;">${h.user_name}</td>
             <td style="font-size: 0.8rem; color: var(--text-secondary); max-width: 200px;">${h.notes || '-'}</td>
@@ -583,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('item-sku').value = item.sku;
       document.getElementById('item-name').value = item.name;
       document.getElementById('item-category').value = item.category || 'General';
+      document.getElementById('item-subcategory').value = item.sub_category || 'Standard';
       document.getElementById('item-uom').value = item.uom || 'EA';
       document.getElementById('item-cost').value = item.unit_cost || 0;
       document.getElementById('item-reorder').value = item.reorder_point || 0;
@@ -630,6 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
               sku: document.getElementById('item-sku').value.trim().toUpperCase(),
               name: document.getElementById('item-name').value.trim(),
               category: document.getElementById('item-category').value.trim() || 'General',
+              sub_category: document.getElementById('item-subcategory').value.trim() || 'Standard',
               uom: document.getElementById('item-uom').value.trim() || 'EA',
               unit_cost: parseFloat(document.getElementById('item-cost').value) || 0,
               reorder_point: parseFloat(document.getElementById('item-reorder').value) || 0
@@ -886,14 +885,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExportInv.addEventListener('click', () => {
           this.exportToCsv(this.inventory.map(inv => {
             const item = this.items.find(i => i.id === inv.item_id) || {};
+            const extVal = (Number(inv.quantity) * Number(item.unit_cost || 0)).toFixed(2);
             return {
               SKU: item.sku || '',
               ItemName: item.name || '',
               Category: item.category || '',
+              SubCategory: item.sub_category || '',
               Location: inv.location,
               Quantity: inv.quantity,
               UOM: item.uom || 'EA',
               UnitCost: item.unit_cost || 0,
+              ExtendedValue: extVal,
               Status: inv.status
             };
           }), 'simpletory_inventory_export.csv');
