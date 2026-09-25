@@ -106,6 +106,19 @@
       }
     }
 
+    async testConnection() {
+      if (!this.client) {
+        return { success: false, message: 'No Supabase credentials configured.' };
+      }
+      try {
+        const { data, error } = await this.client.from('tenants').select('id').limit(1);
+        if (error) throw error;
+        return { success: true, message: 'Supabase connection verified active and responsive!' };
+      } catch (err) {
+        return { success: false, message: `Connection failed: ${err.message}` };
+      }
+    }
+
     resetLocalSeed() {
       localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(INITIAL_SEED_DATA));
       this.notifySubscribers('all');

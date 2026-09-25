@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 7. Supabase Settings Form
       const btnSaveSupabase = document.getElementById('btn-save-supabase');
       if (btnSaveSupabase) {
-        btnSaveSupabase.addEventListener('click', () => {
+        btnSaveSupabase.addEventListener('click', async () => {
           if (window.WMSDataService.currentUser.role !== 'Superadmin') {
             return this.showToast('Superadmin access required to configure database credentials.', 'danger');
           }
@@ -920,7 +920,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const key = document.getElementById('setting-supabase-key').value;
           const res = window.WMSDataService.saveConfig(url, key);
           if (res.success) {
-            this.showToast('Supabase configuration updated successfully!', 'success');
+            this.showToast('Testing Supabase connection...', 'info');
+            const testRes = await window.WMSDataService.testConnection();
+            if (testRes.success) {
+              this.showToast('Connected to Supabase live database successfully!', 'success');
+            } else {
+              this.showToast(`Saved, but ${testRes.message}`, 'warning');
+            }
             this.updateSyncIndicator();
             this.refreshAllData();
           } else {
@@ -932,11 +938,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const btnTestSupabase = document.getElementById('btn-test-supabase');
       if (btnTestSupabase) {
         btnTestSupabase.addEventListener('click', async () => {
-          const isLive = window.WMSDataService.isSupabaseConnected;
-          if (isLive) {
-            this.showToast('Supabase connection verified active and responsive!', 'success');
+          const testRes = await window.WMSDataService.testConnection();
+          if (testRes.success) {
+            this.showToast(testRes.message, 'success');
           } else {
-            this.showToast('Currently running in local demo mode. Enter valid URL/Key to connect.', 'info');
+            this.showToast(testRes.message, 'danger');
           }
         });
       }
