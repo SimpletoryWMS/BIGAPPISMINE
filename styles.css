@@ -1646,3 +1646,90 @@ html, body {
   }
 }
 
+/* ==========================================================================
+   REPORTS & ANALYTICS STYLING - FLAT MATERIAL
+   ========================================================================== */
+.report-tab-btn {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.report-tab-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: #4a4a4a;
+}
+
+.report-tab-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  font-weight: 500;
+}
+
+.report-preset-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.report-preset-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.report-preset-btn.active {
+  background: var(--primary-light);
+  color: #8ab4f8;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Print Stylesheet for Report Exports */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+  .app-sidebar, .app-header, .report-nav-tabs, #report-date-controls, .action-btn-group, .toast-container, .modal-overlay, .auth-overlay, #btn-print-report, #btn-export-csv, #btn-refresh-report {
+    display: none !important;
+  }
+  .app-main, .content-viewport, .view-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+  .data-table th {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+    border-bottom: 2px solid #000000 !important;
+  }
+  .data-table td {
+    color: #000000 !important;
+    border-bottom: 1px solid #dddddd !important;
+  }
+}
+

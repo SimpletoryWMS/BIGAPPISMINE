@@ -658,15 +658,44 @@
       return true;
     }
 
-    async updateUserProfile(userId, { fullName, email, password }) {
+    async updateUserProfile(userId, { fullName, email, currentPassword, password }) {
       const updates = {};
       if (fullName) updates.full_name = fullName.trim();
       if (email) updates.email = email.trim();
-      if (password && password.trim()) {
-        updates.password_hash = await this.hashPassword(password.trim());
-      }
+
+      const wantsPasswordChange = Boolean(password && password.trim());
 
       if (this.isSupabaseConnected && this.client) {
+        // If changing password, verify current password first against Supabase
+        if (wantsPasswordChange) {
+          if (!currentPassword || !currentPassword.trim()) {
+            throw new Error('Please enter your current password to authorize a password change.');
+          }
+
+          const { data: userRec, error: fetchErr } = await this.client
+            .from('users')
+            .select('password_hash')
+            .eq('id', userId)
+            .single();
+
+          if (fetchErr || !userRec) {
+            throw new Error('User record verification failed.');
+          }
+
+          const cleanCurrentPwd = currentPassword.trim();
+          const hashedCurrentPwd = await this.hashPassword(cleanCurrentPwd);
+
+          const isValid = !userRec.password_hash || 
+                          userRec.password_hash === hashedCurrentPwd || 
+                          userRec.password_hash === cleanCurrentPwd;
+
+          if (!isValid) {
+            throw new Error('Incorrect current password. Password was not updated.');
+          }
+
+          updates.password_hash = await this.hashPassword(password.trim());
+        }
+
         const { data, error } = await this.client
           .from('users')
           .update(updates)
@@ -686,9 +715,30 @@
         return { success: true, user: data };
       }
 
+      // Local Store Fallback
       const db = this.getLocalDB();
       const idx = (db.users || []).findIndex(u => u.id === userId);
       if (idx >= 0) {
+        if (wantsPasswordChange) {
+          if (!currentPassword || !currentPassword.trim()) {
+            throw new Error('Please enter your current password to authorize a password change.');
+          }
+
+          const userRec = db.users[idx];
+          const cleanCurrentPwd = currentPassword.trim();
+          const hashedCurrentPwd = await this.hashPassword(cleanCurrentPwd);
+
+          const isValid = !userRec.password_hash || 
+                          userRec.password_hash === hashedCurrentPwd || 
+                          userRec.password_hash === cleanCurrentPwd;
+
+          if (!isValid) {
+            throw new Error('Incorrect current password. Password was not updated.');
+          }
+
+          updates.password_hash = await this.hashPassword(password.trim());
+        }
+
         db.users[idx] = { ...db.users[idx], ...updates };
         this.setLocalDB(db);
         if (this.currentUser && this.currentUser.id === userId) {

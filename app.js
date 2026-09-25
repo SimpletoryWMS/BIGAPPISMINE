@@ -7,6 +7,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const App = {
     currentView: 'dashboard',
+    currentReportType: 'movement-summary',
     items: [],
     inventory: [],
     history: [],
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this.bindShortcuts();
       this.bindHelpCenter();
       this.bindUserProfileMenu();
+      this.initReportsModule();
       this.initIdleTimeoutTracker();
 
       // Listen for data mutations (realtime or local)
@@ -220,7 +222,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // Toggle profile password visibility
+      // Toggle profile password visibility (Current & New)
+      const btnToggleProfCurrPwd = document.getElementById('btn-toggle-profile-curr-pwd');
+      const profCurrPwdInput = document.getElementById('profile-current-password');
+      if (btnToggleProfCurrPwd && profCurrPwdInput) {
+        btnToggleProfCurrPwd.addEventListener('click', () => {
+          const isPwd = profCurrPwdInput.type === 'password';
+          profCurrPwdInput.type = isPwd ? 'text' : 'password';
+          btnToggleProfCurrPwd.innerHTML = isPwd
+            ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+        });
+      }
+
       const btnToggleProfPwd = document.getElementById('btn-toggle-profile-pwd');
       const profPwdInput = document.getElementById('profile-password');
       if (btnToggleProfPwd && profPwdInput) {
@@ -247,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const facilityInput = document.getElementById('profile-facility');
       const roleInput = document.getElementById('profile-role');
       const emailInput = document.getElementById('profile-email');
+      const currPwdInput = document.getElementById('profile-current-password');
       const pwdInput = document.getElementById('profile-password');
       const pwdConfirmInput = document.getElementById('profile-password-confirm');
       const alertEl = document.getElementById('profile-error-alert');
@@ -257,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (facilityInput) facilityInput.value = facilityName;
       if (roleInput) roleInput.value = user.role || 'User';
       if (emailInput) emailInput.value = user.email || '';
+      if (currPwdInput) currPwdInput.value = '';
       if (pwdInput) pwdInput.value = '';
       if (pwdConfirmInput) pwdConfirmInput.value = '';
       if (alertEl) alertEl.style.display = 'none';
@@ -404,6 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetEl) {
         targetEl.classList.add('active');
       }
+
+      if (viewName === 'reports') {
+        this.renderReports();
+      }
     },
 
     // ==========================================
@@ -497,6 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this.renderItemsTable();
       this.renderHistoryTable();
       this.renderUsersTable();
+      this.renderReports();
       this.populateDropdowns();
       this.updateBadges();
     },
@@ -831,6 +852,1065 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // ==========================================
+    // REPORTS & ANALYTICS ENGINE
+    // ==========================================
+    initReportsModule() {
+      // Set initial 30 days preset
+      this.setReportDatePreset('30d');
+
+      // Tab switcher
+      const reportTabs = document.querySelectorAll('.report-tab-btn');
+      reportTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          e.preventDefault();
+          reportTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          this.currentReportType = tab.getAttribute('data-report') || 'movement-summary';
+
+          const dateControls = document.getElementById('report-date-controls');
+          const actionFilter = document.getElementById('report-action-filter');
+          
+          if (this.currentReportType === 'on-hand') {
+            if (dateControls) dateControls.style.opacity = '0.35';
+            if (dateControls) dateControls.style.pointerEvents = 'none';
+            if (actionFilter) actionFilter.style.display = 'none';
+          } else if (this.currentReportType === 'audit-detail') {
+            if (dateControls) dateControls.style.opacity = '1';
+            if (dateControls) dateControls.style.pointerEvents = 'auto';
+            if (actionFilter) actionFilter.style.display = 'inline-block';
+          } else {
+            if (dateControls) dateControls.style.opacity = '1';
+            if (dateControls) dateControls.style.pointerEvents = 'auto';
+            if (actionFilter) actionFilter.style.display = 'none';
+          }
+
+          this.renderReports();
+        });
+      });
+
+      // Preset buttons
+      const presetBtns = document.querySelectorAll('.report-preset-btn');
+      presetBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          presetBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const preset = btn.getAttribute('data-preset');
+          this.setReportDatePreset(preset);
+          this.renderReports();
+        });
+      });
+
+      // Filter change listeners
+      ['report-date-from', 'report-date-to', 'report-category-filter', 'report-action-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => this.renderReports());
+      });
+
+      const searchInput = document.getElementById('report-search-input');
+      if (searchInput) {
+        searchInput.addEventListener('input', () => this.renderReports());
+      }
+
+      const btnRun = document.getElementById('btn-refresh-report');
+      if (btnRun) {
+        btnRun.addEventListener('click', () => {
+          this.renderReports();
+          this.showToast('Report updated with current filters.', 'info');
+        });
+      }
+
+      const btnExport = document.getElementById('btn-export-csv');
+      if (btnExport) {
+        btnExport.addEventListener('click', () => this.exportCurrentReport());
+      }
+
+      const btnPrint = document.getElementById('btn-print-report');
+      if (btnPrint) {
+        btnPrint.addEventListener('click', () => window.print());
+      }
+    },
+
+    setReportDatePreset(preset) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const toIsoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      const fromInput = document.getElementById('report-date-from');
+      const toInput = document.getElementById('report-date-to');
+      if (!fromInput || !toInput) return;
+
+      toInput.value = toIsoDate(now);
+
+      if (preset === 'today') {
+        fromInput.value = toIsoDate(now);
+      } else if (preset === '7d') {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 7);
+        fromInput.value = toIsoDate(d);
+      } else if (preset === '30d') {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 30);
+        fromInput.value = toIsoDate(d);
+      } else if (preset === 'month') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1);
+        fromInput.value = toIsoDate(d);
+      } else if (preset === 'all') {
+        fromInput.value = '2020-01-01';
+      }
+    },
+
+    getReportDateRange() {
+      const fromVal = document.getElementById('report-date-from')?.value;
+      const toVal = document.getElementById('report-date-to')?.value;
+
+      let fromDate = null;
+      let toDate = null;
+
+      if (fromVal) {
+        fromDate = new Date(fromVal + 'T00:00:00');
+      }
+      if (toVal) {
+        toDate = new Date(toVal + 'T23:59:59.999');
+      }
+
+      return { fromDate, toDate, fromVal, toVal };
+    },
+
+    getFilteredHistoryForReports() {
+      const { fromDate, toDate } = this.getReportDateRange();
+
+      return this.history.filter(h => {
+        if (!h.created_at) return true;
+        const itemDate = new Date(h.created_at);
+        if (fromDate && itemDate < fromDate) return false;
+        if (toDate && itemDate > toDate) return false;
+        return true;
+      });
+    },
+
+    renderReports() {
+      const type = this.currentReportType || 'movement-summary';
+      const searchTerm = (document.getElementById('report-search-input')?.value || '').toLowerCase().trim();
+      const categoryFilter = document.getElementById('report-category-filter')?.value || 'ALL';
+      const actionFilter = document.getElementById('report-action-filter')?.value || 'ALL';
+      const { fromVal, toVal } = this.getReportDateRange();
+
+      const timeLabel = document.getElementById('report-timeframe-label');
+      if (timeLabel) {
+        if (type === 'on-hand') {
+          timeLabel.textContent = 'Timeframe: Real-time Live Snapshot';
+        } else if (fromVal && toVal) {
+          timeLabel.textContent = `Timeframe: ${fromVal} to ${toVal}`;
+        } else if (fromVal) {
+          timeLabel.textContent = `Timeframe: Since ${fromVal}`;
+        } else if (toVal) {
+          timeLabel.textContent = `Timeframe: Up to ${toVal}`;
+        } else {
+          timeLabel.textContent = 'Timeframe: All Recorded Time';
+        }
+      }
+
+      const filteredHistory = this.getFilteredHistoryForReports();
+
+      switch (type) {
+        case 'movement-summary':
+          this.renderStockMovementReport(filteredHistory, searchTerm, categoryFilter);
+          break;
+        case 'received':
+          this.renderStockReceivedReport(filteredHistory, searchTerm, categoryFilter);
+          break;
+        case 'dispatched':
+          this.renderStockDispatchedReport(filteredHistory, searchTerm, categoryFilter);
+          break;
+        case 'on-hand':
+          this.renderOnHandReport(searchTerm, categoryFilter);
+          break;
+        case 'audit-detail':
+          this.renderMovementDetailReport(filteredHistory, searchTerm, categoryFilter, actionFilter);
+          break;
+        default:
+          this.renderStockMovementReport(filteredHistory, searchTerm, categoryFilter);
+      }
+    },
+
+    renderStockMovementReport(filteredHistory, searchTerm, categoryFilter) {
+      const titleEl = document.getElementById('report-title-label');
+      const countEl = document.getElementById('report-count-badge');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      const tfoot = document.getElementById('report-table-foot');
+      const kpiContainer = document.getElementById('report-kpi-cards');
+
+      if (titleEl) titleEl.textContent = 'Stock Movement Report (By Item)';
+
+      thead.innerHTML = `
+        <tr>
+          <th>SKU</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th style="text-align: right;">Inbound (+)</th>
+          <th style="text-align: right;">Outbound (-)</th>
+          <th style="text-align: right;">Adjust (±)</th>
+          <th style="text-align: right;">Net Movement</th>
+          <th style="text-align: right;">On Hand</th>
+          <th>UOM</th>
+          <th style="text-align: right;">Unit Cost</th>
+          <th style="text-align: right;">Net Value ($)</th>
+          <th style="text-align: center;">Movements</th>
+        </tr>
+      `;
+
+      const itemsList = this.items.filter(item => {
+        const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+        const matchesSearch = !searchTerm ||
+          (item.sku && item.sku.toLowerCase().includes(searchTerm)) ||
+          (item.name && item.name.toLowerCase().includes(searchTerm)) ||
+          (item.category && item.category.toLowerCase().includes(searchTerm));
+        return matchesCategory && matchesSearch;
+      });
+
+      let totalInbound = 0;
+      let totalOutbound = 0;
+      let totalAdjust = 0;
+      let totalNet = 0;
+      let totalOnHand = 0;
+      let totalNetVal = 0;
+      let totalMoves = 0;
+      let activeItemsCount = 0;
+
+      const rowsData = itemsList.map(item => {
+        const itemHistory = filteredHistory.filter(h => h.sku === item.sku || h.item_name === item.name);
+        
+        let inbound = 0;
+        let outbound = 0;
+        let adjust = 0;
+
+        itemHistory.forEach(h => {
+          const qty = Math.abs(Number(h.qty_change) || 0);
+          if (h.action_type === 'ADD' || (h.qty_change > 0 && h.action_type !== 'ADJUST')) {
+            inbound += qty;
+          } else if (h.action_type === 'SUBTRACT' || (h.qty_change < 0 && h.action_type !== 'ADJUST')) {
+            outbound += qty;
+          } else if (h.action_type === 'ADJUST') {
+            adjust += Number(h.qty_change) || 0;
+          }
+        });
+
+        const net = inbound - outbound + adjust;
+        const moves = itemHistory.length;
+        const onHand = this.inventory
+          .filter(inv => inv.item_id === item.id)
+          .reduce((sum, inv) => sum + Number(inv.quantity || 0), 0);
+        const unitCost = Number(item.unit_cost || 0);
+        const netValue = net * unitCost;
+
+        if (moves > 0) activeItemsCount++;
+
+        totalInbound += inbound;
+        totalOutbound += outbound;
+        totalAdjust += adjust;
+        totalNet += net;
+        totalOnHand += onHand;
+        totalNetVal += netValue;
+        totalMoves += moves;
+
+        return {
+          item,
+          inbound,
+          outbound,
+          adjust,
+          net,
+          onHand,
+          unitCost,
+          netValue,
+          moves
+        };
+      });
+
+      if (countEl) countEl.textContent = `${rowsData.length} SKUs`;
+
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Inbound Received</div>
+            <div class="stat-value" style="color: var(--success);">+${totalInbound}</div>
+            <div class="stat-meta">Units received across all SKUs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Outbound Dispatched</div>
+            <div class="stat-value" style="color: var(--danger);">-${totalOutbound}</div>
+            <div class="stat-meta">Units dispatched / picked</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Net Movement Delta</div>
+            <div class="stat-value" style="color: ${totalNet >= 0 ? 'var(--success)' : 'var(--danger)'};">${totalNet >= 0 ? '+' : ''}${totalNet}</div>
+            <div class="stat-meta">Net inventory physical change</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Moving SKUs</div>
+            <div class="stat-value">${activeItemsCount} / ${this.items.length}</div>
+            <div class="stat-meta">Catalog items with activity</div>
+          </div>
+        `;
+      }
+
+      if (rowsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem; color: var(--text-muted);">No catalog items match current filters.</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rowsData.map(r => `
+        <tr>
+          <td><span class="sku-tag">${r.item.sku}</span></td>
+          <td style="font-weight: 600;">${r.item.name}</td>
+          <td><span class="badge badge-neutral">${r.item.category || 'General'}</span></td>
+          <td style="text-align: right; color: var(--success); font-weight: 600;">${r.inbound > 0 ? '+' + r.inbound : '0'}</td>
+          <td style="text-align: right; color: var(--danger); font-weight: 600;">${r.outbound > 0 ? '-' + r.outbound : '0'}</td>
+          <td style="text-align: right; color: ${r.adjust >= 0 ? 'var(--text-primary)' : 'var(--danger)'}; font-weight: 500;">${r.adjust > 0 ? '+' + r.adjust : r.adjust}</td>
+          <td style="text-align: right; font-weight: 700; color: ${r.net >= 0 ? 'var(--success)' : 'var(--danger)'};">${r.net >= 0 ? '+' : ''}${r.net}</td>
+          <td style="text-align: right; font-weight: 600;">${r.onHand}</td>
+          <td style="font-size: 0.8rem; color: var(--text-secondary);">${r.item.uom || 'EA'}</td>
+          <td style="text-align: right; font-size: 0.82rem;">$${r.unitCost.toFixed(2)}</td>
+          <td style="text-align: right; font-weight: 600; color: ${r.netValue >= 0 ? 'var(--success)' : 'var(--danger)'};">$${r.netValue.toFixed(2)}</td>
+          <td style="text-align: center;"><span class="badge badge-info">${r.moves}</span></td>
+        </tr>
+      `).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="3">SUMMARY TOTALS (${rowsData.length} SKUs)</td>
+          <td style="text-align: right; color: var(--success);">+${totalInbound}</td>
+          <td style="text-align: right; color: var(--danger);">-${totalOutbound}</td>
+          <td style="text-align: right;">${totalAdjust >= 0 ? '+' : ''}${totalAdjust}</td>
+          <td style="text-align: right; color: ${totalNet >= 0 ? 'var(--success)' : 'var(--danger)'};">${totalNet >= 0 ? '+' : ''}${totalNet}</td>
+          <td style="text-align: right;">${totalOnHand}</td>
+          <td>-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; color: ${totalNetVal >= 0 ? 'var(--success)' : 'var(--danger)'};">$${totalNetVal.toFixed(2)}</td>
+          <td style="text-align: center;">${totalMoves}</td>
+        </tr>
+      `;
+    },
+
+    renderStockReceivedReport(filteredHistory, searchTerm, categoryFilter) {
+      const titleEl = document.getElementById('report-title-label');
+      const countEl = document.getElementById('report-count-badge');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      const tfoot = document.getElementById('report-table-foot');
+      const kpiContainer = document.getElementById('report-kpi-cards');
+
+      if (titleEl) titleEl.textContent = 'Stock Received (Inbound) Report';
+
+      thead.innerHTML = `
+        <tr>
+          <th>Date & Time</th>
+          <th>SKU</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th>Destination Location</th>
+          <th style="text-align: right;">Qty Received</th>
+          <th>UOM</th>
+          <th style="text-align: right;">Unit Cost</th>
+          <th style="text-align: right;">Total Valuation</th>
+          <th>Received By</th>
+          <th>PO / Notes</th>
+        </tr>
+      `;
+
+      const receivedLogs = filteredHistory.filter(h => {
+        const isReceived = h.action_type === 'ADD' || (Number(h.qty_change) > 0 && h.action_type !== 'ADJUST');
+        if (!isReceived) return false;
+
+        const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+        const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+        const matchesSearch = !searchTerm ||
+          (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+          (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+          (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+          (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+          (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+        return matchesCategory && matchesSearch;
+      });
+
+      let totalUnits = 0;
+      let totalValuation = 0;
+      const uniqueSkus = new Set();
+
+      const rowsData = receivedLogs.map(h => {
+        const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+        const qty = Math.abs(Number(h.qty_change) || 0);
+        const unitCost = Number(item.unit_cost || 0);
+        const extVal = qty * unitCost;
+
+        totalUnits += qty;
+        totalValuation += extVal;
+        if (h.sku) uniqueSkus.add(h.sku);
+
+        return {
+          h,
+          item,
+          qty,
+          unitCost,
+          extVal
+        };
+      });
+
+      if (countEl) countEl.textContent = `${rowsData.length} receipts`;
+
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Inbound Receipts</div>
+            <div class="stat-value" style="color: var(--success);">${rowsData.length}</div>
+            <div class="stat-meta">Receiving transactions logged</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Units Received</div>
+            <div class="stat-value" style="color: var(--success);">+${totalUnits}</div>
+            <div class="stat-meta">Physical intake quantity</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Received Valuation</div>
+            <div class="stat-value" style="color: var(--accent);">$${totalValuation.toFixed(2)}</div>
+            <div class="stat-meta">Cumulative purchase value</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique SKUs Received</div>
+            <div class="stat-value">${uniqueSkus.size}</div>
+            <div class="stat-meta">Distinct catalog lines</div>
+          </div>
+        `;
+      }
+
+      if (rowsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 2rem; color: var(--text-muted);">No inbound stock receipts found for selected timeframe.</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rowsData.map(r => `
+        <tr>
+          <td style="font-size: 0.78rem; color: var(--text-secondary);">${new Date(r.h.created_at).toLocaleString()}</td>
+          <td><span class="sku-tag">${r.h.sku}</span></td>
+          <td style="font-weight: 600;">${r.h.item_name}</td>
+          <td><span class="badge badge-neutral">${r.item.category || 'General'}</span></td>
+          <td><span class="location-tag">${r.h.location}</span></td>
+          <td style="text-align: right; color: var(--success); font-weight: 700;">+${r.qty}</td>
+          <td style="font-size: 0.8rem; color: var(--text-secondary);">${r.item.uom || 'EA'}</td>
+          <td style="text-align: right; font-size: 0.82rem;">$${r.unitCost.toFixed(2)}</td>
+          <td style="text-align: right; font-weight: 600; color: var(--success);">$${r.extVal.toFixed(2)}</td>
+          <td style="font-weight: 500;">${r.h.user_name}</td>
+          <td style="font-size: 0.8rem; color: var(--text-secondary); max-width: 180px;">${r.h.notes || '-'}</td>
+        </tr>
+      `).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="5">SUMMARY TOTALS (${rowsData.length} Receipts)</td>
+          <td style="text-align: right; color: var(--success); font-weight: 700;">+${totalUnits}</td>
+          <td>-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; color: var(--success); font-weight: 700;">$${totalValuation.toFixed(2)}</td>
+          <td colspan="2">-</td>
+        </tr>
+      `;
+    },
+
+    renderStockDispatchedReport(filteredHistory, searchTerm, categoryFilter) {
+      const titleEl = document.getElementById('report-title-label');
+      const countEl = document.getElementById('report-count-badge');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      const tfoot = document.getElementById('report-table-foot');
+      const kpiContainer = document.getElementById('report-kpi-cards');
+
+      if (titleEl) titleEl.textContent = 'Stock Dispatched (Outbound) Report';
+
+      thead.innerHTML = `
+        <tr>
+          <th>Date & Time</th>
+          <th>SKU</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th>Source Location</th>
+          <th style="text-align: right;">Qty Dispatched</th>
+          <th>UOM</th>
+          <th style="text-align: right;">Unit Cost</th>
+          <th style="text-align: right;">Total Valuation</th>
+          <th>Dispatched By</th>
+          <th>Order / Notes</th>
+        </tr>
+      `;
+
+      const dispatchedLogs = filteredHistory.filter(h => {
+        const isDispatched = h.action_type === 'SUBTRACT' || (Number(h.qty_change) < 0 && h.action_type !== 'ADJUST');
+        if (!isDispatched) return false;
+
+        const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+        const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+        const matchesSearch = !searchTerm ||
+          (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+          (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+          (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+          (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+          (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+        return matchesCategory && matchesSearch;
+      });
+
+      let totalUnits = 0;
+      let totalValuation = 0;
+      const uniqueSkus = new Set();
+
+      const rowsData = dispatchedLogs.map(h => {
+        const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+        const qty = Math.abs(Number(h.qty_change) || 0);
+        const unitCost = Number(item.unit_cost || 0);
+        const extVal = qty * unitCost;
+
+        totalUnits += qty;
+        totalValuation += extVal;
+        if (h.sku) uniqueSkus.add(h.sku);
+
+        return {
+          h,
+          item,
+          qty,
+          unitCost,
+          extVal
+        };
+      });
+
+      if (countEl) countEl.textContent = `${rowsData.length} dispatches`;
+
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Outbound Dispatches</div>
+            <div class="stat-value" style="color: var(--danger);">${rowsData.length}</div>
+            <div class="stat-meta">Outbound orders picked / fulfilled</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Units Dispatched</div>
+            <div class="stat-value" style="color: var(--danger);">-${totalUnits}</div>
+            <div class="stat-meta">Physical inventory shipped</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Dispatched Valuation</div>
+            <div class="stat-value" style="color: var(--accent);">$${totalValuation.toFixed(2)}</div>
+            <div class="stat-meta">Cost basis of fulfilled items</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique SKUs Dispatched</div>
+            <div class="stat-value">${uniqueSkus.size}</div>
+            <div class="stat-meta">Distinct catalog lines</div>
+          </div>
+        `;
+      }
+
+      if (rowsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 2rem; color: var(--text-muted);">No outbound stock dispatches found for selected timeframe.</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rowsData.map(r => `
+        <tr>
+          <td style="font-size: 0.78rem; color: var(--text-secondary);">${new Date(r.h.created_at).toLocaleString()}</td>
+          <td><span class="sku-tag">${r.h.sku}</span></td>
+          <td style="font-weight: 600;">${r.h.item_name}</td>
+          <td><span class="badge badge-neutral">${r.item.category || 'General'}</span></td>
+          <td><span class="location-tag">${r.h.location}</span></td>
+          <td style="text-align: right; color: var(--danger); font-weight: 700;">-${r.qty}</td>
+          <td style="font-size: 0.8rem; color: var(--text-secondary);">${r.item.uom || 'EA'}</td>
+          <td style="text-align: right; font-size: 0.82rem;">$${r.unitCost.toFixed(2)}</td>
+          <td style="text-align: right; font-weight: 600; color: var(--danger);">$${r.extVal.toFixed(2)}</td>
+          <td style="font-weight: 500;">${r.h.user_name}</td>
+          <td style="font-size: 0.8rem; color: var(--text-secondary); max-width: 180px;">${r.h.notes || '-'}</td>
+        </tr>
+      `).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="5">SUMMARY TOTALS (${rowsData.length} Dispatches)</td>
+          <td style="text-align: right; color: var(--danger); font-weight: 700;">-${totalUnits}</td>
+          <td>-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; color: var(--danger); font-weight: 700;">$${totalValuation.toFixed(2)}</td>
+          <td colspan="2">-</td>
+        </tr>
+      `;
+    },
+
+    renderOnHandReport(searchTerm, categoryFilter) {
+      const titleEl = document.getElementById('report-title-label');
+      const countEl = document.getElementById('report-count-badge');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      const tfoot = document.getElementById('report-table-foot');
+      const kpiContainer = document.getElementById('report-kpi-cards');
+
+      if (titleEl) titleEl.textContent = 'On-Hand Inventory Report';
+
+      thead.innerHTML = `
+        <tr>
+          <th>SKU</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th>Location</th>
+          <th style="text-align: right;">Qty On Hand</th>
+          <th>UOM</th>
+          <th style="text-align: right;">Safety Point</th>
+          <th style="text-align: right;">Unit Cost</th>
+          <th style="text-align: right;">Extended Value</th>
+          <th>Status</th>
+        </tr>
+      `;
+
+      const rows = this.inventory.map(inv => {
+        const item = this.items.find(i => i.id === inv.item_id) || {};
+        const qty = Number(inv.quantity || 0);
+        const unitCost = Number(item.unit_cost || 0);
+        const extVal = qty * unitCost;
+        const reorderPoint = Number(item.reorder_point || 0);
+
+        let status = inv.status;
+        if (!status) {
+          if (qty === 0) status = 'Out of Stock';
+          else if (qty <= reorderPoint) status = 'Low Stock';
+          else status = 'In Stock';
+        }
+
+        return {
+          inv,
+          item,
+          qty,
+          unitCost,
+          extVal,
+          reorderPoint,
+          status
+        };
+      }).filter(r => {
+        const matchesCategory = categoryFilter === 'ALL' || (r.item.category || 'General') === categoryFilter;
+        const matchesSearch = !searchTerm ||
+          (r.item.sku && r.item.sku.toLowerCase().includes(searchTerm)) ||
+          (r.item.name && r.item.name.toLowerCase().includes(searchTerm)) ||
+          (r.inv.location && r.inv.location.toLowerCase().includes(searchTerm)) ||
+          (r.status && r.status.toLowerCase().includes(searchTerm));
+        return matchesCategory && matchesSearch;
+      });
+
+      let totalUnits = 0;
+      let totalValuation = 0;
+      let lowStockCount = 0;
+
+      rows.forEach(r => {
+        totalUnits += r.qty;
+        totalValuation += r.extVal;
+        if (r.status === 'Low Stock' || r.status === 'Out of Stock') {
+          lowStockCount++;
+        }
+      });
+
+      if (countEl) countEl.textContent = `${rows.length} records`;
+
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Inventory Placements</div>
+            <div class="stat-value">${rows.length}</div>
+            <div class="stat-meta">Active location lines</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Units On-Hand</div>
+            <div class="stat-value" style="color: var(--success);">${totalUnits}</div>
+            <div class="stat-meta">Physical units across warehouse</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Valuation</div>
+            <div class="stat-value" style="color: var(--accent);">$${totalValuation.toFixed(2)}</div>
+            <div class="stat-meta">Total inventory asset worth</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Low Stock / Reorder Alerts</div>
+            <div class="stat-value" style="color: ${lowStockCount > 0 ? 'var(--danger)' : 'var(--success)'};">${lowStockCount}</div>
+            <div class="stat-meta">Locations at or below reorder threshold</div>
+          </div>
+        `;
+      }
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-muted);">No on-hand inventory matching criteria.</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const badgeClass = r.status === 'In Stock' ? 'badge-success' : r.status === 'Low Stock' ? 'badge-warning' : 'badge-danger';
+        return `
+          <tr>
+            <td><span class="sku-tag">${r.item.sku || '-'}</span></td>
+            <td style="font-weight: 600;">${r.item.name || 'Unknown Item'}</td>
+            <td><span class="badge badge-neutral">${r.item.category || 'General'}</span></td>
+            <td><span class="location-tag">${r.inv.location}</span></td>
+            <td style="text-align: right; font-weight: 700;">${r.qty}</td>
+            <td style="font-size: 0.8rem; color: var(--text-secondary);">${r.item.uom || 'EA'}</td>
+            <td style="text-align: right; font-size: 0.82rem; color: var(--text-secondary);">${r.reorderPoint}</td>
+            <td style="text-align: right; font-size: 0.82rem;">$${r.unitCost.toFixed(2)}</td>
+            <td style="text-align: right; font-weight: 600; color: var(--accent);">$${r.extVal.toFixed(2)}</td>
+            <td><span class="badge ${badgeClass}">${r.status}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="4">TOTAL VALUATION SUMMARY (${rows.length} Placement Lines)</td>
+          <td style="text-align: right; font-weight: 700;">${totalUnits}</td>
+          <td>-</td>
+          <td>-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; color: var(--accent); font-weight: 700;">$${totalValuation.toFixed(2)}</td>
+          <td>-</td>
+        </tr>
+      `;
+    },
+
+    renderMovementDetailReport(filteredHistory, searchTerm, categoryFilter, actionFilter) {
+      const titleEl = document.getElementById('report-title-label');
+      const countEl = document.getElementById('report-count-badge');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      const tfoot = document.getElementById('report-table-foot');
+      const kpiContainer = document.getElementById('report-kpi-cards');
+
+      if (titleEl) titleEl.textContent = 'Movement Detail (Audit History) Report';
+
+      thead.innerHTML = `
+        <tr>
+          <th>Date & Time</th>
+          <th>Action</th>
+          <th>SKU</th>
+          <th>Item Name</th>
+          <th>Location</th>
+          <th style="text-align: right;">Qty Delta</th>
+          <th style="text-align: right;">Prev Qty</th>
+          <th style="text-align: right;">New Qty</th>
+          <th>Operator</th>
+          <th>Reference / Notes</th>
+        </tr>
+      `;
+
+      const rows = filteredHistory.filter(h => {
+        const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+        const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+        const matchesAction = actionFilter === 'ALL' || h.action_type === actionFilter;
+        const matchesSearch = !searchTerm ||
+          (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+          (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+          (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+          (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+          (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+        return matchesCategory && matchesAction && matchesSearch;
+      });
+
+      let addCount = 0;
+      let subCount = 0;
+      let otherCount = 0;
+      let netDelta = 0;
+
+      rows.forEach(h => {
+        const change = Number(h.qty_change) || 0;
+        netDelta += change;
+        if (h.action_type === 'ADD') addCount++;
+        else if (h.action_type === 'SUBTRACT') subCount++;
+        else otherCount++;
+      });
+
+      if (countEl) countEl.textContent = `${rows.length} events`;
+
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Logged Events</div>
+            <div class="stat-value">${rows.length}</div>
+            <div class="stat-meta">Audit ledger entries</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Inbound Additions</div>
+            <div class="stat-value" style="color: var(--success);">+${addCount}</div>
+            <div class="stat-meta">Intake transactions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Outbound Dispatches</div>
+            <div class="stat-value" style="color: var(--danger);">-${subCount}</div>
+            <div class="stat-meta">Dispatched / picked events</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Adjustments & Transfers</div>
+            <div class="stat-value" style="color: var(--warning);">${otherCount}</div>
+            <div class="stat-meta">Audits and bin relocations</div>
+          </div>
+        `;
+      }
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-muted);">No audit log events match current criteria.</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(h => {
+        const isAdd = h.action_type === 'ADD';
+        const isSub = h.action_type === 'SUBTRACT';
+        const badgeClass = isAdd ? 'badge-success' : isSub ? 'badge-danger' : 'badge-info';
+
+        return `
+          <tr>
+            <td style="font-size: 0.78rem; color: var(--text-secondary);">${new Date(h.created_at).toLocaleString()}</td>
+            <td><span class="badge ${badgeClass}">${h.action_type}</span></td>
+            <td><span class="sku-tag">${h.sku}</span></td>
+            <td style="font-weight: 600;">${h.item_name}</td>
+            <td><span class="location-tag">${h.location}</span></td>
+            <td style="text-align: right; font-weight: 700; color: ${isAdd ? 'var(--success)' : isSub ? 'var(--danger)' : 'var(--text-primary)'};">
+              ${isAdd ? '+' : ''}${h.qty_change}
+            </td>
+            <td style="text-align: right; color: var(--text-secondary);">${h.previous_qty}</td>
+            <td style="text-align: right; font-weight: 600;">${h.new_qty}</td>
+            <td style="font-weight: 500;">${h.user_name}</td>
+            <td style="font-size: 0.8rem; color: var(--text-secondary); max-width: 200px;">${h.notes || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="5">AUDIT LOG TOTALS (${rows.length} Logged Entries)</td>
+          <td style="text-align: right; font-weight: 700; color: ${netDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${netDelta >= 0 ? '+' : ''}${netDelta}</td>
+          <td colspan="4">-</td>
+        </tr>
+      `;
+    },
+
+    exportCurrentReport() {
+      const type = this.currentReportType || 'movement-summary';
+      const searchTerm = (document.getElementById('report-search-input')?.value || '').toLowerCase().trim();
+      const categoryFilter = document.getElementById('report-category-filter')?.value || 'ALL';
+      const actionFilter = document.getElementById('report-action-filter')?.value || 'ALL';
+      const filteredHistory = this.getFilteredHistoryForReports();
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      let exportData = [];
+      let filename = `Simpletory_Report_${todayStr}.csv`;
+
+      if (type === 'movement-summary') {
+        filename = `Simpletory_Stock_Movement_Report_${todayStr}.csv`;
+        const itemsList = this.items.filter(item => {
+          const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+          const matchesSearch = !searchTerm ||
+            (item.sku && item.sku.toLowerCase().includes(searchTerm)) ||
+            (item.name && item.name.toLowerCase().includes(searchTerm)) ||
+            (item.category && item.category.toLowerCase().includes(searchTerm));
+          return matchesCategory && matchesSearch;
+        });
+
+        exportData = itemsList.map(item => {
+          const itemHistory = filteredHistory.filter(h => h.sku === item.sku || h.item_name === item.name);
+          let inbound = 0;
+          let outbound = 0;
+          let adjust = 0;
+
+          itemHistory.forEach(h => {
+            const qty = Math.abs(Number(h.qty_change) || 0);
+            if (h.action_type === 'ADD' || (h.qty_change > 0 && h.action_type !== 'ADJUST')) {
+              inbound += qty;
+            } else if (h.action_type === 'SUBTRACT' || (h.qty_change < 0 && h.action_type !== 'ADJUST')) {
+              outbound += qty;
+            } else if (h.action_type === 'ADJUST') {
+              adjust += Number(h.qty_change) || 0;
+            }
+          });
+
+          const net = inbound - outbound + adjust;
+          const onHand = this.inventory
+            .filter(inv => inv.item_id === item.id)
+            .reduce((sum, inv) => sum + Number(inv.quantity || 0), 0);
+          const unitCost = Number(item.unit_cost || 0);
+          const netValue = (net * unitCost).toFixed(2);
+
+          return {
+            'SKU': item.sku || '',
+            'Item Name': item.name || '',
+            'Category': item.category || 'General',
+            'Inbound Units (+)': inbound,
+            'Outbound Units (-)': outbound,
+            'Adjustment Units (±)': adjust,
+            'Net Movement': net,
+            'Current On-Hand': onHand,
+            'UOM': item.uom || 'EA',
+            'Unit Cost ($)': unitCost.toFixed(2),
+            'Net Movement Value ($)': netValue,
+            'Total Movements': itemHistory.length
+          };
+        });
+
+      } else if (type === 'received') {
+        filename = `Simpletory_Stock_Received_Report_${todayStr}.csv`;
+        const receivedLogs = filteredHistory.filter(h => {
+          const isReceived = h.action_type === 'ADD' || (Number(h.qty_change) > 0 && h.action_type !== 'ADJUST');
+          if (!isReceived) return false;
+
+          const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+          const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+          const matchesSearch = !searchTerm ||
+            (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+            (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+            (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+            (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+            (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+          return matchesCategory && matchesSearch;
+        });
+
+        exportData = receivedLogs.map(h => {
+          const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+          const qty = Math.abs(Number(h.qty_change) || 0);
+          const unitCost = Number(item.unit_cost || 0);
+          const extVal = (qty * unitCost).toFixed(2);
+
+          return {
+            'Date & Time': new Date(h.created_at).toLocaleString(),
+            'SKU': h.sku || '',
+            'Item Name': h.item_name || '',
+            'Category': item.category || 'General',
+            'Destination Location': h.location || '',
+            'Quantity Received': qty,
+            'UOM': item.uom || 'EA',
+            'Unit Cost ($)': unitCost.toFixed(2),
+            'Total Valuation ($)': extVal,
+            'Received By': h.user_name || '',
+            'PO / Notes': h.notes || ''
+          };
+        });
+
+      } else if (type === 'dispatched') {
+        filename = `Simpletory_Stock_Dispatched_Report_${todayStr}.csv`;
+        const dispatchedLogs = filteredHistory.filter(h => {
+          const isDispatched = h.action_type === 'SUBTRACT' || (Number(h.qty_change) < 0 && h.action_type !== 'ADJUST');
+          if (!isDispatched) return false;
+
+          const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+          const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+          const matchesSearch = !searchTerm ||
+            (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+            (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+            (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+            (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+            (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+          return matchesCategory && matchesSearch;
+        });
+
+        exportData = dispatchedLogs.map(h => {
+          const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+          const qty = Math.abs(Number(h.qty_change) || 0);
+          const unitCost = Number(item.unit_cost || 0);
+          const extVal = (qty * unitCost).toFixed(2);
+
+          return {
+            'Date & Time': new Date(h.created_at).toLocaleString(),
+            'SKU': h.sku || '',
+            'Item Name': h.item_name || '',
+            'Category': item.category || 'General',
+            'Source Location': h.location || '',
+            'Quantity Dispatched': qty,
+            'UOM': item.uom || 'EA',
+            'Unit Cost ($)': unitCost.toFixed(2),
+            'Total Valuation ($)': extVal,
+            'Dispatched By': h.user_name || '',
+            'Order / Notes': h.notes || ''
+          };
+        });
+
+      } else if (type === 'on-hand') {
+        filename = `Simpletory_On_Hand_Inventory_Report_${todayStr}.csv`;
+        const rows = this.inventory.map(inv => {
+          const item = this.items.find(i => i.id === inv.item_id) || {};
+          const qty = Number(inv.quantity || 0);
+          const unitCost = Number(item.unit_cost || 0);
+          const extVal = (qty * unitCost).toFixed(2);
+          const reorderPoint = Number(item.reorder_point || 0);
+
+          let status = inv.status;
+          if (!status) {
+            if (qty === 0) status = 'Out of Stock';
+            else if (qty <= reorderPoint) status = 'Low Stock';
+            else status = 'In Stock';
+          }
+
+          return {
+            'SKU': item.sku || '',
+            'Item Name': item.name || '',
+            'Category': item.category || 'General',
+            'Location': inv.location || '',
+            'Quantity On Hand': qty,
+            'UOM': item.uom || 'EA',
+            'Safety Reorder Point': reorderPoint,
+            'Unit Cost ($)': unitCost.toFixed(2),
+            'Extended Valuation ($)': extVal,
+            'Stock Status': status
+          };
+        }).filter(r => {
+          const matchesCategory = categoryFilter === 'ALL' || r['Category'] === categoryFilter;
+          const matchesSearch = !searchTerm ||
+            r['SKU'].toLowerCase().includes(searchTerm) ||
+            r['Item Name'].toLowerCase().includes(searchTerm) ||
+            r['Location'].toLowerCase().includes(searchTerm) ||
+            r['Stock Status'].toLowerCase().includes(searchTerm);
+          return matchesCategory && matchesSearch;
+        });
+
+        exportData = rows;
+
+      } else if (type === 'audit-detail') {
+        filename = `Simpletory_Movement_Detail_Report_${todayStr}.csv`;
+        const rows = filteredHistory.filter(h => {
+          const item = this.items.find(i => i.sku === h.sku || i.name === h.item_name) || {};
+          const matchesCategory = categoryFilter === 'ALL' || (item.category || 'General') === categoryFilter;
+          const matchesAction = actionFilter === 'ALL' || h.action_type === actionFilter;
+          const matchesSearch = !searchTerm ||
+            (h.sku && h.sku.toLowerCase().includes(searchTerm)) ||
+            (h.item_name && h.item_name.toLowerCase().includes(searchTerm)) ||
+            (h.location && h.location.toLowerCase().includes(searchTerm)) ||
+            (h.user_name && h.user_name.toLowerCase().includes(searchTerm)) ||
+            (h.notes && h.notes.toLowerCase().includes(searchTerm));
+
+          return matchesCategory && matchesAction && matchesSearch;
+        });
+
+        exportData = rows.map(h => ({
+          'Date & Time': new Date(h.created_at).toLocaleString(),
+          'Action Type': h.action_type || '',
+          'SKU': h.sku || '',
+          'Item Name': h.item_name || '',
+          'Location': h.location || '',
+          'Quantity Delta': h.qty_change,
+          'Previous Quantity': h.previous_qty,
+          'New Quantity': h.new_qty,
+          'Operator / User': h.user_name || '',
+          'Reference / Notes': h.notes || ''
+        }));
+      }
+
+      this.exportToCsv(exportData, filename);
+    },
+
+    // ==========================================
     // DROPDOWNS & FILTER OPTIONS POPULATOR
     // ==========================================
     populateDropdowns() {
@@ -840,8 +1920,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const invCatSelect = document.getElementById('inventory-category-filter');
       const itemCatSelect = document.getElementById('items-category-filter');
+      const repCatSelect = document.getElementById('report-category-filter');
       if (invCatSelect) invCatSelect.innerHTML = catOptions;
       if (itemCatSelect) itemCatSelect.innerHTML = catOptions;
+      if (repCatSelect) {
+        const curVal = repCatSelect.value || 'ALL';
+        repCatSelect.innerHTML = `<option value="ALL">All Categories</option>` + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (categories.includes(curVal)) repCatSelect.value = curVal;
+      }
 
       // Populate item selects in modals
       const itemOptions = `<option value="">-- Select Catalog Item --</option>` + this.items.map(i => `<option value="${i.id}">${i.sku} - ${i.name}</option>`).join('');
@@ -1321,6 +2407,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const userId = document.getElementById('profile-user-id').value;
           const fullName = document.getElementById('profile-fullname').value.trim();
           const email = document.getElementById('profile-email').value.trim();
+          const currentPassword = document.getElementById('profile-current-password').value;
           const password = document.getElementById('profile-password').value;
           const passwordConfirm = document.getElementById('profile-password-confirm').value;
           const alertEl = document.getElementById('profile-error-alert');
@@ -1337,6 +2424,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (password) {
+            if (!currentPassword || !currentPassword.trim()) {
+              if (alertEl) {
+                alertEl.textContent = 'Please enter your current password to authorize setting a new password.';
+                alertEl.style.display = 'block';
+              }
+              return;
+            }
             if (password.length < 6) {
               if (alertEl) {
                 alertEl.textContent = 'New password must be at least 6 characters long.';
@@ -1362,6 +2456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await window.WMSDataService.updateUserProfile(userId, {
               fullName,
               email,
+              currentPassword: currentPassword || undefined,
               password: password || undefined
             });
 
@@ -1500,6 +2595,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.key.toLowerCase() === 'u' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           this.switchView('users');
+        } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this.switchView('reports');
         } else if ((e.key === '?' || e.key === 'F1') && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           this.switchView('help');
@@ -1609,10 +2707,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const headers = Object.keys(dataArray[0]);
       const csvRows = [
-        headers.join(','),
-        ...dataArray.map(row => headers.map(fieldName => JSON.stringify(row[fieldName] ?? '')).join(','))
+        headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','),
+        ...dataArray.map(row => headers.map(fieldName => {
+          let val = row[fieldName] ?? '';
+          val = String(val).replace(/"/g, '""');
+          return `"${val}"`;
+        }).join(','))
       ];
-      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+      const blob = new Blob(['\uFEFF' + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
