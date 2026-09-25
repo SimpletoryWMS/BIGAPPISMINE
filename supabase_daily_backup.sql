@@ -2,11 +2,11 @@
 -- SIMPLETORY WMS - SECURE AUTOMATED DAILY SNAPSHOT & 14-DAY BACKUP SYSTEM
 -- ============================================================================
 -- Features:
--- 1. Inaccessible from the Frontend: Stored in an isolated 'backup' schema with
---    all permissions revoked from 'anon', 'authenticated', and public API roles.
+-- 1. Dual-Layer Isolation: Stored in a separate 'backup' schema with RLS ENABLED
+--    and all permissions REVOKED from 'anon', 'authenticated', and public API roles.
 -- 2. Daily Snapshot: Copies all 5 production tables (tenants, users, items,
---    inventory, inventory_history) with an extra 'snapshot_date' and 'snapshot_at' column.
--- 3. Automatic 14-Day Rolling Retention: Automatically deletes snapshots older than 14 days.
+--    inventory, inventory_history) with 'snapshot_date' and 'snapshot_at'.
+-- 3. Automatic 14-Day Rolling Retention: Automatically purges backup records older than 14 days.
 -- 4. Scheduled via pg_cron: Runs automatically every day at midnight (00:00 UTC).
 -- 5. Manual / Test Run Support: Can be triggered anytime via SELECT public.fn_create_daily_database_backup();
 -- ============================================================================
@@ -23,7 +23,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA backup REVOKE ALL ON FUNCTIONS FROM anon, aut
 ALTER DEFAULT PRIVILEGES IN SCHEMA backup REVOKE ALL ON SEQUENCES FROM anon, authenticated, public;
 
 -- ----------------------------------------------------------------------------
--- STEP 2: Create Mirror Backup Tables with Snapshot Metadata
+-- STEP 2: Create Mirror Backup Tables with Snapshot Metadata & RLS
 -- ----------------------------------------------------------------------------
 
 -- Backup Log Table (tracks execution runs and records backed up)
@@ -126,7 +126,15 @@ CREATE INDEX IF NOT EXISTS idx_backup_items_date ON backup.items(snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_backup_inventory_date ON backup.inventory(snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_backup_history_date ON backup.inventory_history(snapshot_date);
 
--- Ensure table permissions are locked
+-- Enable Row Level Security (RLS) on all backup tables (Zero policies = Complete lockdown)
+ALTER TABLE backup.backup_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup.items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup.inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup.inventory_history ENABLE ROW LEVEL SECURITY;
+
+-- Revoke all table-level access from anon and authenticated roles
 REVOKE ALL ON ALL TABLES IN SCHEMA backup FROM anon, authenticated, public;
 
 -- ----------------------------------------------------------------------------
@@ -145,7 +153,6 @@ DECLARE
     v_items_cnt INT := 0;
     v_inv_cnt INT := 0;
     v_hist_cnt INT := 0;
-    v_deleted_cnt INT := 0;
 BEGIN
     -- 1. PURGE SNAPSHOTS OLDER THAN 14 DAYS
     DELETE FROM backup.tenants WHERE snapshot_at < (v_now - INTERVAL '14 days');
@@ -214,45 +221,3 @@ BEGIN
     END IF;
     PERFORM cron.schedule('simpletory-daily-midnight-backup', '0 0 * * *', 'SELECT public.fn_create_daily_database_backup();');
 END $$;
-
-
--- ============================================================================
--- HELPER & ROLLBACK RECIPES (FOR DATABASE ADMINISTRATORS)
--- ============================================================================
-/*
--- 1. TO RUN A MANUAL BACKUP RIGHT NOW:
-SELECT public.fn_create_daily_database_backup();
-
--- 2. TO VIEW BACKUP HISTORY & AVAILABLE SNAPSHOT DATES:
-SELECT * FROM backup.backup_log ORDER BY snapshot_at DESC;
-
--- 3. TO VIEW BACKED UP ITEMS OR INVENTORY FOR A SPECIFIC DATE:
-SELECT * FROM backup.items WHERE snapshot_date = '2026-09-24';
-SELECT * FROM backup.inventory WHERE snapshot_date = '2026-09-24';
-
--- 4. TO RESTORE / ROLLBACK ON-HAND INVENTORY TO A SPECIFIC DATE (e.g. 2026-09-24):
--- BEGIN;
---   -- Disable triggers temporarily during rollback if desired
---   ALTER TABLE public.inventory DISABLE TRIGGER USER;
---   
---   -- Clear current inventory table
---   DELETE FROM public.inventory;
---   
---   -- Restore snapshot from target date
---   INSERT INTO public.inventory (id, tenant_id, item_id, location, quantity, status, updated_at)
---   SELECT id, tenant_id, item_id, location, quantity, status, updated_at 
---   FROM backup.inventory 
---   WHERE snapshot_date = '2026-09-24';
---   
---   ALTER TABLE public.inventory ENABLE TRIGGER USER;
--- COMMIT;
-
--- 5. TO RESTORE / ROLLBACK CATALOG ITEMS TO A SPECIFIC DATE:
--- BEGIN;
---   DELETE FROM public.items;
---   INSERT INTO public.items (id, tenant_id, sku, name, category, sub_category, uom, unit_cost, reorder_point, created_at)
---   SELECT id, tenant_id, sku, name, category, sub_category, uom, unit_cost, reorder_point, created_at 
---   FROM backup.items 
---   WHERE snapshot_date = '2026-09-24';
--- COMMIT;
-*/
