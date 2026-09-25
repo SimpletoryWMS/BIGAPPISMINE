@@ -451,7 +451,7 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem;">
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
             <!-- Supabase Config Card -->
             <div class="card">
               <div class="card-header">
@@ -493,6 +493,33 @@
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Facility & Tenant Active Status Management Card -->
+          <div class="card">
+            <div class="card-header" style="justify-content: space-between;">
+              <div class="card-title">Warehouse Facilities & Tenant Isolation Control</div>
+              <button class="btn btn-primary btn-sm" id="btn-add-facility">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
+                <span>+ Add Facility</span>
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table" id="table-tenants">
+                <thead>
+                  <tr>
+                    <th>Facility Code</th>
+                    <th>Warehouse / Tenant Name</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th style="text-align: right;">Active Toggle</th>
+                  </tr>
+                </thead>
+                <tbody id="table-tenants-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -952,6 +979,41 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Facility / Tenant Management -->
+  <div class="modal-overlay" id="modal-facility">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-facility-title">Add Warehouse Facility / Tenant</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-facility">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Facility / Tenant Name *</label>
+            <input type="text" class="form-input" id="facility-name" placeholder="e.g. West Coast Distribution Center" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Facility Identifier Code *</label>
+            <input type="text" class="form-input" id="facility-id" placeholder="e.g. org-west" required>
+            <span class="form-hint">Unique alphanumeric ID used for database tenant isolation</span>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="facility-active" checked>
+              <span><strong>Active Facility</strong> (visible to users and available for inventory operations)</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Facility</button>
         </div>
       </form>
     </div>

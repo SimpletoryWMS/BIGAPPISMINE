@@ -235,7 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
     applyRolePermissions() {
       const user = window.WMSDataService.currentUser;
       if (!user) return;
-      const role = user.role || 'Superadmin';
+      const role = (user.role === 'Admin') ? 'Superadmin' : (user.role || 'Superadmin');
+      const isSuperadmin = role === 'Superadmin' || role === 'Admin';
+      const isManager = isSuperadmin || role === 'Manager';
 
       // Update header badge and dropdown display
       const avatarEl = document.getElementById('header-user-avatar');
@@ -257,40 +259,40 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dropEmailEl) dropEmailEl.textContent = user.email || `${user.username || 'user'}@simpletory.com`;
       if (dropRoleBadgeEl) {
         dropRoleBadgeEl.textContent = role;
-        dropRoleBadgeEl.className = `badge ${role === 'Superadmin' ? 'badge-primary' : role === 'Manager' ? 'badge-warning' : 'badge-secondary'} user-dropdown-role-badge`;
+        dropRoleBadgeEl.className = `badge ${isSuperadmin ? 'badge-primary' : role === 'Manager' ? 'badge-warning' : 'badge-secondary'} user-dropdown-role-badge`;
       }
 
       // 1. Settings View (Supabase Link): Locked to Superadmin only
       const navSettings = document.getElementById('nav-settings');
       if (navSettings) {
-        navSettings.style.display = (role === 'Superadmin') ? 'flex' : 'none';
+        navSettings.style.display = isSuperadmin ? 'flex' : 'none';
       }
 
       // 2. Tenant / Facility Picker: Locked to Superadmin only
       const tenantPicker = document.getElementById('tenant-picker-container');
       if (tenantPicker) {
-        tenantPicker.style.display = (role === 'Superadmin') ? 'flex' : 'none';
+        tenantPicker.style.display = isSuperadmin ? 'flex' : 'none';
       }
 
       // 3. Team & User Management: Locked to Superadmin and Manager
       const navUsers = document.getElementById('nav-users');
       if (navUsers) {
-        navUsers.style.display = (role === 'Superadmin' || role === 'Manager') ? 'flex' : 'none';
+        navUsers.style.display = isManager ? 'flex' : 'none';
       }
 
       // 4. Catalog Creation / Editing: Locked to Superadmin and Manager
       const btnDashNew = document.getElementById('btn-dash-new-sku');
       const btnCatNew = document.getElementById('btn-catalog-add-sku');
-      if (btnDashNew) btnDashNew.style.display = (role === 'Superadmin' || role === 'Manager') ? 'inline-flex' : 'none';
-      if (btnCatNew) btnCatNew.style.display = (role === 'Superadmin' || role === 'Manager') ? 'inline-flex' : 'none';
+      if (btnDashNew) btnDashNew.style.display = isManager ? 'inline-flex' : 'none';
+      if (btnCatNew) btnCatNew.style.display = isManager ? 'inline-flex' : 'none';
 
       // Re-render items table to show/hide edit actions based on role
       this.renderItemsTable();
 
       // If user is on a locked view, redirect to dashboard
-      if (this.currentView === 'settings' && role !== 'Superadmin') {
+      if (this.currentView === 'settings' && !isSuperadmin) {
         this.switchView('dashboard');
-      } else if (this.currentView === 'users' && role === 'User') {
+      } else if (this.currentView === 'users' && !isManager) {
         this.switchView('dashboard');
       }
     },
@@ -320,12 +322,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     switchView(viewName) {
       const user = window.WMSDataService.currentUser;
-      const role = user ? user.role : 'User';
+      const role = user ? ((user.role === 'Admin') ? 'Superadmin' : user.role) : 'User';
+      const isSuperadmin = role === 'Superadmin' || role === 'Admin';
+      const isManager = isSuperadmin || role === 'Manager';
+
       // Guard locked views
-      if (viewName === 'settings' && role !== 'Superadmin') {
+      if (viewName === 'settings' && !isSuperadmin) {
         return this.showToast('Access Denied: Settings & Supabase connection is restricted to Superadmin.', 'danger');
       }
-      if (viewName === 'users' && role === 'User') {
+      if (viewName === 'users' && !isManager) {
         return this.showToast('Access Denied: Team management is restricted to Managers and Superadmins.', 'warning');
       }
 
@@ -351,11 +356,73 @@ document.addEventListener('DOMContentLoaded', () => {
     // DATA LOADING & REFRESH
     // ==========================================
     async loadTenants() {
-      this.tenants = await window.WMSDataService.getTenants();
+      this.tenants = await window.WMSDataService.getTenants(false);
+      this.allTenants = await window.WMSDataService.getTenants(true);
+
       const select = document.getElementById('tenant-select');
       if (select) {
         select.innerHTML = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        // If current active tenant became inactive, switch to first active
+        if (!this.tenants.some(t => t.id === window.WMSDataService.activeTenantId) && this.tenants.length > 0) {
+          window.WMSDataService.activeTenantId = this.tenants[0].id;
+        }
         select.value = window.WMSDataService.activeTenantId;
+      }
+
+      // Populate login facility select
+      const loginFacilitySelect = document.getElementById('login-facility');
+      if (loginFacilitySelect) {
+        loginFacilitySelect.innerHTML = this.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+      }
+
+      this.renderTenantsTable();
+    },
+
+    renderTenantsTable() {
+      const tbody = document.getElementById('table-tenants-body');
+      if (!tbody) return;
+
+      const list = this.allTenants || this.tenants || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No warehouse facilities configured.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(t => {
+        const isActive = t.is_active !== false;
+        const statusBadge = isActive ? 'badge-success' : 'badge-danger';
+        const statusText = isActive ? 'Active' : 'Inactive (Hidden)';
+        const btnClass = isActive ? 'btn-danger' : 'btn-success';
+        const btnText = isActive ? 'Deactivate' : 'Activate';
+
+        return `
+          <tr>
+            <td><code style="font-family: var(--font-mono); font-weight: 600;">${t.id}</code></td>
+            <td><strong>${t.name}</strong></td>
+            <td><span class="badge ${statusBadge}">${statusText}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Initial'}</td>
+            <td style="text-align: right;">
+              <button class="btn ${btnClass} btn-sm" onclick="App.toggleTenant('${t.id}', ${!isActive})">
+                ${btnText}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    },
+
+    async toggleTenant(tenantId, newStatus) {
+      if (window.WMSDataService.currentUser?.role !== 'Superadmin') {
+        return this.showToast('Superadmin permissions required to modify facility status.', 'danger');
+      }
+
+      try {
+        await window.WMSDataService.toggleTenantActive(tenantId, newStatus);
+        this.showToast(`Facility status updated to: ${newStatus ? 'Active' : 'Inactive (Auto-hidden)'}`, 'info');
+        await this.loadTenants();
+        await this.refreshAllData();
+      } catch (err) {
+        this.showToast(`Error updating facility: ${err.message}`, 'danger');
       }
     },
 
@@ -1127,6 +1194,40 @@ document.addEventListener('DOMContentLoaded', () => {
             window.WMSDataService.resetLocalSeed();
             this.showToast('Demo data restored to initial state.', 'info');
             this.refreshAllData();
+          }
+        });
+      }
+
+      // 9. Facility / Tenant Management Form
+      const btnAddFacility = document.getElementById('btn-add-facility');
+      if (btnAddFacility) {
+        btnAddFacility.addEventListener('click', () => {
+          const form = document.getElementById('form-facility');
+          if (form) form.reset();
+          this.openModal('modal-facility');
+        });
+      }
+
+      const formFacility = document.getElementById('form-facility');
+      if (formFacility) {
+        formFacility.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            const name = document.getElementById('facility-name').value.trim();
+            const id = document.getElementById('facility-id').value.trim().toLowerCase();
+            const isActive = document.getElementById('facility-active').checked;
+
+            if (!name || !id) {
+              return this.showToast('Please provide both a name and an ID code.', 'warning');
+            }
+
+            await window.WMSDataService.upsertTenant({ id, name, is_active: isActive });
+            this.closeModal('modal-facility');
+            this.showToast(`Facility ${name} registered successfully!`, 'success');
+            await this.loadTenants();
+            await this.refreshAllData();
+          } catch (err) {
+            this.showToast(`Error creating facility: ${err.message}`, 'danger');
           }
         });
       }

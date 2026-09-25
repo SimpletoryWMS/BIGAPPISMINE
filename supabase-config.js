@@ -14,8 +14,8 @@
   // Seed dataset mirroring supabase_schema.sql
   const INITIAL_SEED_DATA = {
     tenants: [
-      { id: 'org-primary', name: 'Main Enterprise Warehouse', created_at: new Date().toISOString() },
-      { id: 'org-east', name: 'East Coast Distribution Center', created_at: new Date().toISOString() }
+      { id: 'org-primary', name: 'Main Enterprise Warehouse', is_active: true, created_at: new Date().toISOString() },
+      { id: 'org-east', name: 'East Coast Distribution Center', is_active: true, created_at: new Date().toISOString() }
     ],
     items: [
       { id: 'itm-1', tenant_id: 'org-primary', sku: 'SKU-1001', name: 'Standard Heavy Duty Pallet Box', category: 'Packaging', sub_category: 'Corrugated', uom: 'EA', unit_cost: 14.50, reorder_point: 20 },
@@ -178,6 +178,15 @@
             return { success: false, error: 'Account is suspended. Please contact your administrator.' };
           }
 
+          // Check if associated tenant is active
+          if (user.role !== 'Superadmin') {
+            const allTenants = await this.getTenants(true);
+            const userTenant = allTenants.find(t => t.id === user.tenant_id);
+            if (userTenant && userTenant.is_active === false) {
+              return { success: false, error: 'This facility / tenant account is inactive. Please contact your Superadmin.' };
+            }
+          }
+
           // Verify password securely against stored SHA-256 password_hash
           if (!user.password_hash) {
             // If user was newly created in database with null password, set password on first sign-in
@@ -209,6 +218,14 @@
 
       if (user.status === 'Suspended') {
         return { success: false, error: 'Account is suspended. Please contact your administrator.' };
+      }
+
+      // Check if associated tenant is active in local store
+      if (user.role !== 'Superadmin') {
+        const userTenant = (db.tenants || []).find(t => t.id === user.tenant_id);
+        if (userTenant && userTenant.is_active === false) {
+          return { success: false, error: 'This facility / tenant account is inactive. Please contact your Superadmin.' };
+        }
       }
 
       if (!user.password_hash) {
@@ -312,13 +329,66 @@
     // ==========================================
     // DATA ACCESS METHODS
     // ==========================================
-    async getTenants() {
+    async getTenants(includeInactive = false) {
       if (this.isSupabaseConnected && this.client) {
-        const { data, error } = await this.client.from('tenants').select('*').order('name');
-        if (!error && data && data.length > 0) return data;
+        try {
+          let query = this.client.from('tenants').select('*').order('name');
+          if (!includeInactive) {
+            query = query.or('is_active.eq.true,is_active.is.null');
+          }
+          const { data, error } = await query;
+          if (!error && data) return data;
+        } catch (e) {
+          console.warn('Error fetching tenants from Supabase:', e);
+        }
       }
       const db = this.getLocalDB();
-      return db.tenants || [];
+      const allTenants = db.tenants || [];
+      return includeInactive ? allTenants : allTenants.filter(t => t.is_active !== false);
+    }
+
+    async toggleTenantActive(tenantId, isActive) {
+      if (this.isSupabaseConnected && this.client) {
+        const { error } = await this.client.from('tenants').update({ is_active: isActive }).eq('id', tenantId);
+        if (error) throw error;
+        this.notifySubscribers('tenants');
+        return true;
+      }
+      const db = this.getLocalDB();
+      const idx = (db.tenants || []).findIndex(t => t.id === tenantId);
+      if (idx >= 0) {
+        db.tenants[idx].is_active = isActive;
+        this.setLocalDB(db);
+      }
+      this.notifySubscribers('tenants');
+      return true;
+    }
+
+    async upsertTenant(tenantData) {
+      const tenant = {
+        ...tenantData,
+        id: tenantData.id || `org-${Date.now()}`,
+        is_active: tenantData.is_active ?? true,
+        created_at: tenantData.created_at || new Date().toISOString()
+      };
+
+      if (this.isSupabaseConnected && this.client) {
+        const { data, error } = await this.client.from('tenants').upsert(tenant).select().single();
+        if (error) throw error;
+        this.notifySubscribers('tenants');
+        return data;
+      }
+
+      const db = this.getLocalDB();
+      const idx = (db.tenants || []).findIndex(t => t.id === tenant.id);
+      if (idx >= 0) {
+        db.tenants[idx] = { ...db.tenants[idx], ...tenant };
+      } else {
+        db.tenants.push(tenant);
+      }
+      this.setLocalDB(db);
+      this.notifySubscribers('tenants');
+      return tenant;
     }
 
     async getItems(tenantId = this.activeTenantId) {

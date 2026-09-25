@@ -6,6 +6,7 @@
 CREATE TABLE public.tenants (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -192,10 +193,10 @@ END $$;
 -- INITIAL SEED DATA
 -- ============================================================================
 -- Seed Default Primary Tenant
-INSERT INTO public.tenants (id, name)
+INSERT INTO public.tenants (id, name, is_active)
 VALUES 
-  ('org-primary', 'Main Enterprise Warehouse'),
-  ('org-east', 'East Coast Distribution Center');
+  ('org-primary', 'Main Enterprise Warehouse', true),
+  ('org-east', 'East Coast Distribution Center', true);
 
 -- Seed Superadmin, Manager, and Standard User
 INSERT INTO public.users (id, tenant_id, username, email, password_hash, full_name, role, status)
