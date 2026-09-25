@@ -651,6 +651,50 @@
       return true;
     }
 
+    async updateUserProfile(userId, { fullName, email, password }) {
+      const updates = {};
+      if (fullName) updates.full_name = fullName.trim();
+      if (email) updates.email = email.trim();
+      if (password && password.trim()) {
+        updates.password_hash = await this.hashPassword(password.trim());
+      }
+
+      if (this.isSupabaseConnected && this.client) {
+        const { data, error } = await this.client
+          .from('users')
+          .update(updates)
+          .eq('id', userId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        // Update currently authenticated user session
+        if (this.currentUser && this.currentUser.id === userId) {
+          this.currentUser = { ...this.currentUser, ...data };
+          this.setCurrentUser(this.currentUser, true);
+        }
+        this.notifySubscribers('users');
+        this.notifySubscribers('auth');
+        return { success: true, user: data };
+      }
+
+      const db = this.getLocalDB();
+      const idx = (db.users || []).findIndex(u => u.id === userId);
+      if (idx >= 0) {
+        db.users[idx] = { ...db.users[idx], ...updates };
+        this.setLocalDB(db);
+        if (this.currentUser && this.currentUser.id === userId) {
+          this.currentUser = { ...this.currentUser, ...db.users[idx] };
+          this.setCurrentUser(this.currentUser, true);
+        }
+        this.notifySubscribers('users');
+        this.notifySubscribers('auth');
+        return { success: true, user: db.users[idx] };
+      }
+      throw new Error('User account not found.');
+    }
+
     // ==========================================
     // REALTIME & EVENT SUBSCRIBERS
     // ==========================================

@@ -143,6 +143,10 @@
               </div>
               
               <div class="user-dropdown-divider"></div>
+              <a class="user-dropdown-item" id="btn-header-edit-profile">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Edit Profile & Password</span>
+              </a>
               <a class="user-dropdown-item logout-item" id="btn-header-signout">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 <span>Sign Out</span>
@@ -1438,6 +1442,79 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Facility</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8: My Profile & Account Settings -->
+  <div class="modal-overlay" id="modal-profile">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">My Account & Security Settings</div>
+        <button class="action-btn btn-modal-close">×</button>
+      </div>
+      <form id="form-profile">
+        <div class="modal-body">
+          <input type="hidden" id="profile-user-id">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-input" id="profile-fullname" placeholder="Your full name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" class="form-input" id="profile-username" readonly disabled style="opacity: 0.7; cursor: not-allowed;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Assigned Facility</label>
+              <input type="text" class="form-input" id="profile-facility" readonly disabled style="opacity: 0.7; cursor: not-allowed;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assigned Role</label>
+              <input type="text" class="form-input" id="profile-role" readonly disabled style="opacity: 0.7; cursor: not-allowed;">
+              <span class="form-hint">Role permissions are locked by system policy</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" class="form-input" id="profile-email" placeholder="e.g. yourname@company.com" required>
+            <span class="form-hint">Used for login identification and system alerts</span>
+          </div>
+
+          <div style="margin: 1.25rem 0 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">Change Password</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">Leave blank to keep your current password unchanged</div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <div class="password-input-wrapper">
+                <input type="password" class="form-input" id="profile-password" placeholder="New password (optional)" autocomplete="new-password">
+                <button type="button" class="btn-toggle-pwd" id="btn-toggle-profile-pwd" tabindex="-1" title="Toggle visibility">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password</label>
+              <div class="password-input-wrapper">
+                <input type="password" class="form-input" id="profile-password-confirm" placeholder="Re-type new password" autocomplete="new-password">
+              </div>
+            </div>
+          </div>
+
+          <div id="profile-error-alert" class="auth-alert" style="display: none; margin-top: 0.75rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Changes</button>
         </div>
       </form>
     </div>

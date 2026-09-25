@@ -182,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindUserProfileMenu() {
       const toggleBtn = document.getElementById('btn-user-profile-toggle');
       const menu = document.getElementById('user-dropdown-menu');
+      const editProfileBtn = document.getElementById('btn-header-edit-profile');
       const signoutBtn = document.getElementById('btn-header-signout');
 
       if (toggleBtn && menu) {
@@ -199,6 +200,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
+      if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (menu) menu.classList.remove('show');
+          if (toggleBtn) toggleBtn.classList.remove('active');
+          this.openProfileModal();
+        });
+      }
+
       if (signoutBtn) {
         signoutBtn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -209,6 +219,49 @@ document.addEventListener('DOMContentLoaded', () => {
           this.checkAuthState();
         });
       }
+
+      // Toggle profile password visibility
+      const btnToggleProfPwd = document.getElementById('btn-toggle-profile-pwd');
+      const profPwdInput = document.getElementById('profile-password');
+      if (btnToggleProfPwd && profPwdInput) {
+        btnToggleProfPwd.addEventListener('click', () => {
+          const isPwd = profPwdInput.type === 'password';
+          profPwdInput.type = isPwd ? 'text' : 'password';
+          btnToggleProfPwd.innerHTML = isPwd
+            ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+        });
+      }
+    },
+
+    openProfileModal() {
+      const user = window.WMSDataService.currentUser;
+      if (!user) return;
+
+      const userTenant = (this.allTenants || []).find(t => t.id === user.tenant_id);
+      const facilityName = userTenant ? userTenant.name : (user.tenant_id || 'Primary Facility');
+
+      const idInput = document.getElementById('profile-user-id');
+      const nameInput = document.getElementById('profile-fullname');
+      const usernameInput = document.getElementById('profile-username');
+      const facilityInput = document.getElementById('profile-facility');
+      const roleInput = document.getElementById('profile-role');
+      const emailInput = document.getElementById('profile-email');
+      const pwdInput = document.getElementById('profile-password');
+      const pwdConfirmInput = document.getElementById('profile-password-confirm');
+      const alertEl = document.getElementById('profile-error-alert');
+
+      if (idInput) idInput.value = user.id || '';
+      if (nameInput) nameInput.value = user.full_name || '';
+      if (usernameInput) usernameInput.value = user.username || '';
+      if (facilityInput) facilityInput.value = facilityName;
+      if (roleInput) roleInput.value = user.role || 'User';
+      if (emailInput) emailInput.value = user.email || '';
+      if (pwdInput) pwdInput.value = '';
+      if (pwdConfirmInput) pwdConfirmInput.value = '';
+      if (alertEl) alertEl.style.display = 'none';
+
+      this.openModal('modal-profile');
     },
 
     // ==========================================
@@ -1229,6 +1282,77 @@ document.addEventListener('DOMContentLoaded', () => {
             await this.refreshAllData();
           } catch (err) {
             this.showToast(`Error creating facility: ${err.message}`, 'danger');
+          }
+        });
+      }
+
+      // 10. User Self-Service Profile & Password Update Form
+      const formProfile = document.getElementById('form-profile');
+      if (formProfile) {
+        formProfile.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const userId = document.getElementById('profile-user-id').value;
+          const fullName = document.getElementById('profile-fullname').value.trim();
+          const email = document.getElementById('profile-email').value.trim();
+          const password = document.getElementById('profile-password').value;
+          const passwordConfirm = document.getElementById('profile-password-confirm').value;
+          const alertEl = document.getElementById('profile-error-alert');
+          const saveBtn = document.getElementById('btn-save-profile');
+
+          if (alertEl) alertEl.style.display = 'none';
+
+          if (!fullName || !email) {
+            if (alertEl) {
+              alertEl.textContent = 'Please fill out your full name and email address.';
+              alertEl.style.display = 'block';
+            }
+            return;
+          }
+
+          if (password) {
+            if (password.length < 6) {
+              if (alertEl) {
+                alertEl.textContent = 'New password must be at least 6 characters long.';
+                alertEl.style.display = 'block';
+              }
+              return;
+            }
+            if (password !== passwordConfirm) {
+              if (alertEl) {
+                alertEl.textContent = 'Passwords do not match. Please verify your confirmation password.';
+                alertEl.style.display = 'block';
+              }
+              return;
+            }
+          }
+
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving Changes...';
+          }
+
+          try {
+            await window.WMSDataService.updateUserProfile(userId, {
+              fullName,
+              email,
+              password: password || undefined
+            });
+
+            this.closeModal('modal-profile');
+            this.showToast('Your profile and account settings have been updated!', 'success');
+            this.applyRolePermissions();
+            await this.refreshAllData();
+          } catch (err) {
+            if (alertEl) {
+              alertEl.textContent = `Update error: ${err.message}`;
+              alertEl.style.display = 'block';
+            }
+            this.showToast(`Error updating profile: ${err.message}`, 'danger');
+          } finally {
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save Changes';
+            }
           }
         });
       }
