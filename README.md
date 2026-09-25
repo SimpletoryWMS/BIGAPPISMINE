@@ -6,9 +6,9 @@ A modern, fast, multi-tenant Warehouse Management System with real-time Supabase
 
 ## 🗄️ Database Architecture & Migrations
 
-- **[`supabase_schema.sql`](file:///Users/dereklumpkin/Documents/Simpletory/supabase_schema.sql)**: Complete production schema including `tenants`, `users`, `items`, `inventory`, `inventory_history`, audit triggers, and tenant isolation RLS policies.
-- **[`supabase_daily_backup.sql`](file:///Users/dereklumpkin/Documents/Simpletory/supabase_daily_backup.sql)**: Automated daily midnight snapshot and 14-day rolling retention backup system.
-- **[`reset_database.sql`](file:///Users/dereklumpkin/Documents/Simpletory/reset_database.sql)**: Safe wipe/reset script for staging.
+- **[`sql/supabase_schema.sql`](file:///Users/dereklumpkin/Documents/Simpletory/sql/supabase_schema.sql)**: Complete production schema including `tenants`, `users`, `items`, `inventory`, `inventory_history`, audit triggers, and tenant isolation RLS policies.
+- **[`sql/supabase_daily_backup.sql`](file:///Users/dereklumpkin/Documents/Simpletory/sql/supabase_daily_backup.sql)**: Automated daily midnight snapshot and 14-day rolling retention backup system.
+- **[`sql/reset_database.sql`](file:///Users/dereklumpkin/Documents/Simpletory/sql/reset_database.sql)**: Safe wipe/reset script for staging.
 
 ---
 

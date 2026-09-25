@@ -14,7 +14,9 @@ import re
 import sys
 
 WORKSPACE_DIR = os.path.abspath(os.getcwd())
-SQL_SCHEMA_PATH = os.path.join(WORKSPACE_DIR, 'supabase_schema.sql')
+SQL_SCHEMA_PATH = os.path.join(WORKSPACE_DIR, 'sql', 'supabase_schema.sql')
+if not os.path.exists(SQL_SCHEMA_PATH):
+    SQL_SCHEMA_PATH = os.path.join(WORKSPACE_DIR, 'supabase_schema.sql')
 JS_PATH = os.path.join(WORKSPACE_DIR, 'app.js')
 SUPABASE_CONFIG_PATH = os.path.join(WORKSPACE_DIR, 'supabase-config.js')
 
