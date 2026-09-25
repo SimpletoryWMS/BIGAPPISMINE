@@ -1199,66 +1199,6 @@ html, body {
   margin-top: 0.35rem;
 }
 
-.auth-demo-helper {
-  margin-top: 1.75rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border-color);
-  text-align: center;
-}
-
-.demo-helper-title {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  color: var(--text-muted);
-  margin-bottom: 0.65rem;
-}
-
-.demo-role-pills {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.demo-pill {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.45rem 0.85rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.demo-pill:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--primary);
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.demo-pill strong {
-  color: var(--text-primary);
-}
-
-.auth-demo-note {
-  margin-top: 0.75rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.auth-demo-note code {
-  background: var(--bg-input);
-  padding: 2px 5px;
-  border-radius: var(--radius-sm);
-  color: var(--primary);
-  font-family: var(--font-mono);
-}
 
 /* ==========================================================================
    USER PROFILE MENU & DROPDOWN

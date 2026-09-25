@@ -178,20 +178,20 @@
             return { success: false, error: 'Account is suspended. Please contact your administrator.' };
           }
 
-          // Check password: if password_hash is null (first login) or matches hash or default passwords
-          const isDefaultPassword = cleanPassword === 'admin123' || cleanPassword === 'manager123' || cleanPassword === 'user123' || cleanPassword === 'simpletory123';
-          const isHashMatch = user.password_hash === hashedPassword || user.password_hash === cleanPassword;
+          // Verify password securely against stored SHA-256 password_hash
+          if (!user.password_hash) {
+            // If user was newly created in database with null password, set password on first sign-in
+            await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+            user.password_hash = hashedPassword;
+            this.setCurrentUser(user, remember);
+            return { success: true, user };
+          }
 
-          if (!user.password_hash || isHashMatch || isDefaultPassword) {
-            // Update hash if not set or was plaintext
-            if (!user.password_hash || user.password_hash !== hashedPassword) {
-              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
-              user.password_hash = hashedPassword;
-            }
+          if (user.password_hash === hashedPassword) {
             this.setCurrentUser(user, remember);
             return { success: true, user };
           } else {
-            return { success: false, error: 'Incorrect password. Please try again.' };
+            return { success: false, error: 'Incorrect username or password.' };
           }
         } catch (err) {
           console.error('Auth Exception:', err);
@@ -199,28 +199,30 @@
         }
       }
 
-      // Local Demo Store Fallback Authentication
+      // Local Store Fallback Authentication
       const db = this.getLocalDB();
       const user = (db.users || []).find(u => u.username.toLowerCase() === cleanUsername);
 
       if (!user) {
-        return { success: false, error: 'User not found. Try derek, sarah.c, or mike.t.' };
+        return { success: false, error: 'Invalid username or password.' };
       }
 
       if (user.status === 'Suspended') {
-        return { success: false, error: 'Account is suspended.' };
+        return { success: false, error: 'Account is suspended. Please contact your administrator.' };
       }
 
-      const isDefault = cleanPassword === 'admin123' || cleanPassword === 'manager123' || cleanPassword === 'user123' || cleanPassword === 'simpletory123';
-      const isHashMatch = user.password_hash === hashedPassword || user.password_hash === cleanPassword;
-
-      if (!user.password_hash || isHashMatch || isDefault) {
+      if (!user.password_hash) {
         user.password_hash = hashedPassword;
         this.setCurrentUser(user, remember);
         return { success: true, user };
       }
 
-      return { success: false, error: 'Incorrect password. Default is admin123 or simpletory123.' };
+      if (user.password_hash === hashedPassword) {
+        this.setCurrentUser(user, remember);
+        return { success: true, user };
+      }
+
+      return { success: false, error: 'Incorrect username or password.' };
     }
 
     setCurrentUser(user, remember = true) {

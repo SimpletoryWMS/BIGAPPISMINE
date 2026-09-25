@@ -84,19 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // Quick Role Demo Pills
-      const demoPills = document.querySelectorAll('.demo-pill');
-      demoPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-          const user = pill.getAttribute('data-user');
-          const pwd = pill.getAttribute('data-pwd');
-          const userInput = document.getElementById('login-username');
-          if (userInput) userInput.value = user;
-          if (pwdInput) pwdInput.value = pwd;
-          if (authAlert) authAlert.style.display = 'none';
-        });
-      });
-
       if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -163,25 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       }
-
-      // Role switcher inside dropdown
-      const switchItems = document.querySelectorAll('.role-switch-item');
-      switchItems.forEach(item => {
-        item.addEventListener('click', async (e) => {
-          e.preventDefault();
-          const targetRole = item.getAttribute('data-switch-role');
-          const found = this.users.find(u => u.role === targetRole) || 
-            (targetRole === 'Superadmin' ? { id: 'usr-admin-1', full_name: 'Derek Lumpkin', username: 'derek', role: 'Superadmin', email: 'derek@simpletory.com' } :
-             targetRole === 'Manager' ? { id: 'usr-mgr-1', full_name: 'Sarah Connor', username: 'sarah.c', role: 'Manager', email: 'sarah@simpletory.com' } :
-             { id: 'usr-op-1', full_name: 'Mike Torres', username: 'mike.t', role: 'User', email: 'mike@simpletory.com' });
-
-          window.WMSDataService.setCurrentUser(found, true);
-          if (menu) menu.classList.remove('show');
-          if (toggleBtn) toggleBtn.classList.remove('active');
-          this.showToast(`Switched active role to: ${found.full_name} (${found.role})`, 'info');
-          this.applyRolePermissions();
-        });
-      });
 
       if (signoutBtn) {
         signoutBtn.addEventListener('click', (e) => {
