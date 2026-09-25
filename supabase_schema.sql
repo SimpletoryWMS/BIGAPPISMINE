@@ -1,5 +1,5 @@
 -- ============================================================================
--- SIMPLETORY ENTERPRISE MULTI-TENANT WMS - COMPLETE DATABASE SCHEMA
+-- SIMPLETORY ENTERPRISE MULTI-TENANT WMS - COMPLETE IDEMPOTENT DATABASE SCHEMA
 -- ============================================================================
 
 -- 1. Tenants / Facilities Table
@@ -8,6 +8,29 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Defensive Migration: relax any legacy NOT NULL constraints on tenants
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'slug'
+    ) THEN
+        ALTER TABLE public.tenants ALTER COLUMN slug DROP NOT NULL;
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'industry'
+    ) THEN
+        ALTER TABLE public.tenants ALTER COLUMN industry DROP NOT NULL;
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'plan_tier'
+    ) THEN
+        ALTER TABLE public.tenants ALTER COLUMN plan_tier DROP NOT NULL;
+    END IF;
+END $$;
 
 -- 2. Items Master Table
 CREATE TABLE IF NOT EXISTS public.items (
@@ -24,6 +47,12 @@ CREATE TABLE IF NOT EXISTS public.items (
     CONSTRAINT uq_tenant_sku UNIQUE (tenant_id, sku)
 );
 
+-- Ensure sub_category and other columns exist if items table was created earlier
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS sub_category TEXT DEFAULT 'Standard';
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'EA';
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(12, 2) DEFAULT 0.00;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS reorder_point NUMERIC(12, 2) DEFAULT 0.00;
+
 -- 3. Inventory Overview Table (On-Hand Stock by Location)
 CREATE TABLE IF NOT EXISTS public.inventory (
     id TEXT PRIMARY KEY,
@@ -35,6 +64,8 @@ CREATE TABLE IF NOT EXISTS public.inventory (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_tenant_item_location UNIQUE (tenant_id, item_id, location)
 );
+
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Available';
 
 -- 4. Inventory Change History / Audit Log Table (Tracks Every Change)
 CREATE TABLE IF NOT EXISTS public.inventory_history (
@@ -53,6 +84,9 @@ CREATE TABLE IF NOT EXISTS public.inventory_history (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.inventory_history ADD COLUMN IF NOT EXISTS user_name TEXT DEFAULT 'System / Admin';
+ALTER TABLE public.inventory_history ADD COLUMN IF NOT EXISTS notes TEXT;
+
 -- 5. Users & RBAC Table
 CREATE TABLE IF NOT EXISTS public.users (
     id TEXT PRIMARY KEY,
@@ -66,6 +100,9 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_tenant_username UNIQUE (tenant_id, username)
 );
+
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'User';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
 
 -- ============================================================================
 -- AUTOMATED DATABASE AUDIT TRIGGER (GUARANTEES IMMUTABLE HISTORY)
@@ -179,12 +216,25 @@ CREATE INDEX IF NOT EXISTS idx_inventory_tenant ON public.inventory(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_history_tenant ON public.inventory_history(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON public.users(tenant_id);
 
--- Enable Realtime Subscriptions
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tenants;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.items;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.inventory;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.inventory_history;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+-- Enable Realtime Subscriptions (Defensive / Idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'tenants') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.tenants;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'items') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.items;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'inventory') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.inventory;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'inventory_history') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.inventory_history;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'users') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- INITIAL SEED DATA
@@ -194,7 +244,7 @@ INSERT INTO public.tenants (id, name)
 VALUES 
   ('org-primary', 'Main Enterprise Warehouse'),
   ('org-east', 'East Coast Distribution Center')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
 -- Seed Superadmin, Manager, and Standard User
 INSERT INTO public.users (id, tenant_id, username, email, password_hash, full_name, role, status)
@@ -213,7 +263,11 @@ VALUES
   ('itm-4', 'org-primary', 'SKU-3001', 'Premium Utility Knife Blades (Pack of 50)', 'Tools', 'Blades', 'PK', 8.90, 10),
   ('itm-5', 'org-primary', 'SKU-4001', 'Poly Bubble Mailers #0 (6x10)', 'Packaging', 'Envelopes', 'CS', 32.40, 25),
   ('itm-6', 'org-primary', 'SKU-5001', 'Direct Thermal Shipping Labels 4x6', 'Supplies', 'Labels', 'RL', 11.25, 30)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET 
+  sub_category = EXCLUDED.sub_category,
+  uom = EXCLUDED.uom,
+  unit_cost = EXCLUDED.unit_cost,
+  reorder_point = EXCLUDED.reorder_point;
 
 -- Seed Initial On-Hand Inventory
 INSERT INTO public.inventory (id, tenant_id, item_id, location, quantity, status)
