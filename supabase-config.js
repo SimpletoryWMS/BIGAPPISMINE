@@ -195,12 +195,15 @@
             }
           }
 
+          const nowIso = new Date().toISOString();
+          user.last_login_at = nowIso;
+
           // 1. First-time initialization (if password_hash was NULL)
           if (!user.password_hash) {
             try {
-              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+              await this.client.from('users').update({ password_hash: hashedPassword, last_login_at: nowIso }).eq('id', user.id);
             } catch (updateErr) {
-              console.warn('Could not persist initial password hash to Supabase:', updateErr);
+              console.warn('Could not persist initial password hash / last login to Supabase:', updateErr);
             }
             user.password_hash = hashedPassword;
             this.setCurrentUser(user, remember);
@@ -209,6 +212,11 @@
 
           // 2. Exact match against stored SHA-256 hash
           if (user.password_hash === hashedPassword) {
+            try {
+              await this.client.from('users').update({ last_login_at: nowIso }).eq('id', user.id);
+            } catch (loginTimeErr) {
+              console.warn('Could not update last_login_at in Supabase:', loginTimeErr);
+            }
             this.setCurrentUser(user, remember);
             return { success: true, user };
           }
@@ -216,9 +224,9 @@
           // 3. Plain-text password entered directly in database (auto-upgrade to SHA-256 hash)
           if (user.password_hash === cleanPassword) {
             try {
-              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+              await this.client.from('users').update({ password_hash: hashedPassword, last_login_at: nowIso }).eq('id', user.id);
             } catch (upgradeErr) {
-              console.warn('Could not upgrade plain-text password to hash:', upgradeErr);
+              console.warn('Could not upgrade plain-text password / last login:', upgradeErr);
             }
             user.password_hash = hashedPassword;
             this.setCurrentUser(user, remember);
@@ -259,14 +267,28 @@
         }
       }
 
+      const nowIso = new Date().toISOString();
+      user.last_login_at = nowIso;
+      const userIdx = (db.users || []).findIndex(u => u.id === user.id);
+
       if (!user.password_hash) {
         user.password_hash = hashedPassword;
+        if (userIdx !== -1) {
+          db.users[userIdx].password_hash = hashedPassword;
+          db.users[userIdx].last_login_at = nowIso;
+          this.setLocalDB(db);
+        }
         this.setCurrentUser(user, remember);
         return { success: true, user };
       }
 
       if (user.password_hash === hashedPassword || user.password_hash === cleanPassword) {
         user.password_hash = hashedPassword;
+        if (userIdx !== -1) {
+          db.users[userIdx].password_hash = hashedPassword;
+          db.users[userIdx].last_login_at = nowIso;
+          this.setLocalDB(db);
+        }
         this.setCurrentUser(user, remember);
         return { success: true, user };
       }

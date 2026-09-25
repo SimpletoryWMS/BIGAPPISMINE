@@ -64,6 +64,7 @@ CREATE TABLE public.users (
     full_name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'User', -- 'Superadmin', 'Manager', 'User'
     status TEXT NOT NULL DEFAULT 'Active', -- 'Active', 'Suspended'
+    last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_tenant_username UNIQUE (tenant_id, username)
 );

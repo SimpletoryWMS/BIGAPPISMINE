@@ -814,6 +814,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tenantObj = allTenantsList.find(t => t.id === u.tenant_id);
         const tenantName = tenantObj ? tenantObj.name : (u.tenant_id || 'Primary Facility');
 
+        const lastLogin = u.last_login_at 
+          ? `<span title="${new Date(u.last_login_at).toLocaleString()}">${new Date(u.last_login_at).toLocaleDateString()} ${new Date(u.last_login_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` 
+          : `<span style="color: var(--text-muted); font-size: 0.78rem;">Never</span>`;
+
         return `
           <tr>
             <td>
@@ -827,6 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><span class="badge badge-neutral">${tenantName}</span></td>
             <td><span class="badge ${roleBadge}">${u.role}</span></td>
             <td><span class="badge ${u.status === 'Active' ? 'badge-success' : 'badge-neutral'}">${u.status || 'Active'}</span></td>
+            <td style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">${lastLogin}</td>
             <td>
               <div class="table-actions">
                 <button class="action-btn" onclick="App.openEditUserModal('${u.id}')">✏ Edit</button>
