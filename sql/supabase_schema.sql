@@ -10,6 +10,24 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
+-- 0. Cleanup Legacy Auth Triggers & Obsolete Functions (if present)
+-- ----------------------------------------------------------------------------
+DO $$
+DECLARE
+    trg_record RECORD;
+BEGIN
+    FOR trg_record IN 
+        SELECT trigger_name 
+        FROM information_schema.triggers 
+        WHERE event_object_schema = 'auth' AND event_object_table = 'users'
+    LOOP
+        EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(trg_record.trigger_name) || ' ON auth.users CASCADE;';
+    END LOOP;
+END $$;
+
+DROP FUNCTION IF EXISTS public.handle_new_auth_user() CASCADE;
+
+-- ----------------------------------------------------------------------------
 -- 1. Core Tables
 -- ----------------------------------------------------------------------------
 
