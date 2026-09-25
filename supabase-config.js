@@ -195,9 +195,8 @@
             }
           }
 
-          // Verify password securely against stored SHA-256 password_hash
+          // 1. First-time initialization (if password_hash was NULL)
           if (!user.password_hash) {
-            // If user was newly created in database with null password, set password on first sign-in
             try {
               await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
             } catch (updateErr) {
@@ -208,12 +207,25 @@
             return { success: true, user };
           }
 
+          // 2. Exact match against stored SHA-256 hash
           if (user.password_hash === hashedPassword) {
             this.setCurrentUser(user, remember);
             return { success: true, user };
-          } else {
-            return { success: false, error: 'Incorrect password entered.' };
           }
+
+          // 3. Plain-text password entered directly in database (auto-upgrade to SHA-256 hash)
+          if (user.password_hash === cleanPassword) {
+            try {
+              await this.client.from('users').update({ password_hash: hashedPassword }).eq('id', user.id);
+            } catch (upgradeErr) {
+              console.warn('Could not upgrade plain-text password to hash:', upgradeErr);
+            }
+            user.password_hash = hashedPassword;
+            this.setCurrentUser(user, remember);
+            return { success: true, user };
+          }
+
+          return { success: false, error: 'Incorrect password entered.' };
         } catch (err) {
           console.error('Auth Exception:', err);
           return { success: false, error: `Authentication failed: ${err.message}` };
@@ -253,7 +265,8 @@
         return { success: true, user };
       }
 
-      if (user.password_hash === hashedPassword) {
+      if (user.password_hash === hashedPassword || user.password_hash === cleanPassword) {
+        user.password_hash = hashedPassword;
         this.setCurrentUser(user, remember);
         return { success: true, user };
       }
