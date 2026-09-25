@@ -920,7 +920,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 2500;
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition-normal);
@@ -1105,7 +1105,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  z-index: 999;
+  z-index: 3000;
   pointer-events: none;
 }
 
