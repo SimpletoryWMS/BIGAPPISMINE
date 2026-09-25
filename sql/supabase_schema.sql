@@ -382,7 +382,7 @@ BEGIN
     INSERT INTO auth.identities (
         id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
     ) VALUES (
-        v_new_uid::text,
+        v_new_uid,
         v_new_uid,
         jsonb_build_object('sub', v_new_uid::text, 'email', v_clean_email, 'email_verified', true),
         'email',
